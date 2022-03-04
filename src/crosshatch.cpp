@@ -21,43 +21,17 @@ namespace {
     };
 
     auto row_of_crosshatching(int wd, double hgt, double y, const ch::rnd_fn& run_length, const ch::rnd_fn& space_length, const ch::unit_of_hatching_fn& h_fn) {
-            return rv::join(
-                rv::generate([=]() { return run_and_space{ run_length(), space_length(), 0.0 }; }) |
-                rv::partial_sum(
-                    [](run_and_space a, run_and_space b)->run_and_space {
-                        return { b.run, b.space, a.x + a.run + a.space };
-                    }
-                ) |
-                rv::transform(
-                    [y, hgt, h_fn](run_and_space rs) {
-                        auto x1 = rs.x;
-                        auto x2 = rs.x + rs.run - 1;
-                        return h_fn(x1, x2, y, hgt);
-                    }
-                ) |
-                rv::take_while([wd](auto rng) {
-                        return (*rng.begin()).front().x < wd;
-                    }
-                )
-           );
-    }
-
-    /*
-    auto row_of_crosshatching(int wd, double hgt, double y, const ch::rnd_fn& run_length, const ch::rnd_fn& space_length, const ch::unit_of_hatching_fn& h_fn) {
         return rv::join(
-            rv::iota(0) |
-            rv::transform(
-                [=](int i) {
-                    return (i == 0) ? -run_length() : ((i % 2) ? run_length() : space_length());
+            rv::generate([=]() { return run_and_space{ run_length(), space_length(), 0.0 }; }) |
+            rv::partial_sum(
+                [](run_and_space a, run_and_space b)->run_and_space {
+                    return { b.run, b.space, a.x + a.run + a.space };
                 }
             ) |
-            rv::partial_sum |
-            rv::chunk(2) |
             rv::transform(
-                [y, hgt, h_fn](auto rng) {
-                    auto x1 = *rng.begin();
-                    auto x2 = *std::next(rng.begin()) - 1;
-                    std::cout << x1 << " " << x2 << "\n";
+                [y, hgt, h_fn](run_and_space rs) {
+                    auto x1 = rs.x;
+                    auto x2 = rs.x + rs.run - 1;
                     return h_fn(x1, x2, y, hgt);
                 }
             ) |
@@ -65,9 +39,8 @@ namespace {
                     return (*rng.begin()).front().x < wd;
                 }
             )
-        );
+       );
     }
-    */
 
     auto divide_length(double len, const ch::rnd_fn& run_length) {
         return rv::concat(rv::single(0.0), rv::generate(run_length)) |

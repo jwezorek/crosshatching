@@ -28,7 +28,7 @@ int main()
     cv::imshow("crosshatch", mat);
     std::cout << "crosshatch: " << ch::gray_level(1, crosshatching) << "\n";
 
-    auto vec2 = ranges::to_vector(ch::disintegrate(vec, 0.5, ch::fragment_param{4,ch::normal_rnd_fn(2, 0.2)}));
+    auto vec2 = ranges::to_vector(ch::disintegrate(vec, 0.5 /*, ch::fragment_param{4,ch::normal_rnd_fn(2, 0.2)}*/));
     cv::imshow("disintegrate", ch::paint_cross_hatching(1, 512, vec2));
     std::cout << "disintegrate: " << ch::gray_level(1, vec2) << "\n";
 
