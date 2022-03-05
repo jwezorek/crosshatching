@@ -21,12 +21,7 @@ namespace ch {
         const unit_of_hatching_fn& h_fn = one_horz_stroke);
     hatching_range apply_jitter(hatching_range rng, const ch::rnd_fn& run_length, const ch::rnd_fn& jitter);
 
-    struct fragment_param {
-        double min_length;
-        ch::rnd_fn run_length;
-    };
-
-    hatching_range disintegrate(hatching_range rng, double amount, const std::optional<fragment_param>& frag = {});
+    hatching_range disintegrate(hatching_range rng, double amount);
     cv::Mat paint_cross_hatching(int thickness, int dim, hatching_range rng);
     double gray_level(int thickness, hatching_range rng);
     void to_svg(const std::string& filename, int dim, int thickness, hatching_range rng);

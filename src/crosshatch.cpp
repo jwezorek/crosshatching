@@ -126,36 +126,6 @@ namespace {
         );
     }
 
-    ch::polyline divide_polyline(const ch::polyline& poly, double max_length, const ch::rnd_fn& run_length) {
-        return r::to_vector(
-            rv::concat(
-                rv::join(
-                    poly |
-                    rv::sliding(2) |
-                    rv::transform(
-                        [run_length, max_length](auto rng) {
-                            if (ch::euclidean_distance(rng[0], rng[1]) >= max_length) {
-                                return ch::poly_range{ divide_line_segment(rng[0], rng[1], run_length) };
-                            } else {
-                                return ch::poly_range{ rng };
-                            }
-                        }
-                    )
-                ),
-                rv::single(poly.back())
-            )
-        );
-    }
-
-    auto divide_polylines(ch::hatching_range input, double min_length, const ch::rnd_fn& run_length) {
-        return input |
-            rv::transform(
-                [min_length, run_length](const ch::polyline& poly) {
-                    return divide_polyline(poly, min_length, run_length);
-                }
-            );
-    }
-
 }
 
 ch::unit_of_hatching_fn ch::make_brick_stroke()
@@ -222,7 +192,7 @@ ch::hatching_range ch::rotated_crosshatching(double theta, int dim, const ch::rn
     return ch::transform(ch::linear_crosshatching(new_dim, run_length, run_space_length, line_space, h_fn), rotate);
 }
 
-ch::hatching_range ch::apply_jitter(ranges::any_view<ch::polyline> rng, const ch::rnd_fn& run_length, const ch::rnd_fn& jitter)
+ch::hatching_range ch::apply_jitter(ch::hatching_range rng, const ch::rnd_fn& run_length, const ch::rnd_fn& jitter)
 {
     return rng |
         rv::transform(
@@ -232,9 +202,7 @@ ch::hatching_range ch::apply_jitter(ranges::any_view<ch::polyline> rng, const ch
         );
 }
 
-ch::hatching_range ch::disintegrate(ch::hatching_range input, double amount, const std::optional<fragment_param>& frag)
-{
-    hatching_range rng = (frag) ? divide_polylines(input, frag->min_length, frag->run_length) : input;
+ch::hatching_range ch::disintegrate(ch::hatching_range rng, double amount) {
 
     if (amount >= 1.0) {
         return rng;
