@@ -25,7 +25,7 @@ int main()
 
     int n = 100;
     for (int i = 0; i <= n; i++) {
-        auto mat = ch::paint_cross_hatching(2, ch::k_swatch_sz, brush( i * (1.0/n)));
+        auto mat = ch::paint_cross_hatching(2, brush( i * (1.0/n)));
         cv::imshow("crosshatch", mat);
         int k = cv::waitKey(0);
     }

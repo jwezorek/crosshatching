@@ -65,7 +65,6 @@ ch::brush_fn ch::make_linear_hatching_brush_fn(const param_adapter_fn& run_lengt
 {
     return [=](double t)->hatching_range {
         return linear_crosshatching(
-            ch::k_swatch_sz,
             [run_length, t]()->double {return run_length(t); },
             [space_length, t]()->double {return space_length(t); },
             [vert_space, t]()->double {return vert_space(t); },

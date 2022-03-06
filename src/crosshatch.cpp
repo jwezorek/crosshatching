@@ -170,16 +170,17 @@ ch::hatching_range ch::one_horz_stroke(double x1, double x2, double y, double hg
     return rv::single(ch::polyline{ {x1,y} , {x2,y} });
 }
 
-ch::hatching_range ch::linear_crosshatching(int wd_and_hgt, const ch::rnd_fn& run_length, const ch::rnd_fn& space_length,
-    const ch::rnd_fn& vert_space, const ch::unit_of_hatching_fn& h_fn)
+ch::hatching_range ch::linear_crosshatching(const ch::rnd_fn& run_length, const ch::rnd_fn& space_length,
+    const ch::rnd_fn& vert_space, const ch::unit_of_hatching_fn& h_fn, int swatch_sz)
 {
     return rv::join(
         running_sum(vert_space) |
-        rv::take_while([wd_and_hgt](const running_sum_item& rsi) { return rsi.sum < wd_and_hgt; }) |
-        rv::transform([=](const running_sum_item& rsi) {return row_of_crosshatching(wd_and_hgt, rsi.next_item, rsi.sum, run_length, space_length, h_fn); })
+        rv::take_while([swatch_sz](const running_sum_item& rsi) { return rsi.sum < swatch_sz; }) |
+        rv::transform([=](const running_sum_item& rsi) {return row_of_crosshatching(swatch_sz, rsi.next_item, rsi.sum, run_length, space_length, h_fn); })
     );
 }
 
+/*
 ch::hatching_range ch::rotated_crosshatching(double theta, int dim, const ch::rnd_fn& run_length, const ch::rnd_fn& run_space_length, const ch::rnd_fn& line_space,
     const ch::unit_of_hatching_fn& h_fn)
 {
@@ -189,6 +190,7 @@ ch::hatching_range ch::rotated_crosshatching(double theta, int dim, const ch::rn
     matrix rotate = translation_matrix(half_dim, half_dim) * rotation_matrix(theta) * translation_matrix(-half_new_dim, -half_new_dim);
     return ch::transform(ch::linear_crosshatching(new_dim, run_length, run_space_length, line_space, h_fn), rotate);
 }
+*/
 
 ch::hatching_range ch::apply_jitter(ch::hatching_range rng, const ch::rnd_fn& run_length, const ch::rnd_fn& jitter)
 {
@@ -216,8 +218,8 @@ ch::hatching_range ch::disintegrate(ch::hatching_range rng, double amount) {
     );
 }
 
-cv::Mat ch::paint_cross_hatching(int thickness, int dim, ch::hatching_range rng) {
-    cv::Mat mat(dim, dim, CV_8U, 255);
+cv::Mat ch::paint_cross_hatching(int thickness, ch::hatching_range rng, int swatch_sz) {
+    cv::Mat mat(swatch_sz, swatch_sz, CV_8U, 255);
     for (const auto& ls : rng) {
         ch::paint_polyline(mat, ls, thickness, 0);
     }
@@ -226,7 +228,7 @@ cv::Mat ch::paint_cross_hatching(int thickness, int dim, ch::hatching_range rng)
 
 double ch::gray_level(int thickness, hatching_range rng)
 {
-    auto mat = paint_cross_hatching(thickness, k_swatch_sz, rng);
+    auto mat = paint_cross_hatching(thickness, rng, k_swatch_sz);        
     auto n = k_swatch_sz * k_swatch_sz;
     auto white_pixels = cv::countNonZero(mat);
     return static_cast<double>(n - white_pixels) / static_cast<double>(n);
@@ -261,11 +263,11 @@ std::string polyline_to_svg(const ch::polyline& poly, int thickness) {
     return ss.str();
 }
 
-void ch::to_svg(const std::string& filename, int dim, int thickness, hatching_range rng)
+void ch::to_svg(const std::string& filename, int thickness, hatching_range rng, int swatch_sz)
 {
     std::ofstream outfile(filename);
 
-    outfile << svg_header(dim, dim);
+    outfile << svg_header(swatch_sz, swatch_sz);
 
     for (const auto& poly : rng)
         outfile << polyline_to_svg(poly, thickness) << std::endl;
