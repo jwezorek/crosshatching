@@ -22,7 +22,7 @@ namespace ch {
     std::vector<polyline> transform(const std::vector<polyline>& poly, const matrix& mat);
     polyline transform(const polyline& poly, const matrix& mat);
     point transform(const point& pt, const matrix& mat);
-    void paint_polyline(cv::Mat& mat, const polyline& p, int thickness, int color);
+    void paint_polyline(cv::Mat& mat, const polyline& p, int thickness, int color, point offset = { 0,0 });
 
     double euclidean_distance(const point& pt1, const point& pt2);
     double normal_rnd(double mean, double stddev);

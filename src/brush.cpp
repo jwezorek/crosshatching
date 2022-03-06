@@ -40,6 +40,10 @@ ch::hatching_range ch::run_brush_pipeline(const brush_pipeline& pipeline, double
     return visitor.output();
 }
 
+ch::param_adapter_fn ch::make_constant_fn(double k) {
+    return [k](double t) {return k; };
+}
+
 ch::param_adapter_fn ch::make_lerp_fn(double v1, double v2)
 {
     return [v1, v2](double t) { return std::lerp(v1, v2, t);  };
@@ -57,6 +61,12 @@ ch::param_adapter_fn ch::make_lerped_normal_dist_fn(double mu1, double sigma1, d
 ch::param_unit_of_hatching_fn ch::make_default_hatching_unit() {
     return [](double t, double x1, double x2, double y, double hgt) {
         return ch::one_horz_stroke(x1, x2, y, hgt);
+    };
+}
+
+ch::brush_adapter_fn ch::make_one_param_brush_adaptor_fn(std::function< ch::hatching_range(ch::hatching_range, double)> fn, param_adapter_fn param) {
+    return [fn, param](hatching_range input, double t)->hatching_range {
+        return fn(input, param(t));
     };
 }
 

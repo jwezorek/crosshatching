@@ -24,9 +24,10 @@ namespace ch {
     hatching_range rotated_crosshatching(double theta, int dim, const ch::rnd_fn& run_length, const ch::rnd_fn& run_space_length, const ch::rnd_fn& line_space,
         const unit_of_hatching_fn& h_fn = one_horz_stroke);
     */
-    hatching_range apply_jitter(hatching_range rng, const ch::rnd_fn& run_length, const ch::rnd_fn& jitter);
-
+    hatching_range jitter(hatching_range rng, const ch::rnd_fn& run_length, const ch::rnd_fn& jitter);
+    hatching_range rotate(hatching_range rng, double theta);
     hatching_range disintegrate(hatching_range rng, double amount);
+
     cv::Mat paint_cross_hatching(int thickness, hatching_range rng, int swatch_sz = k_swatch_sz);
     double gray_level(int thickness, hatching_range rng);
     void to_svg(const std::string& filename, int thickness, hatching_range rng, int swatch_sz = k_swatch_sz);

@@ -19,8 +19,9 @@ namespace {
     };
 
     auto row_of_crosshatching(int wd, double hgt, double y, const ch::rnd_fn& run_length, const ch::rnd_fn& space_length, const ch::unit_of_hatching_fn& h_fn) {
+        auto half_wd = wd / 2.0;
         return rv::join(
-            rv::generate([=]() { return run_and_space{ run_length(), space_length(), 0.0 }; }) |
+            rv::generate([=]() { return run_and_space{ run_length(), space_length(), -half_wd }; }) |
             rv::partial_sum(
                 [](run_and_space a, run_and_space b)->run_and_space {
                     return { b.run, b.space, a.x + a.run + a.space };
@@ -33,8 +34,8 @@ namespace {
                     return h_fn(x1, x2, y, hgt);
                 }
             ) |
-            rv::take_while([wd](auto rng) {
-                    return (*rng.begin()).front().x < wd;
+            rv::take_while([half_wd](auto rng) {
+                    return (*rng.begin()).front().x < half_wd;
                 }
             )
        );
@@ -102,12 +103,12 @@ namespace {
         }
     };  
 
-    auto running_sum(const ch::rnd_fn& gen_fn) {
+    auto running_sum(const ch::rnd_fn& gen_fn, double init_sum) {
         return 
             rv::generate(gen_fn) |
             rv::transform(
-                [](double v)->running_sum_item {
-                    return { v };
+                [init_sum](double v)->running_sum_item {
+                    return { v, init_sum };
                 }
             ) |
             rv::partial_sum(
@@ -171,28 +172,18 @@ ch::hatching_range ch::one_horz_stroke(double x1, double x2, double y, double hg
 }
 
 ch::hatching_range ch::linear_crosshatching(const ch::rnd_fn& run_length, const ch::rnd_fn& space_length,
-    const ch::rnd_fn& vert_space, const ch::unit_of_hatching_fn& h_fn, int swatch_sz)
+    const ch::rnd_fn& vert_space, const ch::unit_of_hatching_fn& h_fn, int viewable_swatch_sz)
 {
+    auto swatch_sz = viewable_swatch_sz * 1.5;
+    auto half_swatch_sz = swatch_sz / 2.0;
     return rv::join(
-        running_sum(vert_space) |
-        rv::take_while([swatch_sz](const running_sum_item& rsi) { return rsi.sum < swatch_sz; }) |
+        running_sum(vert_space, -half_swatch_sz) |
+        rv::take_while([half_swatch_sz](const running_sum_item& rsi) { return rsi.sum < half_swatch_sz; }) |
         rv::transform([=](const running_sum_item& rsi) {return row_of_crosshatching(swatch_sz, rsi.next_item, rsi.sum, run_length, space_length, h_fn); })
     );
 }
 
-/*
-ch::hatching_range ch::rotated_crosshatching(double theta, int dim, const ch::rnd_fn& run_length, const ch::rnd_fn& run_space_length, const ch::rnd_fn& line_space,
-    const ch::unit_of_hatching_fn& h_fn)
-{
-    int new_dim = static_cast<int>(dim * std::sqrt(2.0));
-    double half_dim = dim / 2.0;
-    double half_new_dim = new_dim / 2.0;
-    matrix rotate = translation_matrix(half_dim, half_dim) * rotation_matrix(theta) * translation_matrix(-half_new_dim, -half_new_dim);
-    return ch::transform(ch::linear_crosshatching(new_dim, run_length, run_space_length, line_space, h_fn), rotate);
-}
-*/
-
-ch::hatching_range ch::apply_jitter(ch::hatching_range rng, const ch::rnd_fn& run_length, const ch::rnd_fn& jitter)
+ch::hatching_range ch::jitter(ch::hatching_range rng, const ch::rnd_fn& run_length, const ch::rnd_fn& jitter)
 {
     return rng |
         rv::transform(
@@ -200,6 +191,11 @@ ch::hatching_range ch::apply_jitter(ch::hatching_range rng, const ch::rnd_fn& ru
                 return ::apply_jitter(poly, run_length, jitter);
             }
         );
+}
+
+ch::hatching_range ch::rotate(ch::hatching_range input, double theta) {
+    matrix rotation = rotation_matrix(theta);
+    return ch::transform(input, rotation);
 }
 
 ch::hatching_range ch::disintegrate(ch::hatching_range rng, double amount) {
@@ -221,7 +217,7 @@ ch::hatching_range ch::disintegrate(ch::hatching_range rng, double amount) {
 cv::Mat ch::paint_cross_hatching(int thickness, ch::hatching_range rng, int swatch_sz) {
     cv::Mat mat(swatch_sz, swatch_sz, CV_8U, 255);
     for (const auto& ls : rng) {
-        ch::paint_polyline(mat, ls, thickness, 0);
+        ch::paint_polyline(mat, ls, thickness, 0, point{ swatch_sz / 2.0,swatch_sz / 2.0 });
     }
     return mat;
 }
