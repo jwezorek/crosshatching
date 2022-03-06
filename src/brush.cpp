@@ -1,4 +1,6 @@
 #include "brush.hpp"
+#include "geometry.hpp"
+#include "crosshatch.hpp"
 
 namespace {
 
@@ -37,3 +39,39 @@ ch::hatching_range ch::run_brush_pipeline(const brush_pipeline& pipeline, double
     }
     return visitor.output();
 }
+
+ch::param_adapter_fn ch::make_lerp_fn(double v1, double v2)
+{
+    return [v1, v2](double t) { return std::lerp(v1, v2, t);  };
+}
+
+ch::param_adapter_fn ch::make_lerped_normal_dist_fn(double mu1, double sigma1, double mu2, double sigma2) 
+{
+    return [mu1, sigma1, mu2, sigma2](double t) {
+        auto mu = std::lerp(mu1, mu2, t);
+        auto sigma = std::lerp(sigma1, sigma2, t);
+        return ch::normal_rnd(mu, sigma);
+    };
+}
+
+ch::param_unit_of_hatching_fn ch::make_default_hatching_unit() {
+    return [](double t, double x1, double x2, double y, double hgt) {
+        return ch::one_horz_stroke(x1, x2, y, hgt);
+    };
+}
+
+ch::brush_fn ch::make_linear_hatching_brush(const param_adapter_fn& run_length, const param_adapter_fn& space_length, 
+        const param_adapter_fn& vert_space, const param_unit_of_hatching_fn& h_fn) 
+{
+    return [=](double t)->hatching_range {
+        return linear_crosshatching(
+            ch::k_swatch_sz,
+            [run_length, t]()->double {return run_length(t); },
+            [space_length, t]()->double {return space_length(t); },
+            [vert_space, t]()->double {return vert_space(t); },
+            [t, h_fn](double a, double b, double c, double d)->hatching_range { return h_fn(t, a, b, c, d); }
+        );
+    };
+}
+
+

@@ -1,5 +1,6 @@
 #include "geometry.hpp"
 #include "crosshatch.hpp"
+#include "brush.hpp"
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
@@ -15,8 +16,23 @@
 
 int main()
 {
-    
-    
+    auto brush = ch::make_linear_hatching_brush(
+        ch::make_lerped_normal_dist_fn(50, 25, 100, 10),
+        ch::make_lerped_normal_dist_fn(30, 10, 0, 0.05),
+        ch::make_lerped_normal_dist_fn(7, 0.5, 0.75, 0.05),
+        ch::make_default_hatching_unit()
+    );
+
+    auto crosshatching = brush(0.0);
+    int n = 100;
+    for (int i = 0; i <= n; i++) {
+        auto mat = ch::paint_cross_hatching(1, ch::k_swatch_sz, brush( static_cast<double>(i) * (1.0/n)));
+        cv::imshow("crosshatch", mat);
+        int k = cv::waitKey(0);
+    }
+
+
+    /*
     //auto crosshatching = ch::apply_jitter(
     //    ch::horizontal_crosshatching(256, ch::normal_rnd_fn(100, 30.0), ch::const_rnd_fn(0), ch::const_rnd_fn(5), ch::make_shading_stroke(1, 0.02, true)),
     //    ch::normal_rnd_fn(2,0.1), ch::normal_rnd_fn(0, 0.05)
@@ -28,14 +44,14 @@ int main()
     cv::imshow("crosshatch", mat);
     std::cout << "crosshatch: " << ch::gray_level(1, crosshatching) << "\n";
 
-    auto vec2 = ranges::to_vector(ch::disintegrate(vec, 0.5 /*, ch::fragment_param{4,ch::normal_rnd_fn(2, 0.2)}*/));
+    auto vec2 = ranges::to_vector(ch::disintegrate(vec, 0.5 ));
     cv::imshow("disintegrate", ch::paint_cross_hatching(1, 512, vec2));
     std::cout << "disintegrate: " << ch::gray_level(1, vec2) << "\n";
 
     ch::to_svg("C:\\test\\ch.svg", 512, 1, vec);
 
     int k = cv::waitKey(0); // Wait for a keystroke in the window
-    
+    */
 
     return 0;
 }

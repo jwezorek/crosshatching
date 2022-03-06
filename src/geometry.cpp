@@ -82,7 +82,7 @@ void ch::paint_polyline(cv::Mat& mat, const polyline& poly, int thickness, int c
 {
 	std::vector<cv::Point> int_pts(poly.size());
 	std::transform(poly.begin(), poly.end(), int_pts.begin(),
-		[](const auto& p) { return cv::Point(std::roundl(p.x), std::roundl(p.y)); }
+		[](const auto& p) { return cv::Point(std::round(p.x), std::round(p.y)); }
 	);
 	const int npts = int_pts.size();
 	cv::polylines(mat, int_pts, false, color, thickness, 8, 0);

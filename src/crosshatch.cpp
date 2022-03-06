@@ -12,8 +12,6 @@ namespace rv = ranges::views;
 
 namespace {
 
-    constexpr int k_swatch_sz = 512;
-
     struct run_and_space {
         double run;
         double space;

@@ -7,6 +7,9 @@
 #include <functional>
 
 namespace ch {
+
+    constexpr int k_swatch_sz = 512;
+
     using poly_range = ranges::any_view<point>;
     using hatching_range = ranges::any_view<polyline>;
     using unit_of_hatching_fn = std::function<hatching_range(double, double, double, double)>;
