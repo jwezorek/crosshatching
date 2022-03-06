@@ -60,7 +60,7 @@ ch::param_unit_of_hatching_fn ch::make_default_hatching_unit() {
     };
 }
 
-ch::brush_fn ch::make_linear_hatching_brush(const param_adapter_fn& run_length, const param_adapter_fn& space_length, 
+ch::brush_fn ch::make_linear_hatching_brush_fn(const param_adapter_fn& run_length, const param_adapter_fn& space_length, 
         const param_adapter_fn& vert_space, const param_unit_of_hatching_fn& h_fn) 
 {
     return [=](double t)->hatching_range {

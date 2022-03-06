@@ -16,95 +16,19 @@
 
 int main()
 {
-    auto brush = ch::make_linear_hatching_brush(
-        ch::make_lerped_normal_dist_fn(50, 25, 100, 10),
-        ch::make_lerped_normal_dist_fn(30, 10, 0, 0.05),
+    auto brush = ch::make_linear_hatching_brush_fn(
+        ch::make_lerped_normal_dist_fn(10, 25, 100, 20),
+        ch::make_lerped_normal_dist_fn(100, 20, 0, 0.05),
         ch::make_lerped_normal_dist_fn(7, 0.5, 0.75, 0.05),
         ch::make_default_hatching_unit()
     );
 
-    auto crosshatching = brush(0.0);
     int n = 100;
     for (int i = 0; i <= n; i++) {
-        auto mat = ch::paint_cross_hatching(1, ch::k_swatch_sz, brush( static_cast<double>(i) * (1.0/n)));
+        auto mat = ch::paint_cross_hatching(2, ch::k_swatch_sz, brush( i * (1.0/n)));
         cv::imshow("crosshatch", mat);
         int k = cv::waitKey(0);
     }
 
-
-    /*
-    //auto crosshatching = ch::apply_jitter(
-    //    ch::horizontal_crosshatching(256, ch::normal_rnd_fn(100, 30.0), ch::const_rnd_fn(0), ch::const_rnd_fn(5), ch::make_shading_stroke(1, 0.02, true)),
-    //    ch::normal_rnd_fn(2,0.1), ch::normal_rnd_fn(0, 0.05)
-    //);
-    auto crosshatching = ch::linear_crosshatching( 512, ch::normal_rnd_fn(80,40.0), ch::normal_rnd_fn(15,5.0), ch::normal_rnd_fn(2, 0.2));
-
-    auto vec =  ranges::to_vector(crosshatching);
-    auto mat = ch::paint_cross_hatching(1, 512, vec);
-    cv::imshow("crosshatch", mat);
-    std::cout << "crosshatch: " << ch::gray_level(1, crosshatching) << "\n";
-
-    auto vec2 = ranges::to_vector(ch::disintegrate(vec, 0.5 ));
-    cv::imshow("disintegrate", ch::paint_cross_hatching(1, 512, vec2));
-    std::cout << "disintegrate: " << ch::gray_level(1, vec2) << "\n";
-
-    ch::to_svg("C:\\test\\ch.svg", 512, 1, vec);
-
-    int k = cv::waitKey(0); // Wait for a keystroke in the window
-    */
-
     return 0;
 }
-
-/*
-{
-    {hz run:[norm(30,15)...norm(100,5)] 
-        space:[norm(15,5)...norm(0,1)] 
-        vert:[norm(7,0.2)...norm(0.5,0.1)]
-    },
-    floor_left(
-        0.85,
-        {hz 
-            rot: 90
-            run:[norm(30,15)...norm(100,5)]
-            space:[norm(15,5)...norm(0,1)]
-            vert:[norm(7,0.2)...norm(0.5,0.1)]
-        }
-    )
-}
-*/
-
-/*
-int main()
-{
-    auto crosshatching = ch::apply_jitter(
-        ch::horz_crosshatching(1000, ch::normal_rnd_fn(100, 30.0), ch::normal_rnd_fn(15, 5.0), ch::normal_rnd_fn(6, 0.2)),
-        ch::normal_rnd_fn(7.0, 1.0), ch::normal_rnd_fn(0.0, 0.6)
-    );
-    auto mat = ch::paint_cross_hatching(1, 1000, crosshatching);
-    //auto crosshatching = ch::horz_crosshatching_mat(2, 1000, ch::normal_rnd_fn(40,10.0), ch::normal_rnd_fn(15,5.0), ch::normal_rnd_fn(7, 0.2));
-    cv::imshow("crosshatch", mat);
-    int k = cv::waitKey(0); // Wait for a keystroke in the window
-
-    return 0;
-}
-*/
-
-/*
-int main()
-{
-    auto pi_over_4 = std::numbers::pi / 3.0;
-    auto crosshatching = ranges::views::concat(
-        ch::rotated_crosshatching( pi_over_4, 1000, ch::normal_rnd_fn(100, 30.0), ch::normal_rnd_fn(15, 5.0), ch::normal_rnd_fn(6, 0.2)),
-        ch::rotated_crosshatching( -pi_over_4, 1000, ch::normal_rnd_fn(100, 30.0), ch::normal_rnd_fn(15, 5.0), ch::normal_rnd_fn(6, 0.2)),
-        ch::horz_crosshatching(1000, ch::normal_rnd_fn(100, 30.0), ch::normal_rnd_fn(15, 5.0), ch::normal_rnd_fn(6, 0.2))
-    );
-    ch::test();
-    auto mat = ch::paint_cross_hatching(1, 1000, crosshatching);
-    //auto crosshatching = ch::horz_crosshatching_mat(2, 1000, ch::normal_rnd_fn(40,10.0), ch::normal_rnd_fn(15,5.0), ch::normal_rnd_fn(7, 0.2));
-    cv::imshow("crosshatch", mat);
-    int k = cv::waitKey(0); // Wait for a keystroke in the window
-
-    return 0;
-}
-*/

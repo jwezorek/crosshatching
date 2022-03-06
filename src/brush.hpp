@@ -20,7 +20,7 @@ namespace ch {
 
     param_unit_of_hatching_fn make_default_hatching_unit();
 
-    brush_fn make_linear_hatching_brush(const param_adapter_fn& run_length, const param_adapter_fn& space_length, const param_adapter_fn& vert_space,
+    brush_fn make_linear_hatching_brush_fn(const param_adapter_fn& run_length, const param_adapter_fn& space_length, const param_adapter_fn& vert_space,
         const param_unit_of_hatching_fn& h_fn);
 
 }

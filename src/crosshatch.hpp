@@ -8,7 +8,7 @@
 
 namespace ch {
 
-    constexpr int k_swatch_sz = 512;
+    constexpr int k_swatch_sz = 800;
 
     using poly_range = ranges::any_view<point>;
     using hatching_range = ranges::any_view<polyline>;
