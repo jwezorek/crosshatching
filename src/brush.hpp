@@ -26,4 +26,7 @@ namespace ch {
     brush_fn make_linear_hatching_brush_fn(const param_adapter_fn& run_length, const param_adapter_fn& space_length, const param_adapter_fn& vert_space,
         const param_unit_of_hatching_fn& h_fn);
 
+    brush_fn make_run_pipeline_fn(const brush_pipeline& pipeline);
+    brush_fn make_merge_fn(const std::vector<brush_fn>& brushes);
+
 }

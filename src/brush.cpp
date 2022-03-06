@@ -2,6 +2,9 @@
 #include "geometry.hpp"
 #include "crosshatch.hpp"
 
+namespace r = ranges;
+namespace rv = ranges::views;
+
 namespace {
 
     class pipeline_visitor {
@@ -83,4 +86,18 @@ ch::brush_fn ch::make_linear_hatching_brush_fn(const param_adapter_fn& run_lengt
     };
 }
 
+ch::brush_fn ch::make_run_pipeline_fn(const ch::brush_pipeline& pipeline) {
+    return [pipeline](double t)->hatching_range {
+        return run_brush_pipeline(pipeline, t);
+    };
+}
+
+ch::brush_fn ch::make_merge_fn(const std::vector<ch::brush_fn>& brushes) {
+    return [brushes](double t)->hatching_range {
+        return rv::join(
+            brushes | 
+            rv::transform([t](auto fn)->hatching_range {return fn(t); })
+        );
+    };
+}
 
