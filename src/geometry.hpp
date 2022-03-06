@@ -29,4 +29,5 @@ namespace ch {
     double uniform_rnd(double lower_bound, double upper_bound);
     rnd_fn normal_rnd_fn(double mean, double stddev);
     ch::rnd_fn const_rnd_fn(double val);
+
 }

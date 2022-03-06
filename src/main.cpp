@@ -1,16 +1,8 @@
 #include "geometry.hpp"
 #include "crosshatch.hpp"
 #include "brush.hpp"
-#include <opencv2/core.hpp>
-#include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
-#include <range/v3/all.hpp>
 #include <iostream>
-#include <functional>
-#include <tuple>
-#include <vector>
-#include <random>
 #include <numbers>
 
 ch::brush_fn make_pipeline_fn(double theta) {

@@ -10,7 +10,6 @@ namespace ch {
 
     constexpr int k_swatch_sz = 512;
 
-    using poly_range = ranges::any_view<point>;
     using hatching_range = ranges::any_view<polyline>;
     using unit_of_hatching_fn = std::function<hatching_range(double, double, double, double)>;
 
@@ -20,10 +19,6 @@ namespace ch {
 
     hatching_range linear_crosshatching(const ch::rnd_fn& run_length, const ch::rnd_fn& space_length, const ch::rnd_fn& vert_space,
         const unit_of_hatching_fn& h_fn = one_horz_stroke, int swatch_sz = k_swatch_sz);
-    /*
-    hatching_range rotated_crosshatching(double theta, int dim, const ch::rnd_fn& run_length, const ch::rnd_fn& run_space_length, const ch::rnd_fn& line_space,
-        const unit_of_hatching_fn& h_fn = one_horz_stroke);
-    */
     hatching_range jitter(hatching_range rng, const ch::rnd_fn& run_length, const ch::rnd_fn& jitter);
     hatching_range rotate(hatching_range rng, double theta);
     hatching_range disintegrate(hatching_range rng, double amount);

@@ -241,13 +241,7 @@ std::string svg_header(int wd, int hgt)
     return ss.str();
 }
 
-/*
-
- <polyline points="20,20 40,25 60,40 80,120 120,140 200,180"
-  style="fill:none;stroke:black;stroke-width:3" />
-
-*/
-
+//TODO: there needs to be an offset in here because of the new way rotation is handled.
 std::string polyline_to_svg(const ch::polyline& poly, int thickness) {
     std::stringstream ss;
     ss << "<polyline points=\"";
@@ -271,15 +265,3 @@ void ch::to_svg(const std::string& filename, int thickness, hatching_range rng, 
     outfile << "</svg>" << std::endl;
     outfile.close();
 }
-
-/*
-void ch::test()
-{
-
-    auto poly = apply_jitter(ch::polyline{ {10,10},{500,500},{950,500} }, ch::normal_rnd_fn(5.0, 1.0), ch::normal_rnd_fn(0.0, 0.5));
-    std::vector<ch::polyline> polys = { poly };
-    auto mat = ch::paint_cross_hatching(2, 1000, polys);
-    //auto crosshatching = ch::horz_crosshatching_mat(2, 1000, ch::normal_rnd_fn(40,10.0), ch::normal_rnd_fn(15,5.0), ch::normal_rnd_fn(7, 0.2));
-    cv::imshow("foo", mat);
-}
-*/
