@@ -14,6 +14,9 @@ ch::brush_fn make_pipeline_fn(double theta) {
                 ch::make_lerped_normal_dist_fn(7, 0.5, 0.75, 0.05),
                 ch::make_default_hatching_unit()
             ),
+            [](ch::hatching_range rng, double t)->ch::hatching_range {
+                return ch::jitter(rng, ch::normal_rnd_fn(4.0*t+1.0, 0.3+2*t), ch::normal_rnd_fn(0.0, 0.0001+3*t));
+            } ,
             ch::make_one_param_brush_adaptor_fn(ch::rotate, ch::make_constant_fn(theta))
         }
     );
@@ -26,7 +29,7 @@ int main()
     
     for (int i = 0; i <= n; i++) {
         auto crosshatching = brush(i * (1.0 / n));
-        auto mat = ch::paint_cross_hatching(2, crosshatching);
+        auto mat = ch::paint_cross_hatching(1, crosshatching);
         cv::imshow("crosshatch", mat);
         int k = cv::waitKey(50);
     }
