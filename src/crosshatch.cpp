@@ -88,6 +88,23 @@ namespace {
             )
         );
     }
+
+    ch::polyline fragment(const ch::polyline& poly, const ch::rnd_fn& frag) {
+        return r::to_vector(
+            rv::concat(
+                rv::join(
+                    poly |
+                    rv::sliding(2) |
+                    rv::transform(
+                        [frag](auto rng) {
+                            return divide_line_segment(rng[0], rng[1], frag);
+                        }
+                    )
+                ),
+                rv::single(poly.back())
+            )
+        );
+    }
     
     ch::polyline jiggle(const ch::polyline& poly, const ch::rnd_fn& jig) {
         auto p = ch::mean_point(poly);
@@ -187,6 +204,15 @@ ch::hatching_range ch::linear_crosshatching(const ch::rnd_fn& run_length, const 
         running_sum(vert_space, -half_swatch_sz) |
         rv::take_while([half_swatch_sz](const running_sum_item& rsi) { return rsi.sum < half_swatch_sz; }) |
         rv::transform([=](const running_sum_item& rsi) {return row_of_crosshatching(swatch_sz, rsi.next_item, rsi.sum, run_length, space_length, h_fn); })
+    );
+}
+
+ch::hatching_range ch::fragment(ch::hatching_range rng, const ch::rnd_fn& frag) {
+    return rng |
+        rv::transform(
+            [frag](const auto& poly) {
+                return ::fragment(poly, frag);
+            }
     );
 }
 

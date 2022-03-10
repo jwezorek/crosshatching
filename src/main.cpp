@@ -7,9 +7,9 @@
 #include <chrono>
 
 int main() {
-    auto test = ch::jiggle(
-        ch::linear_crosshatching(ch::normal_rnd_fn(100, 30), ch::normal_rnd_fn(40, 20), ch::const_rnd_fn(6), ch::one_horz_stroke, 1024), 
-        ch::normal_rnd_fn(0, 0.005)
+    auto test = ch::fragment(
+        ch::linear_crosshatching(ch::normal_rnd_fn(100, 30), ch::const_rnd_fn(1), ch::const_rnd_fn(6), ch::one_horz_stroke, 1024),
+        ch::normal_rnd_fn(4, 1)
     );
     auto mat = ch::paint_cross_hatching(1, test, 1024);
     cv::imshow("crosshatch", mat);
