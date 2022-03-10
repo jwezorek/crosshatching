@@ -41,19 +41,19 @@ namespace {
        );
     }
 
-    auto divide_length(double len, const ch::rnd_fn& run_length) {
+    auto fragment_length(double len, const ch::rnd_fn& run_length) {
         return rv::concat(rv::single(0.0), rv::generate(run_length)) |
             rv::partial_sum |
             rv::take_while([len](double y) { return y < len; });
     }
 
-    auto divide_line_segment(const ch::point& pt1, const ch::point& pt2, const ch::rnd_fn& run_length) {
+    auto fragment_line_segment(const ch::point& pt1, const ch::point& pt2, const ch::rnd_fn& run_length) {
         auto len = ch::euclidean_distance(pt1, pt2);
         auto theta = std::atan2(pt2.y - pt1.y, pt2.x - pt1.x);
         auto x_delta = std::cos(theta);
         auto y_delta = std::sin(theta);
 
-        return divide_length(len, run_length) |
+        return fragment_length(len, run_length) |
             rv::transform(
                 [x_delta, y_delta, pt1](double d)->ch::point {
                     return pt1 + ch::point{ d * x_delta, d * y_delta };
@@ -61,26 +61,26 @@ namespace {
             );
     }
 
-    auto jitter_line_segment(const ch::point& pt1, const ch::point& pt2, const ch::rnd_fn& run_length, const ch::rnd_fn& jitter) {
+    auto jitter_line_segment(const ch::point& pt1, const ch::point& pt2, const ch::rnd_fn& jit) {
         auto theta = std::atan2(pt2.y - pt1.y, pt2.x - pt1.x);
         ch::point j = { std::cos(theta + std::numbers::pi / 2.0) , std::sin(theta + std::numbers::pi / 2.0) };
-        return divide_line_segment(pt1, pt2, run_length) |
+        return rv::single(pt1) |
             rv::transform(
-                [j, jitter](const ch::point& pt)->ch::point {
-                    return jitter() * j + pt;
+                [j,jit](const ch::point& pt)->ch::point {
+                    return jit() * j + pt;
                 }
             );
     }
 
-    ch::polyline apply_jitter(const ch::polyline& poly, const ch::rnd_fn& run_length, const ch::rnd_fn& jitter) {
+    ch::polyline jitter(const ch::polyline& poly, const ch::rnd_fn& jit) {
         return r::to_vector(
             rv::concat(
                 rv::join(
                     poly |
                     rv::sliding(2) |
                     rv::transform(
-                        [run_length, jitter](auto rng) {
-                            return jitter_line_segment(rng[0], rng[1], run_length, jitter);
+                        [jit](auto rng) {
+                            return jitter_line_segment(rng[0], rng[1], jit);
                         }
                     )
                 ),
@@ -97,7 +97,7 @@ namespace {
                     rv::sliding(2) |
                     rv::transform(
                         [frag](auto rng) {
-                            return divide_line_segment(rng[0], rng[1], frag);
+                            return fragment_line_segment(rng[0], rng[1], frag);
                         }
                     )
                 ),
@@ -216,12 +216,12 @@ ch::hatching_range ch::fragment(ch::hatching_range rng, const ch::rnd_fn& frag) 
     );
 }
 
-ch::hatching_range ch::jitter(ch::hatching_range rng, const ch::rnd_fn& run_length, const ch::rnd_fn& jitter)
+ch::hatching_range ch::jitter(ch::hatching_range rng, const ch::rnd_fn& jit)
 {
     return rng |
         rv::transform(
-            [run_length, jitter](const auto& poly) {
-                return ::apply_jitter(poly, run_length, jitter);
+            [jit](const auto& poly) {
+                return ::jitter(poly, jit);
             }
         );
 }

@@ -7,11 +7,14 @@
 #include <chrono>
 
 int main() {
-    auto test = ch::fragment(
-        ch::linear_crosshatching(ch::normal_rnd_fn(100, 30), ch::const_rnd_fn(1), ch::const_rnd_fn(6), ch::one_horz_stroke, 1024),
-        ch::normal_rnd_fn(4, 1)
+    auto test = ch::jitter(
+        ch::fragment(
+            ch::linear_crosshatching(ch::normal_rnd_fn(100, 30), ch::const_rnd_fn(1), ch::const_rnd_fn(6), ch::one_horz_stroke, 512),
+            ch::normal_rnd_fn(4, 1)
+        ),
+        ch::normal_rnd_fn(0, 0.5)
     );
-    auto mat = ch::paint_cross_hatching(1, test, 1024);
+    auto mat = ch::paint_cross_hatching(1, test, 512);
     cv::imshow("crosshatch", mat);
     int k = cv::waitKey(0);
 }
