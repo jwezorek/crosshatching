@@ -3,6 +3,7 @@
 #include "crosshatch.hpp"
 #include <queue>
 #include <iostream>
+#include <future>
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -122,9 +123,20 @@ struct range_queue_item {
 
 double sample(ch::brush_fn fn, double t, int n, int thickness) {
     double sum = 0;
+    std::vector<std::future<double>> samples(n);
+
+    auto compute_gray_level = [](int th, ch::brush_fn f, double t)->double {
+        return ch::gray_level(th, f(t));
+    };
+
     for (int i = 0; i < n; ++i) {
-        sum += ch::gray_level(thickness, fn(t));
+        samples[i] = std::async(std::launch::async, compute_gray_level, thickness, fn, t);
     }
+
+    for (int i = 0; i < n; ++i) {
+        sum += samples[i].get();
+    }
+
     return sum / n;
 }
 
