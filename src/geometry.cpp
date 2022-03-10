@@ -61,6 +61,20 @@ std::vector<ch::polyline> ch::transform(const std::vector<polyline>& polys, cons
 	return output;
 }
 
+ch::point ch::mean_point(const polyline& poly)
+{
+	auto x = 0.0;
+	auto y = 0.0;
+	for (const auto& pt : poly) {
+		x += pt.x;
+		y += pt.y;
+	}
+	return {
+		x / poly.size(),
+		y / poly.size()
+	};
+}
+
 ch::polyline ch::transform(const polyline& poly, const matrix& mat)
 {
 	ch::polyline output(poly.size());

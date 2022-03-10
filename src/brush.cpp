@@ -139,8 +139,6 @@ double sample(ch::brush_fn fn, double t, int n, int thickness) {
     return sum / n;
 }
 
-
-
 bool compare_items(const range_queue_item& v1, const range_queue_item& v2) {
     return v1.gray_level_right - v1.gray_level_left < v2.gray_level_right - v2.gray_level_left;
 }

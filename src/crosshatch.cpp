@@ -89,6 +89,13 @@ namespace {
         );
     }
     
+    ch::polyline jiggle(const ch::polyline& poly, const ch::rnd_fn& jig) {
+        auto p = ch::mean_point(poly);
+        auto theta = jig();
+        auto rotate = ch::translation_matrix(p.x, p.y) * ch::rotation_matrix(theta) * ch::translation_matrix(-p.x, -p.y);
+        return ch::transform(poly, rotate);
+    }
+
     struct running_sum_item {
         double next_item;
         double sum;
@@ -191,6 +198,15 @@ ch::hatching_range ch::jitter(ch::hatching_range rng, const ch::rnd_fn& run_leng
                 return ::apply_jitter(poly, run_length, jitter);
             }
         );
+}
+
+ch::hatching_range ch::jiggle(ch::hatching_range rng, const ch::rnd_fn& jig) {
+    return rng |
+        rv::transform(
+            [jig](const auto& poly) {
+                return ::jiggle(poly, jig);
+            }
+    );
 }
 
 ch::hatching_range ch::rotate(ch::hatching_range input, double theta) {

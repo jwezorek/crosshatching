@@ -20,6 +20,7 @@ namespace ch {
     hatching_range linear_crosshatching(const ch::rnd_fn& run_length, const ch::rnd_fn& space_length, const ch::rnd_fn& vert_space,
         const unit_of_hatching_fn& h_fn = one_horz_stroke, int swatch_sz = k_swatch_sz);
     hatching_range jitter(hatching_range rng, const ch::rnd_fn& run_length, const ch::rnd_fn& jitter);
+    hatching_range jiggle(hatching_range rng, const ch::rnd_fn& jiggle);
     hatching_range rotate(hatching_range rng, double theta);
     hatching_range disintegrate(hatching_range rng, double amount);
 

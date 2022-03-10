@@ -20,6 +20,7 @@ namespace ch {
 
     ranges::any_view<polyline> transform(ranges::any_view<polyline> polys, const matrix& mat);
     std::vector<polyline> transform(const std::vector<polyline>& poly, const matrix& mat);
+    point mean_point(const polyline& poly);
     polyline transform(const polyline& poly, const matrix& mat);
     point transform(const point& pt, const matrix& mat);
     void paint_polyline(cv::Mat& mat, const polyline& p, int thickness, int color, point offset = { 0,0 });

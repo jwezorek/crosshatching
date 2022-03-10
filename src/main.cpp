@@ -6,6 +6,17 @@
 #include <numbers>
 #include <chrono>
 
+int main() {
+    auto test = ch::jiggle(
+        ch::linear_crosshatching(ch::normal_rnd_fn(100, 30), ch::normal_rnd_fn(40, 20), ch::const_rnd_fn(6), ch::one_horz_stroke, 1024), 
+        ch::normal_rnd_fn(0, 0.005)
+    );
+    auto mat = ch::paint_cross_hatching(1, test, 1024);
+    cv::imshow("crosshatch", mat);
+    int k = cv::waitKey(0);
+}
+
+/*
 ch::brush_fn make_pipeline_fn(double theta) {
     return ch::make_run_pipeline_fn(
         ch::brush_pipeline{
@@ -36,15 +47,7 @@ int main()
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(finish - start).count() << "\n";
 
     auto hatching = br.get_hatching(0.5, 512);
-    /*
-    int n = 30;
-    
-    for (int i = 0; i <= n; i++) {
-        auto crosshatching = brush(i * (1.0 / n));
-        auto mat = ch::paint_cross_hatching(1, crosshatching);
-        cv::imshow("crosshatch", mat);
-        int k = cv::waitKey(100);
-    }
-    */
+
     return 0;
 }
+*/
