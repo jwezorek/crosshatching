@@ -4,6 +4,7 @@
 #include <functional>
 #include <variant>
 #include <vector>
+#include <map>
 
 namespace ch {
 
@@ -28,5 +29,20 @@ namespace ch {
 
     brush_fn make_run_pipeline_fn(const brush_pipeline& pipeline);
     brush_fn make_merge_fn(const std::vector<brush_fn>& brushes);
+
+    class brush {
+    private:
+        std::map<double, double> gray_to_param_;
+        std::unordered_map<double, double> param_to_gray_;
+        brush_fn brush_fn_;
+        int line_thickness_;
+
+        double get_or_sample(double param);
+
+    public:
+        brush(brush_fn fn, int line_thickness = 1);
+        void build(double epsilon);
+        hatching_range get_hatching(double gray_level, int wd) const;
+    };
 
 }

@@ -4,6 +4,7 @@
 #include <opencv2/highgui.hpp>
 #include <iostream>
 #include <numbers>
+#include <chrono>
 
 ch::brush_fn make_pipeline_fn(double theta) {
     return ch::make_run_pipeline_fn(
@@ -15,7 +16,7 @@ ch::brush_fn make_pipeline_fn(double theta) {
                 ch::make_default_hatching_unit()
             ),
             [](ch::hatching_range rng, double t)->ch::hatching_range {
-                return ch::jitter(rng, ch::normal_rnd_fn(4.0*t+1.0, 0.3+2*t), ch::normal_rnd_fn(0.0, 0.0001+3*t));
+                return ch::jitter(rng, ch::normal_rnd_fn(3.0*t+1.0, 0.3+1.5*t), ch::normal_rnd_fn(0.0, 0.0001+3*t));
             } ,
             ch::make_one_param_brush_adaptor_fn(ch::rotate, ch::make_constant_fn(theta))
         }
@@ -24,15 +25,26 @@ ch::brush_fn make_pipeline_fn(double theta) {
 
 int main()
 {
-    auto brush = ch::make_merge_fn({ make_pipeline_fn(std::numbers::pi / 4.0), make_pipeline_fn(-std::numbers::pi / 4.0) });
-    int n = 100;
+    auto brush_fn = ch::make_merge_fn({ make_pipeline_fn(std::numbers::pi / 4.0), make_pipeline_fn(-std::numbers::pi / 4.0) });
+
+    ch::brush br(brush_fn);
+    
+    std::cout << "building...\n";
+    auto start = std::chrono::high_resolution_clock::now();
+    br.build(0.1);
+    auto finish = std::chrono::high_resolution_clock::now();;
+    std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(finish - start).count() << "\n";
+
+    auto hatching = br.get_hatching(0.5, 512);
+    /*
+    int n = 30;
     
     for (int i = 0; i <= n; i++) {
         auto crosshatching = brush(i * (1.0 / n));
         auto mat = ch::paint_cross_hatching(1, crosshatching);
         cv::imshow("crosshatch", mat);
-        int k = cv::waitKey(50);
+        int k = cv::waitKey(100);
     }
-
+    */
     return 0;
 }
