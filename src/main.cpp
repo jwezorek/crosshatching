@@ -1,11 +1,25 @@
 #include "geometry.hpp"
 #include "crosshatch.hpp"
 #include "brush.hpp"
+#include "imgproc.hpp"
 #include <opencv2/highgui.hpp>
-#include <iostream>
+#include <opencv2/imgproc.hpp>
 #include <numbers>
 #include <chrono>
+#include <iostream>
 
+int main() {
+    cv::Mat img = cv::imread("C:\\test\\dunjon.png");
+
+    cv::Mat segmented = ch::do_segmentation(img, 8.0f, 3.0f, 12);
+    cv::imwrite("c:\\test\\dunjon-segmented.png", segmented);
+    cv::imshow("segmented", segmented);
+    cv::waitKey();
+
+    return 0;
+}
+
+/*
 int main() {
     auto test = ch::jitter(
         ch::fragment(
@@ -18,6 +32,7 @@ int main() {
     cv::imshow("crosshatch", mat);
     int k = cv::waitKey(0);
 }
+*/
 
 /*
 ch::brush_fn make_pipeline_fn(double theta) {

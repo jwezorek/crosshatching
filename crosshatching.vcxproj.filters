@@ -19,6 +19,12 @@
     <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\MeanShiftSegmenation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\imgproc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\brush.hpp">
@@ -28,6 +34,12 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="src\geometry.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\MeanShiftSegmentation.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\imgproc.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

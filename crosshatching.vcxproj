@@ -22,12 +22,16 @@
     <ClCompile Include="src\brush.cpp" />
     <ClCompile Include="src\crosshatch.cpp" />
     <ClCompile Include="src\geometry.cpp" />
+    <ClCompile Include="src\imgproc.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\MeanShiftSegmenation.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\brush.hpp" />
     <ClInclude Include="src\crosshatch.hpp" />
     <ClInclude Include="src\geometry.hpp" />
+    <ClInclude Include="src\imgproc.hpp" />
+    <ClInclude Include="src\MeanShiftSegmentation.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
