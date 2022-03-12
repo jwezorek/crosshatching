@@ -14,6 +14,10 @@ int main() {
     cv::Mat segmented = ch::do_segmentation(img, 8.0f, 3.0f, 12);
     cv::imwrite("c:\\test\\dunjon-segmented.png", segmented);
     cv::imshow("segmented", segmented);
+
+
+    ch::debug();
+
     cv::waitKey();
 
     return 0;

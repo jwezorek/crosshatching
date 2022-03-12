@@ -1,6 +1,6 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include "MeanShiftSegmentation.hpp"
+#include "meanshift.hpp"
 
 /*
 	This implementation of mean shift segmentation was extracted whole cloth

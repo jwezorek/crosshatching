@@ -28,6 +28,5 @@ namespace ch {
     cv::Mat paint_cross_hatching(int thickness, hatching_range rng, int swatch_sz = k_swatch_sz);
     double gray_level(int thickness, hatching_range rng);
     void to_svg(const std::string& filename, int thickness, hatching_range rng, int swatch_sz = k_swatch_sz);
-
-    void debug();
+   
 }

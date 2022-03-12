@@ -5,6 +5,6 @@
 
 namespace ch {
 
-    cv::Mat do_segmentation(const cv::Mat& input, float sigmaS, float sigmaR, int minSize);
-
+    cv::Mat do_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize);
+    void debug();
 }
