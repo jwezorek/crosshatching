@@ -47,18 +47,62 @@ namespace {
         std::vector<cv::Vec4i> hierarchy;
     };
 
+    cv::Mat dilate_blob(const cv::Mat& blob) {
+        static cv::Mat strel = (
+            cv::Mat_<uchar>(3, 3) <<
+                0, 0, 0,
+                0, 1, 1,
+                0, 1, 1
+        );
+        cv::Mat output;
+        cv::dilate(blob, output, strel, { 1,1 });
+        return output;
+    }
+
     std::map<uchar, contours_trees> gray_level_contours(const cv::Mat& input) {
         auto planes = gray_planes(input);
         return planes |
             rv::transform(
                 [](const auto& pair)->std::map<uchar, contours_trees>::value_type {
                     const auto& [gray, mat] = pair;
+                    auto dilated_mat = dilate_blob(mat);
                     contours_trees output;
-                    cv::findContours(mat, output.contours, output.hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_SIMPLE);
+                    cv::findContours(dilated_mat, output.contours, output.hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_SIMPLE);
                     return { gray, std::move(output) };
                 }
             ) |
             r::to<std::map<uchar, contours_trees>>();
+    }
+
+    std::vector<std::vector<cv::Point>> apply_douglas_peucker(const std::vector<std::vector<cv::Point>>& polys, float param) {
+        return polys |
+            rv::transform(
+                [param](const std::vector<cv::Point>& poly)->std::vector<cv::Point> {
+                    std::vector<cv::Point> output;
+                    cv::approxPolyDP(poly, output, param, true);
+                    return output;
+                }
+            ) |
+            r::to<std::vector<std::vector<cv::Point>>>();
+    }
+
+    void apply_douglas_peucker(std::map<uchar, contours_trees>& ct, float param) {
+        for (auto& [k, v] : ct) {
+            v.contours = apply_douglas_peucker(v.contours, param);
+        }
+    }
+
+    void scale(std::map<uchar, contours_trees>& cont_trees, double s) {
+        for (auto& [k, cont_tree] : cont_trees) {
+            for (auto& polyline : cont_tree.contours) {
+                for (auto& pt : polyline) {
+                    pt = { 
+                        static_cast<int>(std::round(s * pt.x)), 
+                        static_cast<int>(std::round(s * pt.y))
+                    };
+                }
+            }
+        }
     }
 
     cv::Mat paint_contours(int wd, int hgt, const std::map<uchar, contours_trees>& cont) {
@@ -89,9 +133,11 @@ cv::Mat ch::do_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int 
 void ch::debug() {
     cv::Mat img = cv::imread("C:\\test\\dunjon.png");
 
-    cv::Mat mat = ch::do_segmentation(img, 8.0f, 3.0f, 12);
+    cv::Mat mat = ch::do_segmentation(img, 8, 3.0f, 12);
     auto contours = gray_level_contours(mat);
-    auto output = paint_contours(mat.cols, mat.rows, contours);
+    apply_douglas_peucker(contours, 0.5);
+    scale(contours, 3.0);
+    auto output = paint_contours(3*mat.cols, 3*mat.rows, contours);
 
     cv::imshow("contours", output);
 }
