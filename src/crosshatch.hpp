@@ -1,6 +1,7 @@
 #pragma once
 
 #include "geometry.hpp"
+#include "util.hpp"
 #include <opencv2/core.hpp>
 #include <range/v3/all.hpp>
 #include <tuple>

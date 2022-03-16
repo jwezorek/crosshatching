@@ -1,15 +1,18 @@
+#include "imgproc.hpp"
+#include "meanshift.hpp"
+#include "util.hpp"
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
-#include "imgproc.hpp"
-#include "meanshift.hpp"
 #include <range/v3/all.hpp>
 #include <set>
 #include <map>
 #include <stdexcept>
 #include <array>
 #include <iostream>
+#include <unordered_map>
+#include <fstream>
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -28,7 +31,7 @@ namespace {
             r::to<std::vector<uchar>>();
     }
 
-    std::map<uchar, cv::Mat> gray_planes(const cv::Mat& input) {
+    std::vector<std::tuple<uchar, cv::Mat>> gray_planes(const cv::Mat& input) {
         auto levels = get_gray_levels(input);
         return
             levels |
@@ -39,11 +42,13 @@ namespace {
                     return { val, output };
                 }
             ) |
-            r::to<std::map<uchar, cv::Mat>>();
+            r::to<std::vector<std::tuple<uchar, cv::Mat>>>();
     }
 
-    struct contours_trees {
-        std::vector<std::vector<cv::Point>> contours;
+    using int_polyline = std::vector<cv::Point>;
+
+    struct find_contour_output {
+        std::vector<int_polyline> contours;
         std::vector<cv::Vec4i> hierarchy;
     };
 
@@ -59,21 +64,6 @@ namespace {
         return output;
     }
 
-    std::map<uchar, contours_trees> gray_level_contours(const cv::Mat& input) {
-        auto planes = gray_planes(input);
-        return planes |
-            rv::transform(
-                [](const auto& pair)->std::map<uchar, contours_trees>::value_type {
-                    const auto& [gray, mat] = pair;
-                    auto dilated_mat = dilate_blob(mat);
-                    contours_trees output;
-                    cv::findContours(dilated_mat, output.contours, output.hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_SIMPLE);
-                    return { gray, std::move(output) };
-                }
-            ) |
-            r::to<std::map<uchar, contours_trees>>();
-    }
-
     std::vector<std::vector<cv::Point>> apply_douglas_peucker(const std::vector<std::vector<cv::Point>>& polys, float param) {
         return polys |
             rv::transform(
@@ -86,12 +76,30 @@ namespace {
             r::to<std::vector<std::vector<cv::Point>>>();
     }
 
-    void apply_douglas_peucker(std::map<uchar, contours_trees>& ct, float param) {
+
+    std::vector<std::tuple<uchar, find_contour_output>> perform_find_contours(const cv::Mat& input) {
+        auto planes = gray_planes(input);
+        return planes |
+            rv::transform(
+                [](const auto& pair)->std::tuple<uchar, find_contour_output> {
+                    const auto& [gray, mat] = pair;
+                    find_contour_output output;
+                    cv::findContours(mat, output.contours, output.hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_SIMPLE);
+
+                    return { gray, std::move(output) };
+                }
+            ) |
+            r::to<std::vector<std::tuple<uchar, find_contour_output>>>();
+    }
+
+    
+    void apply_douglas_peucker(std::map<uchar, find_contour_output>& ct, float param) {
         for (auto& [k, v] : ct) {
             v.contours = apply_douglas_peucker(v.contours, param);
         }
     }
 
+    /*
     void scale(std::map<uchar, contours_trees>& cont_trees, double s) {
         for (auto& [k, cont_tree] : cont_trees) {
             for (auto& polyline : cont_tree.contours) {
@@ -104,8 +112,9 @@ namespace {
             }
         }
     }
+    */
 
-    cv::Mat paint_contours(int wd, int hgt, const std::map<uchar, contours_trees>& cont) {
+    cv::Mat paint_contours(int wd, int hgt, const std::vector<std::tuple<uchar, find_contour_output>>& cont) {
         auto img = cv::Mat(hgt, wd, CV_8UC1, 255);
         for (const auto& [gray, c] : cont) {
             int n = static_cast<int>(c.contours.size());
@@ -130,14 +139,141 @@ cv::Mat ch::do_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int 
     return gray;
 }
 
+ch::polyline int_polyline_to_polyline(const int_polyline& ip) {
+    return ip | 
+        rv::transform(
+            [](const cv::Point p)->cv::Point2d {
+                return { 
+                    static_cast<double>(p.x),
+                    static_cast<double>(p.y) 
+                }; 
+            }
+        ) |
+        r::to<ch::polyline>();
+}
+
+ch::gray_level_plane contour_info_to_gray_level_plane(uchar gray, const find_contour_output& contours) {
+    ch::gray_level_plane glp = { gray,{} };
+    std::unordered_map<int, int> contour_index_to_poly_index;
+    for (int i = 0; i < contours.hierarchy.size(); ++i) {
+        const cv::Vec4i& h = contours.hierarchy[i];
+        int parent = h[3];
+        auto polygon = int_polyline_to_polyline(contours.contours[i]);
+        if (parent == -1) {
+            int poly_index = static_cast<int>(glp.blobs.size());
+            glp.blobs.emplace_back(
+                ch::polygon_with_holes{ std::move(polygon), {}  }
+            );
+            contour_index_to_poly_index[i] = poly_index;
+        } else {
+            auto iter = contour_index_to_poly_index.find(parent);
+            if (iter == contour_index_to_poly_index.end()) {
+                throw std::runtime_error("contour hierearchy had a child contour before its parent");
+            }
+            glp.blobs[iter->second].holes.push_back(std::move(polygon));
+        }
+    }
+    return glp;
+}
+
+std::vector<ch::gray_level_plane> ch::extract_gray_level_planes(const cv::Mat& gray_scale_img)
+{
+    auto contours = perform_find_contours(gray_scale_img);
+    return contours |
+        rv::transform(
+            [](const auto& tup)->ch::gray_level_plane {
+                const auto& [gray, contour_info] = tup;
+                return contour_info_to_gray_level_plane(gray, contour_info);
+            }
+        ) |
+        r::to<std::vector<ch::gray_level_plane>>();
+}
+
+std::string gray_level_plane_to_svg(const ch::gray_level_plane& lvl) {
+    return {};
+}
+
+void ch::write_to_svg(const std::string& filename, const std::vector<gray_level_plane>& levels, int wd, int hgt, double scale)
+{
+    std::ofstream outfile(filename);
+
+    outfile << svg_header(wd, hgt);
+
+    for (const auto& lvl : levels)
+        outfile << gray_level_plane_to_svg(lvl);
+
+    outfile << "</svg>" << std::endl;
+    outfile.close();
+}
+
+std::string ch::to_string(const ch::gray_level_plane& glp) {
+    std::stringstream ss;
+
+    ss << "{\n";
+    ss << "   " << static_cast<int>(glp.gray) << ",\n";
+    for (const auto& pwh : glp.blobs) {
+        ss << "   " << to_string(pwh) << "\n";
+    }
+    ss << "}";
+
+    return ss.str();
+}
+
+std::string ch::to_string(const ch::polygon_with_holes& poly) {
+    std::stringstream ss;
+    if (poly.holes.empty()) {
+        ss << poly_to_string(poly.border);
+    } else {
+        ss << "{ " << poly_to_string(poly.border);
+        for (const auto& hole : poly.holes) {
+            ss << " , " << poly_to_string(hole);
+        }
+        ss << "}";
+    }
+    return ss.str();
+}
+
+std::string vec4_to_string(const cv::Vec4i& v) {
+    std::stringstream ss;
+    ss << "[ ";
+    for (int i = 0; i < 4; ++i) {
+        ss << v[i] << " ";
+    }
+    ss << "]\n";
+    return ss.str();
+}
+
+void debug_contours(const find_contour_output& ct) {
+    for (const auto& poly : ct.contours) {
+        std::cout << ch::poly_to_string(poly) << "\n";
+    }
+    for (const auto& h : ct.hierarchy) {
+        std::cout << vec4_to_string(h) << " ";
+    }
+    std::cout << "\n";
+}
+
+void debug_contours(uchar gray, const find_contour_output& ct) {
+    std::cout << " { " << static_cast<int>(gray) << "\n";
+    debug_contours(ct);
+    std::cout << "}\n";
+}
+
+void debug_contours(const std::vector<std::tuple<uchar, find_contour_output>>& contours) {
+    for (const auto [gray, trees] : contours) {
+        debug_contours(gray, trees);
+    }
+}
+
 void ch::debug() {
-    cv::Mat img = cv::imread("C:\\test\\dunjon.png");
+    cv::Mat mat = cv::imread("C:\\test\\holes.png");
+    cv::Mat gray;
+    cv::cvtColor(mat, gray, cv::COLOR_BGR2GRAY);
+    auto gray_levels = extract_gray_level_planes(gray);
+    for (const auto& glp : gray_levels) {
+        std::cout << to_string(glp) << "\n";
+    }
 
-    cv::Mat mat = ch::do_segmentation(img, 8, 3.0f, 12);
-    auto contours = gray_level_contours(mat);
-    apply_douglas_peucker(contours, 0.5);
-    scale(contours, 3.0);
-    auto output = paint_contours(3*mat.cols, 3*mat.rows, contours);
-
-    cv::imshow("contours", output);
+    //cv::imshow("gray", gray);
+    //cv::imshow("contours", output);
 }

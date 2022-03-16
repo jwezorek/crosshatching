@@ -25,6 +25,7 @@
     <ClCompile Include="src\imgproc.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\meanshift.cpp" />
+    <ClCompile Include="src\util.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\brush.hpp" />
@@ -32,6 +33,7 @@
     <ClInclude Include="src\geometry.hpp" />
     <ClInclude Include="src\imgproc.hpp" />
     <ClInclude Include="src\meanshift.hpp" />
+    <ClInclude Include="src\util.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

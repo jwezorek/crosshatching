@@ -4,6 +4,7 @@
 #include <Eigen/Dense>
 #include <vector>
 #include <range/v3/all.hpp>
+#include <sstream>
 
 namespace ch {
 
@@ -11,7 +12,6 @@ namespace ch {
     using matrix = Eigen::Matrix<double, 3, 3>;
     using vec = Eigen::Matrix<double, 3, 1>;
     using polyline = std::vector<point>;
-    using rnd_fn = std::function<double()>;
 
     matrix rotation_matrix(double theta);
     matrix rotation_matrix(double cos_theta, double sin_theta);
@@ -26,9 +26,16 @@ namespace ch {
     void paint_polyline(cv::Mat& mat, const polyline& p, int thickness, int color, point offset = { 0,0 });
 
     double euclidean_distance(const point& pt1, const point& pt2);
-    double normal_rnd(double mean, double stddev);
-    double uniform_rnd(double lower_bound, double upper_bound);
-    rnd_fn normal_rnd_fn(double mean, double stddev);
-    ch::rnd_fn const_rnd_fn(double val);
+
+    template<typename P>
+    std::string poly_to_string(const std::vector<P>& polyline) {
+        std::stringstream ss;
+        ss << "[ ";
+        for (const auto& pt : polyline) {
+            ss << pt.x << "," << pt.y << " ";
+        }
+        ss << "]";
+        return ss.str();
+    }
 
 }

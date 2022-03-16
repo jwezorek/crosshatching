@@ -8,11 +8,6 @@
 namespace r = ranges;
 namespace rv = ranges::views;
 
-namespace {
-	std::random_device rd;
-	std::mt19937 random(rd());
-}
-
 ch::matrix ch::rotation_matrix(double theta)
 {
 	return rotation_matrix(std::cos(theta), std::sin(theta));
@@ -114,24 +109,3 @@ double ch::euclidean_distance(const point& pt1, const point& pt2)
 	return std::sqrt(x_diff * x_diff + y_diff * y_diff);
 }
 
-double ch::normal_rnd(double mean, double stddev)
-{
-	std::normal_distribution<double> nd(mean, stddev);
-	return nd(random);
-}
-
-double ch::uniform_rnd(double lower_bound, double upper_bound)
-{
-	std::uniform_real_distribution<> ud(lower_bound, upper_bound);
-	return ud(random);
-}
-
-ch::rnd_fn ch::normal_rnd_fn(double mean, double stddev)
-{
-	return [mean, stddev]() {return normal_rnd(mean, stddev); };
-}
-
-ch::rnd_fn ch::const_rnd_fn(double val)
-{
-	return [val]() {return val; };
-}

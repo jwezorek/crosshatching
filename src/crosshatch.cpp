@@ -1,5 +1,6 @@
 #include "crosshatch.hpp"
 #include "geometry.hpp"
+#include "util.hpp"
 #include <opencv2/highgui.hpp>
 #include <iostream>
 #include <cmath>
@@ -270,17 +271,6 @@ double ch::gray_level(int thickness, hatching_range rng)
     auto n = k_swatch_sz * k_swatch_sz;
     auto white_pixels = cv::countNonZero(mat);
     return static_cast<double>(n - white_pixels) / static_cast<double>(n);
-}
-
-std::string svg_header(int wd, int hgt)
-{
-    std::stringstream ss;
-
-    ss << "<?xml version=\"1.0\" standalone=\"no\"?>\n";
-    ss << "<svg width=\"" + std::to_string(wd) + "px\" height=\"" + std::to_string(hgt) + "px\"  xmlns = \"http://www.w3.org/2000/svg\" version = \"1.1\">\n";
-    ss << "<rect width=\"" + std::to_string(wd) + "\" height=\"" + std::to_string(hgt) + "\"  fill=\"white\"/>\n";
-
-    return ss.str();
 }
 
 //TODO: there needs to be an offset in here because of the new way rotation is handled.
