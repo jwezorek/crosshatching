@@ -189,18 +189,50 @@ std::vector<ch::gray_level_plane> ch::extract_gray_level_planes(const cv::Mat& g
         r::to<std::vector<ch::gray_level_plane>>();
 }
 
-std::string gray_level_plane_to_svg(const ch::gray_level_plane& lvl) {
-    return {};
+std::string loop_to_path_commands(const ch::polyline& poly, double scale) {
+    std::stringstream ss;
+    ss << "M " << scale*poly[0].x << "," << scale * poly[0].y << " L";
+    for (const auto& pt : rv::tail(poly)) {
+        ss << " " << scale * pt.x << "," << scale * pt.y;
+    }
+    ss << " Z";
+    return ss.str();
+}
+
+std::string svg_path_commands(const ch::polygon_with_holes& poly, double scale) {
+    std::stringstream ss;
+    ss << loop_to_path_commands(poly.border, scale);
+    for (const auto& hole : poly.holes) {
+        ss << " " << loop_to_path_commands(hole, scale);
+    }
+    return ss.str();
+}
+
+std::string poly_with_holes_to_svg(uchar gray, const ch::polygon_with_holes& poly, double scale) {
+    std::stringstream ss;
+    ss << "<path fill-rule=\"evenodd\" stroke=\"none\" fill=\"";
+    ss << ch::gray_to_svg_color(gray) << "\" d=\"";
+    ss << svg_path_commands(poly, scale);
+    ss << "\" />";
+    return ss.str();
+}
+
+std::string gray_level_plane_to_svg(const ch::gray_level_plane& lvl, double scale) {
+    std::stringstream ss;
+    for (const auto& poly : lvl.blobs) {
+        ss << poly_with_holes_to_svg(lvl.gray, poly, scale) << "\n";
+    }
+    return ss.str();
 }
 
 void ch::write_to_svg(const std::string& filename, const std::vector<gray_level_plane>& levels, int wd, int hgt, double scale)
 {
     std::ofstream outfile(filename);
 
-    outfile << svg_header(wd, hgt);
+    outfile << svg_header( static_cast<int>(scale*wd), static_cast<int>(scale*hgt));
 
     for (const auto& lvl : levels)
-        outfile << gray_level_plane_to_svg(lvl);
+        outfile << gray_level_plane_to_svg(lvl, scale);
 
     outfile << "</svg>" << std::endl;
     outfile.close();
@@ -266,14 +298,14 @@ void debug_contours(const std::vector<std::tuple<uchar, find_contour_output>>& c
 }
 
 void ch::debug() {
-    cv::Mat mat = cv::imread("C:\\test\\holes.png");
+    cv::Mat mat = cv::imread("C:\\test\\holes2.png");
     cv::Mat gray;
     cv::cvtColor(mat, gray, cv::COLOR_BGR2GRAY);
     auto gray_levels = extract_gray_level_planes(gray);
     for (const auto& glp : gray_levels) {
         std::cout << to_string(glp) << "\n";
     }
-
+    write_to_svg("C:\\test\\holes2.svg", gray_levels, mat.cols, mat.rows, 10.0);
     //cv::imshow("gray", gray);
     //cv::imshow("contours", output);
 }
