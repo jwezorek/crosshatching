@@ -186,8 +186,19 @@ direction direction_to(const cv::Point& from_pt, const cv::Point& to_pt) {
     return offset_to_direction[to_pt - from_pt];
 }
 
+cv::Point2d get_vertex(const pixel_crawler& pc) {
+    static std::unordered_map<direction, cv::Point2d> dir_to_vert_offset = {
+        {direction::NW, {0,0} },
+        {direction::NE, {1,0}},
+        {direction::SE, {1,1}},
+        {direction::SW, {0,1}}
+    };
+    return cv::Point2d(pc.loc) + dir_to_vert_offset[pc.head];
+}
+
 pixel_crawler flip(const pixel_crawler& pc, const cv::Point& to_pt) {
     auto dir = direction_to(pc.loc, to_pt);
+    auto old_v = get_vertex(pc);
     static std::unordered_map<direction, direction> dir_to_flip_dir = {
         {direction::N , direction::S },
         {direction::NE, direction::SW},
@@ -198,7 +209,13 @@ pixel_crawler flip(const pixel_crawler& pc, const cv::Point& to_pt) {
         {direction::W , direction::E },
         {direction::NW, direction::SE}
     };
-    return { to_pt, dir_to_flip_dir[pc.head] };
+
+    auto flipped_crawler = pixel_crawler{ to_pt, dir_to_flip_dir[pc.head] };
+    if (get_vertex(flipped_crawler) != old_v) {
+        flipped_crawler = roll(flipped_crawler);
+    }
+
+    return flipped_crawler;
 }
 
 bool is_cardinal_dir( direction dir) {
@@ -262,16 +279,6 @@ std::tuple<pixel_crawler, int> initialize_contour_crawl(const int_polyline& ip) 
     return { {ip[northwest_index], direction::NW}, northwest_index };
 }
 
-cv::Point2d get_vertex(const pixel_crawler& pc) {
-    static std::unordered_map<direction, cv::Point2d> dir_to_vert_offset = {
-        {direction::NW, {0,0} },
-        {direction::NE, {1,0}},
-        {direction::SE, {1,1}},
-        {direction::SW, {0,1}}
-    };
-    return cv::Point2d(pc.loc) + dir_to_vert_offset[pc.head];
-}
-
 void push_if_new(ch::polyline& poly, const cv::Point2d& pt) {
     if (!poly.empty() && poly.back() == pt) {
         return;
@@ -279,24 +286,23 @@ void push_if_new(ch::polyline& poly, const cv::Point2d& pt) {
     poly.push_back(pt);
 }
 
+
 ch::polyline contour_to_polygon(const int_polyline& ip) {
     ch::polyline poly;
     int n = static_cast<int>(ip.size());
     poly.reserve(n);
     
     auto [crawler,i] = initialize_contour_crawl(ip);
-
-    while (poly.empty() || (get_vertex(crawler) != poly.front())) {
+    do {
         auto current_vert = get_vertex(crawler);
         push_if_new(poly, current_vert);
         int next_i = (i + 1) % n;
         if (can_flip(crawler, ip[next_i])) {
-            crawler = roll(flip(crawler, ip[next_i]));
+            crawler = flip(crawler, ip[next_i]);
             i = next_i;
-        } else {
-            crawler = roll(crawler);
         }
-    }
+        crawler = roll(crawler);
+    } while (get_vertex(crawler) != poly.front());
 
     poly.shrink_to_fit();
     return poly;
@@ -461,11 +467,11 @@ void debug_contours(const std::vector<std::tuple<uchar, find_contour_output>>& c
 }
 
 void ch::debug() {
-    cv::Mat mat = cv::imread("C:\\test\\big_blob.png");
+    cv::Mat mat = cv::imread("C:\\test\\blob3.png");
     cv::Mat gray;
     cv::cvtColor(mat, gray, cv::COLOR_BGR2GRAY);
     auto gray_levels = extract_gray_level_planes(gray);
-    write_to_svg("C:\\test\\big_blob.svg", gray_levels, mat.cols, mat.rows, 10.0);
+    write_to_svg("C:\\test\\blob3.svg", gray_levels, mat.cols, mat.rows, 10.0);
     //cv::imshow("gray", gray);
     //cv::imshow("contours", output);
 }
