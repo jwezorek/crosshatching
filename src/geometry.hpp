@@ -38,4 +38,9 @@ namespace ch {
         return ss.str();
     }
 
+    struct point_hasher
+    {
+        std::size_t operator()(const cv::Point& p) const;
+    };
+
 }

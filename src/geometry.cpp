@@ -2,6 +2,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+#include <boost/functional/hash.hpp>
 #include <cmath>
 #include <algorithm>
 
@@ -109,3 +110,11 @@ double ch::euclidean_distance(const point& pt1, const point& pt2)
 	return std::sqrt(x_diff * x_diff + y_diff * y_diff);
 }
 
+std::size_t ch::point_hasher::operator()(const cv::Point& p) const
+{
+	std::size_t seed = 0;
+	boost::hash_combine(seed, p.x);
+	boost::hash_combine(seed, p.y);
+
+	return seed;
+}

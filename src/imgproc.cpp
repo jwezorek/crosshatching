@@ -12,12 +12,17 @@
 #include <array>
 #include <iostream>
 #include <unordered_map>
+#include <unordered_set>
 #include <fstream>
 
 namespace r = ranges;
 namespace rv = ranges::views;
 
 namespace {
+
+    enum class direction {
+        N,NE,E,SE,S,SW,W,NW
+    };
 
     std::vector<uchar> get_gray_levels(const cv::Mat& input) {
         if (input.channels() != 1) {
@@ -84,7 +89,7 @@ namespace {
                 [](const auto& pair)->std::tuple<uchar, find_contour_output> {
                     const auto& [gray, mat] = pair;
                     find_contour_output output;
-                    cv::findContours(mat, output.contours, output.hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_SIMPLE);
+                    cv::findContours(mat, output.contours, output.hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_NONE);
 
                     return { gray, std::move(output) };
                 }
@@ -152,17 +157,175 @@ ch::polyline int_polyline_to_polyline(const int_polyline& ip) {
         r::to<ch::polyline>();
 }
 
+struct pixel_crawler {
+    cv::Point loc;
+    direction head;
+};
+
+pixel_crawler roll(const pixel_crawler& pc) {
+    static std::unordered_map<direction, direction> dir_to_next_dir = {
+        {direction::NW, direction::SW},
+        {direction::SW, direction::SE},
+        {direction::SE, direction::NE},
+        {direction::NE, direction::NW}
+    };
+    return { pc.loc, dir_to_next_dir[pc.head] };
+}
+
+direction direction_to(const cv::Point& from_pt, const cv::Point& to_pt) {
+    static std::unordered_map<cv::Point, direction, ch::point_hasher> offset_to_direction = {
+        {{0,-1}, direction::N },
+        {{1,-1}, direction::NE},
+        {{1,0},  direction::E },
+        {{1,1},  direction::SE},
+        {{0,1},  direction::S },
+        {{-1,1}, direction::SW},
+        {{-1,0}, direction::W },
+        {{-1,-1},direction::NW}
+    };
+    return offset_to_direction[to_pt - from_pt];
+}
+
+pixel_crawler flip(const pixel_crawler& pc, const cv::Point& to_pt) {
+    auto dir = direction_to(pc.loc, to_pt);
+    static std::unordered_map<direction, direction> dir_to_flip_dir = {
+        {direction::N , direction::S },
+        {direction::NE, direction::SW},
+        {direction::E , direction::W },
+        {direction::SE, direction::NW},
+        {direction::S , direction::N },
+        {direction::SW, direction::NE},
+        {direction::W , direction::E },
+        {direction::NW, direction::SE}
+    };
+    return { to_pt, dir_to_flip_dir[pc.head] };
+}
+
+bool is_cardinal_dir( direction dir) {
+    static std::unordered_set<direction> nesw = {
+        direction::N,
+        direction::E,
+        direction::S,
+        direction::W
+    };
+    return nesw.find(dir) != nesw.end();
+}
+
+bool is_ordinal_dir(direction dir) {
+    return !is_cardinal_dir(dir);
+}
+
+bool is_left_of(direction d1, direction d2) {
+    static std::unordered_map<direction, direction> right_to_left = {
+        {direction::N , direction::NW },
+        {direction::NW, direction::W},
+        {direction::W , direction::SW },
+        {direction::SW, direction::S},
+        {direction::S , direction::SE },
+        {direction::SE, direction::E},
+        {direction::E , direction::NE },
+        {direction::NE, direction::N}
+    };
+    return right_to_left[d1] == d2;
+}
+
+bool can_flip(const pixel_crawler& pc, const cv::Point& to_pt) {
+    auto dir = direction_to(pc.loc, to_pt);
+    if (pc.head == dir) {
+        return true;
+    }
+    if (is_ordinal_dir(dir)) {
+        return false;
+    }
+    return is_left_of(pc.head, dir);
+}
+
+int find_northwest_index(const int_polyline& ip) {
+    if (ip.size() == 1) {
+        return 0;
+    }
+    int north_west_index = 0;
+    for (int i = 1; i < static_cast<int>(ip.size()); ++i) {
+        const auto& current_min = ip[north_west_index];
+        const auto& pt = ip[i];
+        if (pt.y < current_min.y) {
+            north_west_index = i;
+        } else if (pt.y == current_min.y && pt.x < current_min.x) {
+            north_west_index = i;
+        }
+    }
+    return north_west_index;
+}
+
+std::tuple<pixel_crawler, int> initialize_contour_crawl(const int_polyline& ip) {
+    int northwest_index = find_northwest_index(ip);
+    return { {ip[northwest_index], direction::NW}, northwest_index };
+}
+
+cv::Point2d get_vertex(const pixel_crawler& pc) {
+    static std::unordered_map<direction, cv::Point2d> dir_to_vert_offset = {
+        {direction::NW, {0,0} },
+        {direction::NE, {1,0}},
+        {direction::SE, {1,1}},
+        {direction::SW, {0,1}}
+    };
+    return cv::Point2d(pc.loc) + dir_to_vert_offset[pc.head];
+}
+
+void push_if_new(ch::polyline& poly, const cv::Point2d& pt) {
+    if (!poly.empty() && poly.back() == pt) {
+        return;
+    }
+    poly.push_back(pt);
+}
+
+ch::polyline contour_to_polygon(const int_polyline& ip) {
+    ch::polyline poly;
+    int n = static_cast<int>(ip.size());
+    poly.reserve(n);
+    
+    auto [crawler,i] = initialize_contour_crawl(ip);
+
+    while (poly.empty() || (get_vertex(crawler) != poly.front())) {
+        auto current_vert = get_vertex(crawler);
+        push_if_new(poly, current_vert);
+        int next_i = (i + 1) % n;
+        if (can_flip(crawler, ip[next_i])) {
+            crawler = roll(flip(crawler, ip[next_i]));
+            i = next_i;
+        } else {
+            crawler = roll(crawler);
+        }
+    }
+
+    poly.shrink_to_fit();
+    return poly;
+}
+
+ch::polyline contour_to_polygon_clockwise(const int_polyline& ip) {
+    //TODO
+    auto contour_cc = rv::reverse(ip) | r::to<int_polyline>();
+    auto poly_cc = contour_to_polygon(contour_cc);
+    return rv::reverse(poly_cc) | r::to< ch::polyline>();
+}
+
 ch::gray_level_plane contour_info_to_gray_level_plane(uchar gray, const find_contour_output& contours) {
     ch::gray_level_plane glp = { gray,{} };
     std::unordered_map<int, int> contour_index_to_poly_index;
+
+    if (gray == 255) {
+        int aaa;
+        aaa = 5;
+    }
+
     for (int i = 0; i < contours.hierarchy.size(); ++i) {
         const cv::Vec4i& h = contours.hierarchy[i];
         int parent = h[3];
-        auto polygon = int_polyline_to_polyline(contours.contours[i]);
+        const auto& contour = contours.contours[i]; 
         if (parent == -1) {
             int poly_index = static_cast<int>(glp.blobs.size());
             glp.blobs.emplace_back(
-                ch::polygon_with_holes{ std::move(polygon), {}  }
+                ch::polygon_with_holes{ contour_to_polygon(contour), {}  }
             );
             contour_index_to_poly_index[i] = poly_index;
         } else {
@@ -170,7 +333,7 @@ ch::gray_level_plane contour_info_to_gray_level_plane(uchar gray, const find_con
             if (iter == contour_index_to_poly_index.end()) {
                 throw std::runtime_error("contour hierearchy had a child contour before its parent");
             }
-            glp.blobs[iter->second].holes.push_back(std::move(polygon));
+            glp.blobs[iter->second].holes.push_back( contour_to_polygon_clockwise(contour) );
         }
     }
     return glp;
@@ -298,14 +461,11 @@ void debug_contours(const std::vector<std::tuple<uchar, find_contour_output>>& c
 }
 
 void ch::debug() {
-    cv::Mat mat = cv::imread("C:\\test\\holes2.png");
+    cv::Mat mat = cv::imread("C:\\test\\big_blob.png");
     cv::Mat gray;
     cv::cvtColor(mat, gray, cv::COLOR_BGR2GRAY);
     auto gray_levels = extract_gray_level_planes(gray);
-    for (const auto& glp : gray_levels) {
-        std::cout << to_string(glp) << "\n";
-    }
-    write_to_svg("C:\\test\\holes2.svg", gray_levels, mat.cols, mat.rows, 10.0);
+    write_to_svg("C:\\test\\big_blob.svg", gray_levels, mat.cols, mat.rows, 10.0);
     //cv::imshow("gray", gray);
     //cv::imshow("contours", output);
 }
