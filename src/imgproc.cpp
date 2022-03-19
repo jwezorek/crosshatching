@@ -274,9 +274,9 @@ int find_northwest_index(const int_polyline& ip) {
     return north_west_index;
 }
 
-std::tuple<pixel_crawler, int> initialize_contour_crawl(const int_polyline& ip) {
+std::tuple<pixel_crawler, int> initialize_contour_crawl(const int_polyline& ip, bool counter_clockwise) {
     int northwest_index = find_northwest_index(ip);
-    return { {ip[northwest_index], direction::NW}, northwest_index };
+    return { {ip[northwest_index], counter_clockwise ? direction::NW : direction::SW}, northwest_index };
 }
 
 void push_if_new(ch::polyline& poly, const cv::Point2d& pt) {
@@ -287,12 +287,12 @@ void push_if_new(ch::polyline& poly, const cv::Point2d& pt) {
 }
 
 
-ch::polyline contour_to_polygon(const int_polyline& ip) {
+ch::polyline contour_to_polygon(const int_polyline& ip, bool counter_clockwise = true) {
     ch::polyline poly;
     int n = static_cast<int>(ip.size());
     poly.reserve(n);
     
-    auto [crawler,i] = initialize_contour_crawl(ip);
+    auto [crawler,i] = initialize_contour_crawl(ip, counter_clockwise);
     do {
         auto current_vert = get_vertex(crawler);
         push_if_new(poly, current_vert);
@@ -331,7 +331,7 @@ ch::gray_level_plane contour_info_to_gray_level_plane(uchar gray, const find_con
         if (parent == -1) {
             int poly_index = static_cast<int>(glp.blobs.size());
             glp.blobs.emplace_back(
-                ch::polygon_with_holes{ contour_to_polygon(contour), {}  }
+                ch::polygon_with_holes{ contour_to_polygon(contour, true), {}  }
             );
             contour_index_to_poly_index[i] = poly_index;
         } else {
@@ -339,7 +339,7 @@ ch::gray_level_plane contour_info_to_gray_level_plane(uchar gray, const find_con
             if (iter == contour_index_to_poly_index.end()) {
                 throw std::runtime_error("contour hierearchy had a child contour before its parent");
             }
-            glp.blobs[iter->second].holes.push_back( contour_to_polygon_clockwise(contour) );
+            glp.blobs[iter->second].holes.push_back( contour_to_polygon(contour, false) );
         }
     }
     return glp;
