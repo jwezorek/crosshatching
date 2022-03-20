@@ -38,6 +38,13 @@ namespace ch {
         return ss.str();
     }
 
+    template<typename T>
+    cv::Point_<T> normalize_offset(const cv::Point_<T>& pt) {
+        auto offset = pt;
+        offset /= std::max(std::abs(pt.x), std::abs(pt.y));
+        return offset;
+    }
+
     struct point_hasher
     {
         std::size_t operator()(const cv::Point& p) const;

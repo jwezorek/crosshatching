@@ -118,3 +118,4 @@ std::size_t ch::point_hasher::operator()(const cv::Point& p) const
 
 	return seed;
 }
+

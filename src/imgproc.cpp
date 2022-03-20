@@ -72,18 +72,6 @@ namespace {
             r::to<std::vector<std::tuple<uchar, find_contour_output>>>();
     }
 
-    cv::Mat paint_contours(int wd, int hgt, const std::vector<std::tuple<uchar, find_contour_output>>& cont) {
-        auto img = cv::Mat(hgt, wd, CV_8UC1, 255);
-        for (const auto& [gray, c] : cont) {
-            int n = static_cast<int>(c.contours.size());
-            for ( int i = 0; i < n; ++i) {
-                cv::drawContours(img, c.contours, i, gray, cv::FILLED, 8, c.hierarchy);
-            }
-        }
-        return img;
-    }
-
-
     struct pixel_crawler {
         cv::Point loc;
         direction head;
@@ -110,7 +98,8 @@ namespace {
             {{-1,0}, direction::W },
             {{-1,-1},direction::NW}
         };
-        return offset_to_direction[to_pt - from_pt];
+
+        return offset_to_direction[ch::normalize_offset(to_pt - from_pt)];
     }
 
     cv::Point2d get_vertex(const pixel_crawler& pc) {
@@ -121,28 +110,6 @@ namespace {
             {direction::SW, {0,1}}
         };
         return cv::Point2d(pc.loc) + dir_to_vert_offset[pc.head];
-    }
-
-    pixel_crawler flip(const pixel_crawler& pc, const cv::Point& to_pt) {
-        auto dir = direction_to(pc.loc, to_pt);
-        auto old_v = get_vertex(pc);
-        static std::unordered_map<direction, direction> dir_to_flip_dir = {
-            {direction::N , direction::S },
-            {direction::NE, direction::SW},
-            {direction::E , direction::W },
-            {direction::SE, direction::NW},
-            {direction::S , direction::N },
-            {direction::SW, direction::NE},
-            {direction::W , direction::E },
-            {direction::NW, direction::SE}
-        };
-
-        auto flipped_crawler = pixel_crawler{ to_pt, dir_to_flip_dir[pc.head] };
-        if (get_vertex(flipped_crawler) != old_v) {
-            flipped_crawler = roll(flipped_crawler);
-        }
-
-        return flipped_crawler;
     }
 
     bool is_cardinal_dir(direction dir) {
@@ -159,29 +126,43 @@ namespace {
         return !is_cardinal_dir(dir);
     }
 
-    bool is_left_of(direction d1, direction d2) {
-        static std::unordered_map<direction, direction> right_to_left = {
-            {direction::N , direction::NW },
-            {direction::NW, direction::W},
-            {direction::W , direction::SW },
-            {direction::SW, direction::S},
-            {direction::S , direction::SE },
-            {direction::SE, direction::E},
-            {direction::E , direction::NE },
-            {direction::NE, direction::N}
+    pixel_crawler flip(const pixel_crawler& pc, const cv::Point& to_pt) {
+        auto dir = direction_to(pc.loc, to_pt);
+        static std::unordered_map<direction, direction> dir_to_flip_dir = {
+            {direction::N , direction::S },
+            {direction::NE, direction::SW},
+            {direction::E , direction::W },
+            {direction::SE, direction::NW},
+            {direction::S , direction::N },
+            {direction::SW, direction::NE},
+            {direction::W , direction::E },
+            {direction::NW, direction::SE}
         };
-        return right_to_left[d1] == d2;
+        auto flipped_crawler = pixel_crawler{ to_pt, dir_to_flip_dir[pc.head] };
+        if (is_ordinal_dir(dir)) {
+            return flipped_crawler;
+        } else {
+            return  roll(flipped_crawler);
+        }
+    }
+
+    std::tuple<direction, direction> get_shared_vert_directions(const cv::Point& from_pt, const cv::Point& to_pt) {
+        static std::unordered_map<direction, std::tuple<direction, direction>> dir_to_shared_verts = {
+            {direction::N , {direction::NW, direction::NE}},
+            {direction::NW, {direction::NW, direction::NW}},
+            {direction::W , {direction::NW, direction::SW} },
+            {direction::SW, {direction::SW, direction::SW}},
+            {direction::S , {direction::SW, direction::SE} },
+            {direction::SE, {direction::SE, direction::SE}},
+            {direction::E , {direction::NE, direction::SE} },
+            {direction::NE, {direction::NE, direction::NE}}
+        };
+        return dir_to_shared_verts[direction_to(from_pt, to_pt)];
     }
 
     bool can_flip(const pixel_crawler& pc, const cv::Point& to_pt) {
-        auto dir = direction_to(pc.loc, to_pt);
-        if (pc.head == dir) {
-            return true;
-        }
-        if (is_ordinal_dir(dir)) {
-            return false;
-        }
-        return is_left_of(pc.head, dir);
+        auto [shared_vert_1, shared_vert_2] = get_shared_vert_directions(pc.loc, to_pt);
+        return pc.head == shared_vert_1 || pc.head == shared_vert_2;
     }
 
     int find_northwest_index(const int_polyline& ip) {
@@ -393,20 +374,20 @@ void ch::write_to_svg(const std::string& filename, const std::vector<gray_level_
 }
 
 void ch::debug() {
-    cv::Mat img = cv::imread("C:\\test\\dunjon.png");
+    cv::Mat img = cv::imread("C:\\test\\dunjon2.png");
     cv::Mat mat = ch::do_segmentation(img, 8, 3.0f, 12);
     auto gray_levels = extract_gray_level_planes(mat);
     //gray_levels = simplify(gray_levels, 1.0);
-    write_to_svg("C:\\test\\dunjon.svg", gray_levels, mat.cols, mat.rows, 4.0);
+    write_to_svg("C:\\test\\dunjon2.svg", gray_levels, mat.cols, mat.rows, 4.0);
 }
 
 /*
 void ch::debug() {
-    cv::Mat mat = cv::imread("C:\\test\\big_blob.png");
+    cv::Mat mat = cv::imread("C:\\test\\blob3.png");
     cv::Mat gray;
     cv::cvtColor(mat, gray, cv::COLOR_BGR2GRAY);
     auto gray_levels = extract_gray_level_planes(gray);
-    write_to_svg("C:\\test\\big_blob.svg", gray_levels, mat.cols, mat.rows, 10.0);
+    write_to_svg("C:\\test\\blob3.svg", gray_levels, mat.cols, mat.rows, 10.0);
     //cv::imshow("gray", gray);
     //cv::imshow("contours", output);
 }
