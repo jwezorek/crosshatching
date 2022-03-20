@@ -57,31 +57,6 @@ namespace {
         std::vector<cv::Vec4i> hierarchy;
     };
 
-    cv::Mat dilate_blob(const cv::Mat& blob) {
-        static cv::Mat strel = (
-            cv::Mat_<uchar>(3, 3) <<
-                0, 0, 0,
-                0, 1, 1,
-                0, 1, 1
-        );
-        cv::Mat output;
-        cv::dilate(blob, output, strel, { 1,1 });
-        return output;
-    }
-
-    std::vector<std::vector<cv::Point>> apply_douglas_peucker(const std::vector<std::vector<cv::Point>>& polys, float param) {
-        return polys |
-            rv::transform(
-                [param](const std::vector<cv::Point>& poly)->std::vector<cv::Point> {
-                    std::vector<cv::Point> output;
-                    cv::approxPolyDP(poly, output, param, true);
-                    return output;
-                }
-            ) |
-            r::to<std::vector<std::vector<cv::Point>>>();
-    }
-
-
     std::vector<std::tuple<uchar, find_contour_output>> perform_find_contours(const cv::Mat& input) {
         auto planes = gray_planes(input);
         return planes |
@@ -97,28 +72,6 @@ namespace {
             r::to<std::vector<std::tuple<uchar, find_contour_output>>>();
     }
 
-    
-    void apply_douglas_peucker(std::map<uchar, find_contour_output>& ct, float param) {
-        for (auto& [k, v] : ct) {
-            v.contours = apply_douglas_peucker(v.contours, param);
-        }
-    }
-
-    /*
-    void scale(std::map<uchar, contours_trees>& cont_trees, double s) {
-        for (auto& [k, cont_tree] : cont_trees) {
-            for (auto& polyline : cont_tree.contours) {
-                for (auto& pt : polyline) {
-                    pt = { 
-                        static_cast<int>(std::round(s * pt.x)), 
-                        static_cast<int>(std::round(s * pt.y))
-                    };
-                }
-            }
-        }
-    }
-    */
-
     cv::Mat paint_contours(int wd, int hgt, const std::vector<std::tuple<uchar, find_contour_output>>& cont) {
         auto img = cv::Mat(hgt, wd, CV_8UC1, 255);
         for (const auto& [gray, c] : cont) {
@@ -128,6 +81,262 @@ namespace {
             }
         }
         return img;
+    }
+
+
+    struct pixel_crawler {
+        cv::Point loc;
+        direction head;
+    };
+
+    pixel_crawler roll(const pixel_crawler& pc) {
+        static std::unordered_map<direction, direction> dir_to_next_dir = {
+            {direction::NW, direction::SW},
+            {direction::SW, direction::SE},
+            {direction::SE, direction::NE},
+            {direction::NE, direction::NW}
+        };
+        return { pc.loc, dir_to_next_dir[pc.head] };
+    }
+
+    direction direction_to(const cv::Point& from_pt, const cv::Point& to_pt) {
+        static std::unordered_map<cv::Point, direction, ch::point_hasher> offset_to_direction = {
+            {{0,-1}, direction::N },
+            {{1,-1}, direction::NE},
+            {{1,0},  direction::E },
+            {{1,1},  direction::SE},
+            {{0,1},  direction::S },
+            {{-1,1}, direction::SW},
+            {{-1,0}, direction::W },
+            {{-1,-1},direction::NW}
+        };
+        return offset_to_direction[to_pt - from_pt];
+    }
+
+    cv::Point2d get_vertex(const pixel_crawler& pc) {
+        static std::unordered_map<direction, cv::Point2d> dir_to_vert_offset = {
+            {direction::NW, {0,0} },
+            {direction::NE, {1,0}},
+            {direction::SE, {1,1}},
+            {direction::SW, {0,1}}
+        };
+        return cv::Point2d(pc.loc) + dir_to_vert_offset[pc.head];
+    }
+
+    pixel_crawler flip(const pixel_crawler& pc, const cv::Point& to_pt) {
+        auto dir = direction_to(pc.loc, to_pt);
+        auto old_v = get_vertex(pc);
+        static std::unordered_map<direction, direction> dir_to_flip_dir = {
+            {direction::N , direction::S },
+            {direction::NE, direction::SW},
+            {direction::E , direction::W },
+            {direction::SE, direction::NW},
+            {direction::S , direction::N },
+            {direction::SW, direction::NE},
+            {direction::W , direction::E },
+            {direction::NW, direction::SE}
+        };
+
+        auto flipped_crawler = pixel_crawler{ to_pt, dir_to_flip_dir[pc.head] };
+        if (get_vertex(flipped_crawler) != old_v) {
+            flipped_crawler = roll(flipped_crawler);
+        }
+
+        return flipped_crawler;
+    }
+
+    bool is_cardinal_dir(direction dir) {
+        static std::unordered_set<direction> nesw = {
+            direction::N,
+            direction::E,
+            direction::S,
+            direction::W
+        };
+        return nesw.find(dir) != nesw.end();
+    }
+
+    bool is_ordinal_dir(direction dir) {
+        return !is_cardinal_dir(dir);
+    }
+
+    bool is_left_of(direction d1, direction d2) {
+        static std::unordered_map<direction, direction> right_to_left = {
+            {direction::N , direction::NW },
+            {direction::NW, direction::W},
+            {direction::W , direction::SW },
+            {direction::SW, direction::S},
+            {direction::S , direction::SE },
+            {direction::SE, direction::E},
+            {direction::E , direction::NE },
+            {direction::NE, direction::N}
+        };
+        return right_to_left[d1] == d2;
+    }
+
+    bool can_flip(const pixel_crawler& pc, const cv::Point& to_pt) {
+        auto dir = direction_to(pc.loc, to_pt);
+        if (pc.head == dir) {
+            return true;
+        }
+        if (is_ordinal_dir(dir)) {
+            return false;
+        }
+        return is_left_of(pc.head, dir);
+    }
+
+    int find_northwest_index(const int_polyline& ip) {
+        if (ip.size() == 1) {
+            return 0;
+        }
+        int north_west_index = 0;
+        for (int i = 1; i < static_cast<int>(ip.size()); ++i) {
+            const auto& current_min = ip[north_west_index];
+            const auto& pt = ip[i];
+            if (pt.y < current_min.y) {
+                north_west_index = i;
+            } else if (pt.y == current_min.y && pt.x < current_min.x) {
+                north_west_index = i;
+            }
+        }
+        return north_west_index;
+    }
+
+    std::tuple<pixel_crawler, int> initialize_contour_crawl(const int_polyline& ip, bool counter_clockwise) {
+        int northwest_index = find_northwest_index(ip);
+        return { {ip[northwest_index], counter_clockwise ? direction::NW : direction::SW}, northwest_index };
+    }
+
+    void push_if_new(ch::polyline& poly, const cv::Point2d& pt) {
+        if (!poly.empty() && poly.back() == pt) {
+            return;
+        }
+        poly.push_back(pt);
+    }
+
+    auto canonicalized_cyclic_contour_view(const int_polyline& ip) {
+        int start_index = find_northwest_index(ip);
+        auto start_point = ip.at(start_index);
+        return ch::rotate_view(rv::all(ip), start_index) | rv::cycle;
+    }
+
+    template<typename T>
+    auto neighbor_view(T rng) {
+        return rng | rv::sliding(2) |
+            rv::transform(
+                [](auto pair)->std::tuple<cv::Point, cv::Point> {
+                    return { pair[0],pair[1] };
+                }
+        );
+    }
+
+    ch::polyline contour_to_polygon(const int_polyline& ip, bool counter_clockwise = true) {
+        ch::polyline poly;
+        int n = static_cast<int>(ip.size());
+        poly.reserve(n);
+
+        auto contour = canonicalized_cyclic_contour_view(ip);
+        auto crawler = pixel_crawler{ contour[0], counter_clockwise ? direction::NW : direction::SW };
+        auto neighbors = neighbor_view(contour);
+        auto iter = neighbors.begin();
+
+        do {
+            const auto& [current, next] = *iter;
+            auto current_vert = get_vertex(crawler);
+            push_if_new(poly, current_vert);
+            if (can_flip(crawler, next)) {
+                crawler = flip(crawler, next);
+                ++iter;
+            }
+            crawler = roll(crawler);
+        } while (get_vertex(crawler) != poly.front());
+
+        poly.shrink_to_fit();
+        return poly;
+    }
+
+    ch::gray_level_plane contour_info_to_gray_level_plane(uchar gray, const find_contour_output& contours) {
+        ch::gray_level_plane glp = { gray,{} };
+        std::unordered_map<int, int> contour_index_to_poly_index;
+
+        for (int i = 0; i < contours.hierarchy.size(); ++i) {
+            const cv::Vec4i& h = contours.hierarchy[i];
+            int parent = h[3];
+            const auto& contour = contours.contours[i];
+            if (parent == -1) {
+                int poly_index = static_cast<int>(glp.blobs.size());
+                glp.blobs.emplace_back(
+                    ch::polygon_with_holes{ contour_to_polygon(contour, true), {} }
+                );
+                contour_index_to_poly_index[i] = poly_index;
+            } else {
+                auto iter = contour_index_to_poly_index.find(parent);
+                if (iter == contour_index_to_poly_index.end()) {
+                    throw std::runtime_error("contour hierearchy had a child contour before its parent");
+                }
+                glp.blobs[iter->second].holes.push_back(contour_to_polygon(contour, false));
+            }
+        }
+        return glp;
+    }
+
+    ch::polyline simplify(const ch::polyline& poly, double param) {
+        std::vector<cv::Point2d> output;
+        cv::approxPolyDP(poly | rv::transform([](auto p)->cv::Point2f {return p; }) | r::to_vector, output, param, true);
+        return output;
+    }
+
+    ch::polygon_with_holes simplify(const ch::polygon_with_holes& poly, double param) {
+        return {
+            simplify(poly.border, param),
+            poly.holes | rv::transform([param](const auto& p) {return simplify(p, param); }) | r::to_vector
+        };
+    }
+
+    ch::gray_level_plane simplify(const ch::gray_level_plane& p, double param) {
+        return {
+            p.gray,
+            p.blobs | rv::transform([param](const auto& p) {return simplify(p, param); }) | r::to_vector
+        };
+    }
+
+    std::vector<ch::gray_level_plane> simplify(const std::vector<ch::gray_level_plane>& planes, double param) {
+        return planes | rv::transform([param](const auto& p) {return simplify(p, param); }) | r::to_vector;
+    }
+
+    std::string loop_to_path_commands(const ch::polyline& poly, double scale) {
+        std::stringstream ss;
+        ss << "M " << scale * poly[0].x << "," << scale * poly[0].y << " L";
+        for (const auto& pt : rv::tail(poly)) {
+            ss << " " << scale * pt.x << "," << scale * pt.y;
+        }
+        ss << " Z";
+        return ss.str();
+    }
+
+    std::string svg_path_commands(const ch::polygon_with_holes& poly, double scale) {
+        std::stringstream ss;
+        ss << loop_to_path_commands(poly.border, scale);
+        for (const auto& hole : poly.holes) {
+            ss << " " << loop_to_path_commands(hole, scale);
+        }
+        return ss.str();
+    }
+
+    std::string poly_with_holes_to_svg(uchar gray, const ch::polygon_with_holes& poly, double scale) {
+        std::stringstream ss;
+        ss << "<path fill-rule=\"evenodd\" stroke=\"none\" fill=\"";
+        ss << ch::gray_to_svg_color(gray) << "\" d=\"";
+        ss << svg_path_commands(poly, scale);
+        ss << "\" />";
+        return ss.str();
+    }
+
+    std::string gray_level_plane_to_svg(const ch::gray_level_plane& lvl, double scale) {
+        std::stringstream ss;
+        for (const auto& poly : lvl.blobs) {
+            ss << poly_with_holes_to_svg(lvl.gray, poly, scale) << "\n";
+        }
+        return ss.str();
     }
 
 }
@@ -157,194 +366,6 @@ ch::polyline int_polyline_to_polyline(const int_polyline& ip) {
         r::to<ch::polyline>();
 }
 
-struct pixel_crawler {
-    cv::Point loc;
-    direction head;
-};
-
-pixel_crawler roll(const pixel_crawler& pc) {
-    static std::unordered_map<direction, direction> dir_to_next_dir = {
-        {direction::NW, direction::SW},
-        {direction::SW, direction::SE},
-        {direction::SE, direction::NE},
-        {direction::NE, direction::NW}
-    };
-    return { pc.loc, dir_to_next_dir[pc.head] };
-}
-
-direction direction_to(const cv::Point& from_pt, const cv::Point& to_pt) {
-    static std::unordered_map<cv::Point, direction, ch::point_hasher> offset_to_direction = {
-        {{0,-1}, direction::N },
-        {{1,-1}, direction::NE},
-        {{1,0},  direction::E },
-        {{1,1},  direction::SE},
-        {{0,1},  direction::S },
-        {{-1,1}, direction::SW},
-        {{-1,0}, direction::W },
-        {{-1,-1},direction::NW}
-    };
-    return offset_to_direction[to_pt - from_pt];
-}
-
-cv::Point2d get_vertex(const pixel_crawler& pc) {
-    static std::unordered_map<direction, cv::Point2d> dir_to_vert_offset = {
-        {direction::NW, {0,0} },
-        {direction::NE, {1,0}},
-        {direction::SE, {1,1}},
-        {direction::SW, {0,1}}
-    };
-    return cv::Point2d(pc.loc) + dir_to_vert_offset[pc.head];
-}
-
-pixel_crawler flip(const pixel_crawler& pc, const cv::Point& to_pt) {
-    auto dir = direction_to(pc.loc, to_pt);
-    auto old_v = get_vertex(pc);
-    static std::unordered_map<direction, direction> dir_to_flip_dir = {
-        {direction::N , direction::S },
-        {direction::NE, direction::SW},
-        {direction::E , direction::W },
-        {direction::SE, direction::NW},
-        {direction::S , direction::N },
-        {direction::SW, direction::NE},
-        {direction::W , direction::E },
-        {direction::NW, direction::SE}
-    };
-
-    auto flipped_crawler = pixel_crawler{ to_pt, dir_to_flip_dir[pc.head] };
-    if (get_vertex(flipped_crawler) != old_v) {
-        flipped_crawler = roll(flipped_crawler);
-    }
-
-    return flipped_crawler;
-}
-
-bool is_cardinal_dir( direction dir) {
-    static std::unordered_set<direction> nesw = {
-        direction::N,
-        direction::E,
-        direction::S,
-        direction::W
-    };
-    return nesw.find(dir) != nesw.end();
-}
-
-bool is_ordinal_dir(direction dir) {
-    return !is_cardinal_dir(dir);
-}
-
-bool is_left_of(direction d1, direction d2) {
-    static std::unordered_map<direction, direction> right_to_left = {
-        {direction::N , direction::NW },
-        {direction::NW, direction::W},
-        {direction::W , direction::SW },
-        {direction::SW, direction::S},
-        {direction::S , direction::SE },
-        {direction::SE, direction::E},
-        {direction::E , direction::NE },
-        {direction::NE, direction::N}
-    };
-    return right_to_left[d1] == d2;
-}
-
-bool can_flip(const pixel_crawler& pc, const cv::Point& to_pt) {
-    auto dir = direction_to(pc.loc, to_pt);
-    if (pc.head == dir) {
-        return true;
-    }
-    if (is_ordinal_dir(dir)) {
-        return false;
-    }
-    return is_left_of(pc.head, dir);
-}
-
-int find_northwest_index(const int_polyline& ip) {
-    if (ip.size() == 1) {
-        return 0;
-    }
-    int north_west_index = 0;
-    for (int i = 1; i < static_cast<int>(ip.size()); ++i) {
-        const auto& current_min = ip[north_west_index];
-        const auto& pt = ip[i];
-        if (pt.y < current_min.y) {
-            north_west_index = i;
-        } else if (pt.y == current_min.y && pt.x < current_min.x) {
-            north_west_index = i;
-        }
-    }
-    return north_west_index;
-}
-
-std::tuple<pixel_crawler, int> initialize_contour_crawl(const int_polyline& ip, bool counter_clockwise) {
-    int northwest_index = find_northwest_index(ip);
-    return { {ip[northwest_index], counter_clockwise ? direction::NW : direction::SW}, northwest_index };
-}
-
-void push_if_new(ch::polyline& poly, const cv::Point2d& pt) {
-    if (!poly.empty() && poly.back() == pt) {
-        return;
-    }
-    poly.push_back(pt);
-}
-
-
-ch::polyline contour_to_polygon(const int_polyline& ip, bool counter_clockwise = true) {
-    ch::polyline poly;
-    int n = static_cast<int>(ip.size());
-    poly.reserve(n);
-    
-    auto [crawler,i] = initialize_contour_crawl(ip, counter_clockwise);
-    do {
-        auto current_vert = get_vertex(crawler);
-        push_if_new(poly, current_vert);
-        int next_i = (i + 1) % n;
-        if (can_flip(crawler, ip[next_i])) {
-            crawler = flip(crawler, ip[next_i]);
-            i = next_i;
-        }
-        crawler = roll(crawler);
-    } while (get_vertex(crawler) != poly.front());
-
-    poly.shrink_to_fit();
-    return poly;
-}
-
-ch::polyline contour_to_polygon_clockwise(const int_polyline& ip) {
-    //TODO
-    auto contour_cc = rv::reverse(ip) | r::to<int_polyline>();
-    auto poly_cc = contour_to_polygon(contour_cc);
-    return rv::reverse(poly_cc) | r::to< ch::polyline>();
-}
-
-ch::gray_level_plane contour_info_to_gray_level_plane(uchar gray, const find_contour_output& contours) {
-    ch::gray_level_plane glp = { gray,{} };
-    std::unordered_map<int, int> contour_index_to_poly_index;
-
-    if (gray == 255) {
-        int aaa;
-        aaa = 5;
-    }
-
-    for (int i = 0; i < contours.hierarchy.size(); ++i) {
-        const cv::Vec4i& h = contours.hierarchy[i];
-        int parent = h[3];
-        const auto& contour = contours.contours[i]; 
-        if (parent == -1) {
-            int poly_index = static_cast<int>(glp.blobs.size());
-            glp.blobs.emplace_back(
-                ch::polygon_with_holes{ contour_to_polygon(contour, true), {}  }
-            );
-            contour_index_to_poly_index[i] = poly_index;
-        } else {
-            auto iter = contour_index_to_poly_index.find(parent);
-            if (iter == contour_index_to_poly_index.end()) {
-                throw std::runtime_error("contour hierearchy had a child contour before its parent");
-            }
-            glp.blobs[iter->second].holes.push_back( contour_to_polygon(contour, false) );
-        }
-    }
-    return glp;
-}
-
 std::vector<ch::gray_level_plane> ch::extract_gray_level_planes(const cv::Mat& gray_scale_img)
 {
     auto contours = perform_find_contours(gray_scale_img);
@@ -356,42 +377,6 @@ std::vector<ch::gray_level_plane> ch::extract_gray_level_planes(const cv::Mat& g
             }
         ) |
         r::to<std::vector<ch::gray_level_plane>>();
-}
-
-std::string loop_to_path_commands(const ch::polyline& poly, double scale) {
-    std::stringstream ss;
-    ss << "M " << scale*poly[0].x << "," << scale * poly[0].y << " L";
-    for (const auto& pt : rv::tail(poly)) {
-        ss << " " << scale * pt.x << "," << scale * pt.y;
-    }
-    ss << " Z";
-    return ss.str();
-}
-
-std::string svg_path_commands(const ch::polygon_with_holes& poly, double scale) {
-    std::stringstream ss;
-    ss << loop_to_path_commands(poly.border, scale);
-    for (const auto& hole : poly.holes) {
-        ss << " " << loop_to_path_commands(hole, scale);
-    }
-    return ss.str();
-}
-
-std::string poly_with_holes_to_svg(uchar gray, const ch::polygon_with_holes& poly, double scale) {
-    std::stringstream ss;
-    ss << "<path fill-rule=\"evenodd\" stroke=\"none\" fill=\"";
-    ss << ch::gray_to_svg_color(gray) << "\" d=\"";
-    ss << svg_path_commands(poly, scale);
-    ss << "\" />";
-    return ss.str();
-}
-
-std::string gray_level_plane_to_svg(const ch::gray_level_plane& lvl, double scale) {
-    std::stringstream ss;
-    for (const auto& poly : lvl.blobs) {
-        ss << poly_with_holes_to_svg(lvl.gray, poly, scale) << "\n";
-    }
-    return ss.str();
 }
 
 void ch::write_to_svg(const std::string& filename, const std::vector<gray_level_plane>& levels, int wd, int hgt, double scale)
@@ -407,71 +392,22 @@ void ch::write_to_svg(const std::string& filename, const std::vector<gray_level_
     outfile.close();
 }
 
-std::string ch::to_string(const ch::gray_level_plane& glp) {
-    std::stringstream ss;
-
-    ss << "{\n";
-    ss << "   " << static_cast<int>(glp.gray) << ",\n";
-    for (const auto& pwh : glp.blobs) {
-        ss << "   " << to_string(pwh) << "\n";
-    }
-    ss << "}";
-
-    return ss.str();
-}
-
-std::string ch::to_string(const ch::polygon_with_holes& poly) {
-    std::stringstream ss;
-    if (poly.holes.empty()) {
-        ss << poly_to_string(poly.border);
-    } else {
-        ss << "{ " << poly_to_string(poly.border);
-        for (const auto& hole : poly.holes) {
-            ss << " , " << poly_to_string(hole);
-        }
-        ss << "}";
-    }
-    return ss.str();
-}
-
-std::string vec4_to_string(const cv::Vec4i& v) {
-    std::stringstream ss;
-    ss << "[ ";
-    for (int i = 0; i < 4; ++i) {
-        ss << v[i] << " ";
-    }
-    ss << "]\n";
-    return ss.str();
-}
-
-void debug_contours(const find_contour_output& ct) {
-    for (const auto& poly : ct.contours) {
-        std::cout << ch::poly_to_string(poly) << "\n";
-    }
-    for (const auto& h : ct.hierarchy) {
-        std::cout << vec4_to_string(h) << " ";
-    }
-    std::cout << "\n";
-}
-
-void debug_contours(uchar gray, const find_contour_output& ct) {
-    std::cout << " { " << static_cast<int>(gray) << "\n";
-    debug_contours(ct);
-    std::cout << "}\n";
-}
-
-void debug_contours(const std::vector<std::tuple<uchar, find_contour_output>>& contours) {
-    for (const auto [gray, trees] : contours) {
-        debug_contours(gray, trees);
-    }
-}
-
 void ch::debug() {
-    cv::Mat mat = cv::imread("C:\\test\\blob3.png");
+    cv::Mat img = cv::imread("C:\\test\\dunjon.png");
+    cv::Mat mat = ch::do_segmentation(img, 8, 3.0f, 12);
+    auto gray_levels = extract_gray_level_planes(mat);
+    //gray_levels = simplify(gray_levels, 1.0);
+    write_to_svg("C:\\test\\dunjon.svg", gray_levels, mat.cols, mat.rows, 4.0);
+}
+
+/*
+void ch::debug() {
+    cv::Mat mat = cv::imread("C:\\test\\big_blob.png");
     cv::Mat gray;
     cv::cvtColor(mat, gray, cv::COLOR_BGR2GRAY);
     auto gray_levels = extract_gray_level_planes(gray);
-    write_to_svg("C:\\test\\blob3.svg", gray_levels, mat.cols, mat.rows, 10.0);
+    write_to_svg("C:\\test\\big_blob.svg", gray_levels, mat.cols, mat.rows, 10.0);
     //cv::imshow("gray", gray);
     //cv::imshow("contours", output);
 }
+*/
