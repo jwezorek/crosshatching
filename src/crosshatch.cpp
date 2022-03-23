@@ -101,7 +101,7 @@ namespace {
                             return fragment_line_segment(rng[0], rng[1], frag);
                         }
                     )
-                ),
+                ),  
                 rv::single(poly.back())
             )
         );
@@ -110,7 +110,7 @@ namespace {
     ch::polyline jiggle(const ch::polyline& poly, const ch::rnd_fn& jig) {
         auto p = ch::mean_point(poly);
         auto theta = jig();
-        auto rotate = ch::translation_matrix(p.x, p.y) * ch::rotation_matrix(theta) * ch::translation_matrix(-p.x, -p.y);
+        ch::matrix rotate = ch::translation_matrix(p.x, p.y) * ch::rotation_matrix(theta) * ch::translation_matrix(-p.x, -p.y);
         return ch::transform(poly, rotate);
     }
 
@@ -208,7 +208,7 @@ ch::hatching_range ch::linear_crosshatching(const ch::rnd_fn& run_length, const 
     );
 }
 
-ch::hatching_range ch::fragment(ch::hatching_range rng, const ch::rnd_fn& frag) {
+ch::hatching_range ch::fragment(ch::hatching_range rng, ch::rnd_fn frag) {
     return rng |
         rv::transform(
             [frag](const auto& poly) {
@@ -217,7 +217,7 @@ ch::hatching_range ch::fragment(ch::hatching_range rng, const ch::rnd_fn& frag) 
     );
 }
 
-ch::hatching_range ch::jitter(ch::hatching_range rng, const ch::rnd_fn& jit)
+ch::hatching_range ch::jitter(ch::hatching_range rng, ch::rnd_fn jit)
 {
     return rng |
         rv::transform(
@@ -227,7 +227,7 @@ ch::hatching_range ch::jitter(ch::hatching_range rng, const ch::rnd_fn& jit)
         );
 }
 
-ch::hatching_range ch::jiggle(ch::hatching_range rng, const ch::rnd_fn& jig) {
+ch::hatching_range ch::jiggle(ch::hatching_range rng,  ch::rnd_fn jig) {
     return rng |
         rv::transform(
             [jig](const auto& poly) {

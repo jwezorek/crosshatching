@@ -15,6 +15,8 @@ namespace ch {
     rnd_fn normal_rnd_fn(double mean, double stddev);
     ch::rnd_fn const_rnd_fn(double val);
 
+    double ramp(double t, double k, bool right, bool up);
+
     template<typename R>
     auto rotate_view(R rng, int pivot) {
         return ranges::views::concat(

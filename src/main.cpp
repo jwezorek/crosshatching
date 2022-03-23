@@ -8,18 +8,43 @@
 #include <chrono>
 #include <iostream>
 
-int main() {
-    /*
-    cv::Mat img = cv::imread("C:\\test\\dunjon.png");
 
-    cv::Mat segmented = ch::do_segmentation(img, 8.0f, 3.0f, 12);
-    cv::imwrite("c:\\test\\dunjon-segmented.png", segmented);
-    cv::imshow("segmented", segmented);
-    */
+ch::brush_fn make_pipeline_fn(double theta, double start) {
+    return ch::make_run_pipeline_fn(
+        ch::brush_pipeline{    
+            ch::make_ramp_fn(start, true,true),
+            ch::make_linear_hatching_brush_fn(
+                ch::make_lerped_normal_dist_fn(10, 25, 100, 20),
+                ch::make_lerped_normal_dist_fn(100, 20, 0, 0.05),
+                ch::make_lerped_normal_dist_fn(7, 0.5, 0.75, 0.05),
+                ch::make_default_hatching_unit()
+            ),
+            ch::make_one_param_brush_adaptor(ch::rotate, ch::make_constant_fn(theta)),
+            ch::make_ramp_fn(0.20, false, true),
+            ch::disintegrate
+        }
+    );
+}
 
-    ch::debug();
+int main()
+{
+    auto brush = ch::make_run_pipeline_fn(ch::brush_pipeline{
+        ch::make_merge_fn({
+            make_pipeline_fn(std::numbers::pi / 4.0, 0),
+            make_pipeline_fn(-std::numbers::pi / 4.0, 0.5)
+        }),
+        ch::make_random_brush_adaptor(ch::jiggle, ch::normal_rnd_fn(0.0, 0.02))
+    });
 
-    cv::waitKey();
+    
+    int n = 100;
+
+    for (int i = 0; i <= n; i++) {
+        auto crosshatching = brush(i * (1.0 / n));
+        auto mat = ch::paint_cross_hatching(1, crosshatching);
+        cv::imshow("crosshatch", mat);
+        int k = cv::waitKey(0);
+    }
 
     return 0;
 }

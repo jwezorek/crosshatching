@@ -6,6 +6,10 @@
 namespace {
 	std::random_device rd;
 	std::mt19937 random(rd());
+
+	double ramp_up_right(double t, double k) {
+		return (t <= k) ? 0.0 : (t - k) / (1.0 - k);
+	}
 }
 
 std::string ch::svg_header(int wd, int hgt, bool bkgd_rect)
@@ -54,4 +58,14 @@ ch::rnd_fn ch::normal_rnd_fn(double mean, double stddev)
 ch::rnd_fn ch::const_rnd_fn(double val)
 {
 	return [val]() {return val; };
+}
+
+double ch::ramp(double t, double k, bool right, bool up) {
+	if (right) {
+		return up ? ramp_up_right(t, k) : 1.0 - ramp_up_right(t, k);
+	} else {
+		t = 1.0 - t;
+		k = 1.0 - k;
+		return up ? 1.0 - ramp_up_right(t, k) : ramp_up_right(t, k);
+	}
 }

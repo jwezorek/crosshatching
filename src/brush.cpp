@@ -73,11 +73,25 @@ ch::param_unit_of_hatching_fn ch::make_default_hatching_unit() {
     };
 }
 
-ch::brush_adapter_fn ch::make_one_param_brush_adaptor_fn(std::function< ch::hatching_range(ch::hatching_range, double)> fn, param_adapter_fn param) {
+ch::brush_adapter_fn ch::make_one_param_brush_adaptor(brush_adapter_fn fn, param_adapter_fn param) {
     return [fn, param](hatching_range input, double t)->hatching_range {
         return fn(input, param(t));
     };
 }
+
+ch::brush_adapter_fn ch::make_random_brush_adaptor(random_brush_adaptor_fn fn, rnd_fn rnd) {
+    return [fn, rnd](hatching_range input, double t)->hatching_range {
+        return fn(input, rnd);
+    };
+}
+
+/*
+ch::param_adapter_fn ch::make_one_parameter_param_adapter(ch::param_adapter_fn fn, ch::param_adapter_fn arg) {
+    return [fn, arg]( double t)->double {
+        return fn(arg(t));
+    };
+}
+*/
 
 ch::brush_fn ch::make_linear_hatching_brush_fn(const param_adapter_fn& run_length, const param_adapter_fn& space_length,
     const param_adapter_fn& vert_space, const param_unit_of_hatching_fn& h_fn)
@@ -105,6 +119,11 @@ ch::brush_fn ch::make_merge_fn(const std::vector<ch::brush_fn>& brushes) {
             rv::transform([t](auto fn)->hatching_range {return fn(t); })
         );
     };
+}
+
+ch::param_adapter_fn ch::make_ramp_fn(double k, bool right, bool up)
+{
+    return [k, up, right](double t) {return ch::ramp(t, k, right, up); };
 }
 
 //std::map<double, double> gray_to_param_;
