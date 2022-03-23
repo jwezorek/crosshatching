@@ -178,7 +178,7 @@ void debug(const range_queue& input) {
     std::cout << "\n";
 }
 
-double ch::brush::get_or_sample(double param) {
+double ch::brush::get_or_sample_param(double param) {
     auto iter = param_to_gray_.find(param);
     if (iter != param_to_gray_.end()) {
         return iter->second;
@@ -190,12 +190,27 @@ double ch::brush::get_or_sample(double param) {
     return gray;
 }
 
+double ch::brush::build_between(double gray, gray_map_iter left, gray_map_iter right, double epsilon)
+{
+    double mid_param = (left->second + right->second) / 2.0;
+    auto mid_gray_value = get_or_sample_param(mid_param);
+    if (std::abs(mid_gray_value - gray) < epsilon) {
+        return mid_param;
+    }
+    auto mid_iter = gray_to_param_.find(mid_gray_value);
+    if (gray < mid_gray_value) {
+        return build_between(gray, left, mid_iter, epsilon);
+    } else {
+        return build_between(gray, mid_iter, right, epsilon);
+    }
+}
+
 void ch::brush::build(double epsilon) {
     range_queue queue(compare_items);
 
     auto make_item = [this](double left, double right)->range_queue_item {
-        auto left_gray = get_or_sample(left);
-        auto right_gray = get_or_sample(right);
+        auto left_gray = get_or_sample_param(left);
+        auto right_gray = get_or_sample_param(right);
         return {
             left,
             right,
@@ -216,9 +231,41 @@ void ch::brush::build(double epsilon) {
         }
     }
 }
+
+void ch::brush::build_n(int n)
+{
+    double delta = 1.0 / static_cast<double>(n);
+    for (int i = 0; i <= n; ++i) {
+        get_or_sample_param(delta * i);
+    }
+}
+
+double ch::brush::build_to_gray_level(double gray_level, double epsilon) {
+    auto right = gray_to_param_.lower_bound(gray_level);
+    auto left = (right != gray_to_param_.begin()) ? std::prev(right) : right;
+    if (std::abs(gray_level - left->first) < epsilon) {
+        return left->second;
+    }
+    if (std::abs(gray_level - right->first) < epsilon) {
+        return right->second;
+    }
+    return build_between(gray_level, left, right, epsilon);
+}
     
-ch::hatching_range ch::brush::get_hatching(double gray_level, int wd) const {
-    auto left = gray_to_param_.lower_bound(gray_level);
-    auto right = std::next(left);
-    return {};
+ch::hatching_range ch::brush::get_hatching(double gray_level, double epsilon) {
+    if (gray_level < min_gray_level()) {
+        return get_hatching(ch::brush::min_gray_level(), epsilon);
+    } else if (gray_level > max_gray_level()) {
+        return get_hatching(ch::brush::max_gray_level(), epsilon);
+    }
+    auto param = build_to_gray_level(gray_level, epsilon);
+    return brush_fn_(param);
+}
+
+double ch::brush::min_gray_level() const {
+    return gray_to_param_.begin()->first;
+}
+
+double ch::brush::max_gray_level() const {
+    return std::prev(gray_to_param_.end())->first;
 }

@@ -36,17 +36,23 @@ namespace ch {
 
     class brush {
     private:
+        using gray_map_iter = std::map<double, double>::iterator;
         std::map<double, double> gray_to_param_;
         std::unordered_map<double, double> param_to_gray_;
         brush_fn brush_fn_;
         int line_thickness_;
 
-        double get_or_sample(double param);
+        double get_or_sample_param(double param);
+        double build_between(double v, gray_map_iter left, gray_map_iter right, double epsilon);
+        double build_to_gray_level(double gray_level, double epsilon);
 
     public:
         brush(brush_fn fn, int line_thickness = 1);
         void build(double epsilon);
-        hatching_range get_hatching(double gray_level, int wd) const;
+        void build_n(int n);
+        hatching_range get_hatching(double gray_level, double epsilon);
+        double min_gray_level() const;
+        double max_gray_level() const;
     };
 
 }
