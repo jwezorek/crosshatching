@@ -134,10 +134,11 @@ ch::param_adapter_fn ch::make_ramp_fn(double k, bool right, bool up)
 //std::map<double, double> gray_to_param_;
 //brush_fn brush_fn_;
 //int line_thickness_;
-ch::brush::brush(brush_fn fn, int line_thickness, dimensions sz) :
+ch::brush::brush(brush_fn fn, int line_thickness, double epsilon, dimensions sz) :
     brush_fn_(fn),
     line_thickness_(line_thickness),
-    swatch_sz_{ sz }
+    swatch_sz_{ sz },
+    eps_(epsilon)
 {}
 
 struct range_queue_item {
@@ -201,22 +202,22 @@ double ch::brush::get_or_sample_param(double param) {
     return gray;
 }
 
-double ch::brush::build_between(double gray, gray_map_iter left, gray_map_iter right, double epsilon)
+double ch::brush::build_between(double gray, gray_map_iter left, gray_map_iter right)
 {
     double mid_param = (left->second + right->second) / 2.0;
     auto mid_gray_value = get_or_sample_param(mid_param);
-    if (std::abs(mid_gray_value - gray) < epsilon) {
+    if (std::abs(mid_gray_value - gray) < eps_) {
         return mid_param;
     }
     auto mid_iter = gray_to_param_.find(mid_gray_value);
     if (gray < mid_gray_value) {
-        return build_between(gray, left, mid_iter, epsilon);
+        return build_between(gray, left, mid_iter);
     } else {
-        return build_between(gray, mid_iter, right, epsilon);
+        return build_between(gray, mid_iter, right);
     }
 }
 
-void ch::brush::build(double epsilon) {
+void ch::brush::build() {
     if (!is_uinitiailized()) {
         throw std::runtime_error("brush is already built");
     }
@@ -238,7 +239,7 @@ void ch::brush::build(double epsilon) {
         //debug(queue);
         auto item = queue.top();
         queue.pop();
-        if (item.gray_level_right - item.gray_level_left > epsilon) {
+        if (item.gray_level_right - item.gray_level_left > eps_) {
             double mid = (item.left + item.right) / 2.0;
             queue.push(make_item(item.left, mid));
             queue.push(make_item(mid, item.right));
@@ -257,28 +258,28 @@ void ch::brush::build_n(int n)
     }
 }
 
-double ch::brush::build_to_gray_level(double gray_level, double epsilon) {
+double ch::brush::build_to_gray_level(double gray_level) {
     auto right = gray_to_param_.lower_bound(gray_level);
     auto left = (right != gray_to_param_.begin()) ? std::prev(right) : right;
-    if (std::abs(gray_level - left->first) < epsilon) {
+    if (std::abs(gray_level - left->first) < eps_) {
         return left->second;
     }
-    if (std::abs(gray_level - right->first) < epsilon) {
+    if (std::abs(gray_level - right->first) < eps_) {
         return right->second;
     }
-    return build_between(gray_level, left, right, epsilon);
+    return build_between(gray_level, left, right);
 }
     
-ch::crosshatching_swatch ch::brush::get_hatching(double gray_level, dimensions sz, double epsilon) {
+ch::crosshatching_swatch ch::brush::get_hatching(double gray_level, dimensions sz) {
     if (is_uinitiailized()) {
         throw std::runtime_error("brush is not built");
     }
     if (gray_level < min_gray_level()) {
-        return get_hatching(ch::brush::min_gray_level(), sz, epsilon);
+        return get_hatching(ch::brush::min_gray_level(), sz);
     } else if (gray_level > max_gray_level()) {
-        return get_hatching(ch::brush::max_gray_level(), sz, epsilon);
+        return get_hatching(ch::brush::max_gray_level(), sz);
     }
-    auto param = build_to_gray_level(gray_level, epsilon);
+    auto param = build_to_gray_level(gray_level);
     return brush_fn_(sz, param);
 }
 

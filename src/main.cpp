@@ -33,7 +33,7 @@ int main()
             ch::brush_pipeline{
                 ch::make_merge_fn({
                     make_pipeline_fn(std::numbers::pi / 4.0, 0),
-                    make_pipeline_fn(-std::numbers::pi / 4.0, 0.85)
+                    make_pipeline_fn(-std::numbers::pi / 4.0, 0.5)
                 }),
                 ch::make_random_brush_adaptor(ch::jiggle, ch::normal_rnd_fn(0.0, 0.02))
             }
@@ -46,10 +46,10 @@ int main()
     for (int i = 0; i <= n; i++) {
         double gray = i * (1.0 / n);
         std::cout << gray << "\n";   
-        auto crosshatching = br.get_hatching(gray, { 1024, 1024}, 0.001);
+        auto crosshatching = br.get_hatching(gray, { 1024, 1024});
         auto mat = ch::paint_cross_hatching(1, crosshatching);
         cv::imshow("crosshatch", mat);
-        int k = cv::waitKey(0);
+        int k = cv::waitKey(10);
     }
 
     return 0;

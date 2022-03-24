@@ -9,6 +9,7 @@
 namespace ch {
 
     constexpr int k_swatch_sz = 512;
+    constexpr double k_epsilon = 0.001;
 
     using brush_fn = std::function<ch::crosshatching_swatch(ch::dimensions sz, double t)>;
     using param_adapter_fn = std::function<double (double t)>;
@@ -44,17 +45,18 @@ namespace ch {
         brush_fn brush_fn_;
         int line_thickness_;
         dimensions swatch_sz_;
+        double eps_;
 
         bool is_uinitiailized() const;
         double get_or_sample_param(double param);
-        double build_between(double v, gray_map_iter left, gray_map_iter right, double epsilon);
-        double build_to_gray_level(double gray_level, double epsilon);
+        double build_between(double v, gray_map_iter left, gray_map_iter right);
+        double build_to_gray_level(double gray_level);
 
     public:
-        brush(brush_fn fn, int line_thickness = 1, dimensions swatch_sz = { k_swatch_sz });
-        void build(double epsilon);
+        brush(brush_fn fn, int line_thickness = 1, double epsilon = k_epsilon,  dimensions swatch_sz = { k_swatch_sz });
+        void build();
         void build_n(int n);
-        crosshatching_swatch get_hatching(double gray_level, dimensions sz, double epsilon);
+        crosshatching_swatch get_hatching(double gray_level, dimensions sz);
         double min_gray_level() const;
         double max_gray_level() const;
     };
