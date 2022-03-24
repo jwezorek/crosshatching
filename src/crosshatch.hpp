@@ -9,25 +9,36 @@
 
 namespace ch {
 
-    constexpr int k_swatch_sz = 512 ;
+    struct dimensions {
+        double wd;
+        double hgt;
+             
+        dimensions(double d = 0.0);
+        dimensions(double w, double h);
+    };
 
-    using hatching_range = ranges::any_view<polyline>;
-    using unit_of_hatching_fn = std::function<hatching_range(double, double, double, double)>;
+    using crosshatching_range = ranges::any_view<polyline>;
+    struct crosshatching_swatch {
+        crosshatching_range content;
+        dimensions sz;
+    };
+
+    using unit_of_hatching_fn = std::function<crosshatching_range(double, double, double, double)>;
 
     unit_of_hatching_fn make_shading_stroke(double sz_pcnt, double variance, bool centered);
     unit_of_hatching_fn make_brick_stroke();
-    hatching_range one_horz_stroke(double x1, double x2, double y, double hgt);
+    crosshatching_range one_horz_stroke(double x1, double x2, double y, double hgt);
 
-    hatching_range linear_crosshatching(const ch::rnd_fn& run_length, const ch::rnd_fn& space_length, const ch::rnd_fn& vert_space,
-        const unit_of_hatching_fn& h_fn = one_horz_stroke, int swatch_sz = k_swatch_sz);
-    hatching_range fragment(hatching_range rng, ch::rnd_fn frag);
-    hatching_range jitter(hatching_range rng, ch::rnd_fn jitter);
-    hatching_range jiggle(hatching_range rng, ch::rnd_fn jiggle);
-    hatching_range rotate(hatching_range rng, double theta);
-    hatching_range disintegrate(hatching_range rng, double amount);
+    crosshatching_swatch linear_crosshatching( rnd_fn run_length,  rnd_fn space_length, rnd_fn vert_space,
+        unit_of_hatching_fn h_fn = one_horz_stroke, dimensions sz = { 512,512 });
+    crosshatching_swatch fragment(crosshatching_swatch rng, ch::rnd_fn frag);
+    crosshatching_swatch jitter(crosshatching_swatch rng, ch::rnd_fn jitter);
+    crosshatching_swatch jiggle(crosshatching_swatch rng, ch::rnd_fn jiggle);
+    crosshatching_swatch rotate(crosshatching_swatch rng, double theta);
+    crosshatching_swatch disintegrate(crosshatching_swatch rng, double amount);
 
-    cv::Mat paint_cross_hatching(int thickness, hatching_range rng, int swatch_sz = k_swatch_sz);
-    double gray_level(int thickness, hatching_range rng);
-    void to_svg(const std::string& filename, int thickness, hatching_range rng, int swatch_sz = k_swatch_sz);
+    cv::Mat paint_cross_hatching(int thickness, crosshatching_swatch swatch);
+    double gray_level(int thickness, crosshatching_swatch rng);
+    void to_svg(const std::string& filename, int thickness, crosshatching_swatch swatch);
    
 }
