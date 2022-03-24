@@ -15,11 +15,12 @@ namespace {
 
     class pipeline_visitor {
     private:
+        double stroke_wd_;
         ch::dimensions sz_;
         double t_;
         ch::crosshatching_swatch hatching_;
     public:
-        pipeline_visitor(ch::dimensions sz, double t) : sz_(sz), t_(t) {
+        pipeline_visitor(double thickness, ch::dimensions sz, double t) : stroke_wd_(thickness), sz_(sz), t_(t) {
         }
 
         void operator()(const ch::param_adapter_fn& param_adapter) {
@@ -31,7 +32,7 @@ namespace {
         }
 
         void operator()(const ch::brush_fn& brush) {
-            hatching_ = brush(sz_,t_);
+            hatching_ = brush(stroke_wd_,sz_,t_);
         }
 
         ch::crosshatching_swatch output() const {
@@ -41,9 +42,9 @@ namespace {
 
 }
 
-ch::crosshatching_swatch ch::run_brush_pipeline(const brush_pipeline& pipeline, dimensions sz, double t)
+ch::crosshatching_swatch ch::run_brush_pipeline(const brush_pipeline& pipeline, double thickness, dimensions sz, double t)
 {
-    pipeline_visitor visitor(sz,t);
+    pipeline_visitor visitor(thickness,sz,t);
     for (const auto& item : pipeline) {
         std::visit(visitor, item);
     }
@@ -97,31 +98,33 @@ ch::param_adapter_fn ch::make_one_parameter_param_adapter(ch::param_adapter_fn f
 ch::brush_fn ch::make_linear_hatching_brush_fn(const param_adapter_fn& run_length, const param_adapter_fn& space_length,
     const param_adapter_fn& vert_space, const param_unit_of_hatching_fn& h_fn)
 {
-    return [=](ch::dimensions sz, double t)->crosshatching_swatch {
+    return [=](double stroke, ch::dimensions sz, double t)->crosshatching_swatch {
         return linear_crosshatching(
             [run_length, t]()->double {return run_length(t); },
             [space_length, t]()->double {return space_length(t); },
             [vert_space, t]()->double {return vert_space(t); },
             [t, h_fn](double a, double b, double c, double d)->crosshatching_range { return h_fn(t, a, b, c, d); },
-            sz
+            sz,
+            stroke
         );
     };
 }
 
 ch::brush_fn ch::make_run_pipeline_fn(const ch::brush_pipeline& pipeline) {
-    return [pipeline](ch::dimensions sz, double t)->crosshatching_swatch {
-        return run_brush_pipeline(pipeline, sz, t);
+    return [pipeline](double stroke_wd, ch::dimensions sz, double t)->crosshatching_swatch {
+        return run_brush_pipeline(pipeline, stroke_wd, sz, t);
     };
 }
 
 ch::brush_fn ch::make_merge_fn(const std::vector<ch::brush_fn>& brushes) {
-    return [brushes](dimensions sz, double t)->crosshatching_swatch {
+    return [brushes](double stroke_wd, dimensions sz, double t)->crosshatching_swatch {
         return {
             rv::join(
                 brushes |
-                rv::transform([sz,t](auto fn)->crosshatching_range { return fn(sz,t).content; })
+                rv::transform([stroke_wd,sz,t](auto fn)->crosshatching_range { return fn(stroke_wd, sz,t).content; })
             ),
-            sz
+            sz,
+            stroke_wd
         };
     };
 }
@@ -152,7 +155,7 @@ double sample(ch::dimensions sz, ch::brush_fn fn, double t, int n, int thickness
     std::vector<std::future<double>> samples(n);
 
     auto compute_gray_level = [sz](int th, ch::brush_fn f, double t)->double {
-        return ch::gray_level(th, f(sz, t));
+        return ch::gray_level(f(th, sz, t));
     };
     std::generate(samples.begin(), samples.end(),
         [=]() {return std::async(std::launch::async, compute_gray_level, thickness, fn, t); }
@@ -280,7 +283,7 @@ ch::crosshatching_swatch ch::brush::get_hatching(double gray_level, dimensions s
         return get_hatching(ch::brush::max_gray_level(), sz);
     }
     auto param = build_to_gray_level(gray_level);
-    return brush_fn_(sz, param);
+    return brush_fn_(line_thickness_, sz, param);
 }
 
 double ch::brush::min_gray_level() const {

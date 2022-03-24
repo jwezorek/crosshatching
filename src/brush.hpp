@@ -11,14 +11,14 @@ namespace ch {
     constexpr int k_swatch_sz = 512;
     constexpr double k_epsilon = 0.001;
 
-    using brush_fn = std::function<ch::crosshatching_swatch(ch::dimensions sz, double t)>;
+    using brush_fn = std::function<ch::crosshatching_swatch(double, ch::dimensions, double)>;
     using param_adapter_fn = std::function<double (double t)>;
     using brush_adapter_fn = std::function<ch::crosshatching_swatch(ch::crosshatching_swatch, double t)>;
     using brush_pipeline_item = std::variant<brush_fn, param_adapter_fn, brush_adapter_fn>;
     using brush_pipeline = std::vector<brush_pipeline_item>;
     using param_unit_of_hatching_fn = std::function<crosshatching_range(double, double, double, double, double)>;
     using random_brush_adaptor_fn = std::function<crosshatching_swatch(crosshatching_swatch rng, ch::rnd_fn)>;
-    ch::crosshatching_swatch run_brush_pipeline(const brush_pipeline& pipeline, dimensions sz, double t);
+    ch::crosshatching_swatch run_brush_pipeline(const brush_pipeline& pipeline, double thickness, dimensions sz, double t);
 
     param_adapter_fn make_constant_fn(double k);
     param_adapter_fn make_lerp_fn(double v1, double v2);

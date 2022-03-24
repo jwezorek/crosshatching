@@ -204,7 +204,7 @@ ch::crosshatching_range ch::one_horz_stroke(double x1, double x2, double y, doub
 }
 
 ch::crosshatching_swatch ch::linear_crosshatching( rnd_fn run_length, rnd_fn space_length, rnd_fn vert_space, 
-        unit_of_hatching_fn h_fn, ch::dimensions viewable_swatch_sz) {
+        unit_of_hatching_fn h_fn, ch::dimensions viewable_swatch_sz, double stroke_wd) {
     auto dim = (std::sqrt(2.0) * (viewable_swatch_sz.wd + viewable_swatch_sz.hgt)) / 2.0;
     auto swatch_sz = dimensions(dim);
     return {
@@ -213,7 +213,8 @@ ch::crosshatching_swatch ch::linear_crosshatching( rnd_fn run_length, rnd_fn spa
             rv::take_while([swatch_sz](const running_sum_item& rsi) { return rsi.sum < swatch_sz.hgt / 2.0; }) |
             rv::transform([=](const running_sum_item& rsi) {return row_of_crosshatching(swatch_sz.wd, rsi.next_item, rsi.sum, run_length, space_length, h_fn); })
         ),
-        viewable_swatch_sz
+        viewable_swatch_sz,
+        stroke_wd
     };
 }
 
@@ -225,7 +226,8 @@ ch::crosshatching_swatch ch::fragment(ch::crosshatching_swatch swatch, ch::rnd_f
                 return ::fragment(poly, frag);
             }
          ),
-        swatch.sz
+        swatch.sz,
+        swatch.stroke_wd
     };
 }
 
@@ -238,7 +240,8 @@ ch::crosshatching_swatch ch::jitter(ch::crosshatching_swatch swatch, ch::rnd_fn 
                 return ::jitter(poly, jit);
             }
         ),
-        swatch.sz
+        swatch.sz,
+        swatch.stroke_wd
     };
 }
 
@@ -250,7 +253,8 @@ ch::crosshatching_swatch ch::jiggle(ch::crosshatching_swatch swatch,  ch::rnd_fn
                     return ::jiggle(poly, jig);
                 }
             ),
-        swatch.sz
+        swatch.sz,
+        swatch.stroke_wd
     };
 }
 
@@ -258,7 +262,8 @@ ch::crosshatching_swatch ch::rotate(ch::crosshatching_swatch swatch, double thet
     matrix rotation = rotation_matrix(theta);
     return {
         ch::transform(swatch.content, rotation),
-        swatch.sz
+        swatch.sz,
+        swatch.stroke_wd
     };
 }
 
@@ -276,21 +281,22 @@ ch::crosshatching_swatch ch::disintegrate(ch::crosshatching_swatch swatch, doubl
                 return ch::uniform_rnd(0.0, 1.0) < amount;
             }
         ),
-        swatch.sz 
+        swatch.sz ,
+        swatch.stroke_wd
     };
 }
 
-cv::Mat ch::paint_cross_hatching(int thickness, ch::crosshatching_swatch swatch) {
+cv::Mat ch::paint_cross_hatching(ch::crosshatching_swatch swatch) {
     cv::Mat mat(static_cast<int>(swatch.sz.hgt), static_cast<int>(swatch.sz.wd), CV_8U, 255);
     for (const auto& ls : swatch.content) {
-        ch::paint_polyline(mat, ls, thickness, 0, point{ swatch.sz.wd / 2.0, swatch.sz.hgt / 2.0 });
+        ch::paint_polyline(mat, ls, swatch.stroke_wd, 0, point{ swatch.sz.wd / 2.0, swatch.sz.hgt / 2.0 });
     }
     return mat;
 }
 
-double ch::gray_level(int thickness, crosshatching_swatch swatch)
+double ch::gray_level(crosshatching_swatch swatch)
 {
-    auto mat = paint_cross_hatching(thickness, swatch);
+    auto mat = paint_cross_hatching(swatch);
     auto n = swatch.sz.wd  * swatch.sz.hgt;
     auto white_pixels = cv::countNonZero(mat);
     return static_cast<double>(n - white_pixels) / static_cast<double>(n);
@@ -308,14 +314,14 @@ std::string polyline_to_svg(const ch::polyline& poly, int thickness) {
     return ss.str();
 }
 
-void ch::to_svg(const std::string& filename, int thickness, crosshatching_swatch swatch)
+void ch::to_svg(const std::string& filename, crosshatching_swatch swatch)
 {
     std::ofstream outfile(filename);
 
     outfile << svg_header(static_cast<int>(swatch.sz.wd), static_cast<int>(swatch.sz.hgt));
 
     for (const auto& poly : swatch.content)
-        outfile << polyline_to_svg(poly, thickness) << std::endl;
+        outfile << polyline_to_svg(poly, swatch.stroke_wd) << std::endl;
 
     outfile << "</svg>" << std::endl;
     outfile.close();

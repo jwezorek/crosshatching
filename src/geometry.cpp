@@ -88,7 +88,7 @@ ch::point ch::transform(const point& pt, const matrix& mat)
 	return { v[0], v[1] }; 
 }
 
-void ch::paint_polyline(cv::Mat& mat, const polyline& poly, int thickness, int color, point offset)
+void ch::paint_polyline(cv::Mat& mat, const polyline& poly, double thickness, int color, point offset)
 {
 	std::vector<cv::Point> int_pts(poly.size());
 	std::transform(poly.begin(), poly.end(), int_pts.begin(),
