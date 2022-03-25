@@ -16,6 +16,7 @@ namespace ch {
     matrix rotation_matrix(double theta);
     matrix rotation_matrix(double cos_theta, double sin_theta);
     matrix translation_matrix(double x, double y);
+    matrix translation_matrix(const cv::Point2d& pt);
     matrix scale_matrix(double x_scale, double y_scale);
 
     ranges::any_view<polyline> transform(ranges::any_view<polyline> polys, const matrix& mat);

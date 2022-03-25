@@ -32,6 +32,11 @@ ch::matrix ch::translation_matrix(double x, double y) {
 	return translation;
 }
 
+ch::matrix ch::translation_matrix(const cv::Point2d& pt)
+{
+	return translation_matrix(pt.x, pt.y);
+}
+
 ch::matrix ch::scale_matrix(double x_scale, double y_scale) {
 	ch::matrix scale;
 	scale <<
