@@ -320,6 +320,20 @@ namespace {
         return ss.str();
     }
 
+    ch::polygon_with_holes scale(const ch::polygon_with_holes& poly, double scale) {
+        return {
+            ch::scale(poly.border, scale),
+            poly.holes | rv::transform([scale](const auto& p) {return ch::scale(p, scale); }) | r::to_vector
+        };
+    }
+
+    ch::gray_level_plane scale(const ch::gray_level_plane& glp, double scale) {
+        return {
+            glp.gray,
+            glp.blobs | rv::transform([scale](const auto& poly) { return ::scale(poly,scale); }) | r::to_vector
+        };
+    }
+
 }
 
 cv::Mat ch::do_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize) {
@@ -358,6 +372,17 @@ std::vector<ch::gray_level_plane> ch::extract_gray_level_planes(const cv::Mat& g
             }
         ) |
         r::to<std::vector<ch::gray_level_plane>>();
+}
+
+std::vector<ch::gray_level_plane> ch::scale(const std::vector<gray_level_plane>& planes, double scale)
+{
+    return planes |
+        rv::transform(
+            [scale](const ch::gray_level_plane& plane)->ch::gray_level_plane {
+                return ::scale(plane, scale);
+            }
+        ) |
+        r::to_vector;
 }
 
 void ch::write_to_svg(const std::string& filename, const std::vector<gray_level_plane>& levels, int wd, int hgt, double scale)

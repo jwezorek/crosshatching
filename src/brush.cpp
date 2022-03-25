@@ -261,6 +261,11 @@ void ch::brush::build_n(int n)
     }
 }
 
+double ch::brush::stroke_width() const
+{
+    return line_thickness_;
+}
+
 double ch::brush::build_to_gray_level(double gray_level) {
     auto right = gray_to_param_.lower_bound(gray_level);
     auto left = (right != gray_to_param_.begin()) ? std::prev(right) : right;

@@ -11,8 +11,10 @@ namespace ch {
     using polyline = std::vector<point>;
 
     std::string svg_header(int wd, int hgt, bool bkgd_rect = false);
-    std::string polyline_to_svg(const ch::polyline& poly, int thickness);
+    std::string polyline_to_svg(const ch::polyline& poly, double thickness);
     std::string gray_to_svg_color(unsigned char gray);
+
+    polyline scale(const polyline& poly, double scale);
 
     using rnd_fn = std::function<double()>;
     double normal_rnd(double mean, double stddev);

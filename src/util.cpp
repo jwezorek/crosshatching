@@ -3,6 +3,9 @@
 #include <random>
 #include <iomanip>
 
+namespace r = ranges;
+namespace rv = ranges::views;
+
 namespace {
 	std::random_device rd;
 	std::mt19937 random(rd());
@@ -38,6 +41,13 @@ std::string ch::gray_to_svg_color(unsigned char gray)
 	return ss.str();
 }
 
+ch::polyline ch::scale(const polyline& poly, double scale)
+{
+	return poly |
+		rv::transform([scale](const auto& pt) { return scale * pt; }) |
+		r::to_vector;
+}
+
 double ch::normal_rnd(double mean, double stddev)
 {
 	std::normal_distribution<double> nd(mean, stddev);
@@ -70,7 +80,7 @@ double ch::ramp(double t, double k, bool right, bool up) {
 	}
 }
 
-std::string ch::polyline_to_svg(const ch::polyline& poly, int thickness) {
+std::string ch::polyline_to_svg(const ch::polyline& poly, double thickness) {
 	std::stringstream ss;
 	ss << "<polyline points=\"";
 	for (const auto& pt : poly) {

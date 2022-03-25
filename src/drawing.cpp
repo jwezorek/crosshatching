@@ -1,6 +1,9 @@
 #include "drawing.hpp"
 #include "geometry.hpp"
 #include "clipper.hpp"
+#include <opencv2/core.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 #include <stdexcept>
 #include <fstream>
 
@@ -107,6 +110,24 @@ namespace {
 
         return clipper_paths_to_polylines(clipped, scale);
     }
+
+    std::vector<ch::polyline> gray_levels_to_strokes(const std::vector<ch::gray_level_plane>& glps, ch::brush& brush) {
+        return {};
+    }
+}
+
+ch::drawing ch::generate_crosshatched_drawing(const std::string& image_file, segmentation_params params, double scale, brush& br)
+{
+    cv::Mat img = cv::imread(image_file);
+    cv::Mat mat = ch::do_segmentation(img, params.sigmaS, params.sigmaR, params.minSize);
+    auto gray_levels = extract_gray_level_planes(mat);
+    gray_levels = ch::scale(gray_levels, scale);
+
+    return ch::drawing{
+        gray_levels_to_strokes(gray_levels, br),
+        { img.cols * scale, img.rows * scale},
+        br.stroke_width()
+    };
 }
 
 std::vector<ch::polyline> ch::crosshatched_poly_with_holes(const ch::polygon_with_holes& input, double color, ch::brush& brush)
