@@ -1,5 +1,6 @@
 #pragma once
 
+#include "util.hpp"
 #include <opencv2/core.hpp>
 #include <Eigen/Dense>
 #include <vector>
@@ -8,10 +9,8 @@
 
 namespace ch {
 
-    using point = cv::Point2d;
-    using matrix = Eigen::Matrix<double, 3, 3>;
     using vec = Eigen::Matrix<double, 3, 1>;
-    using polyline = std::vector<point>;
+    using matrix = Eigen::Matrix<double, 3, 3>;
 
     matrix rotation_matrix(double theta);
     matrix rotation_matrix(double cos_theta, double sin_theta);

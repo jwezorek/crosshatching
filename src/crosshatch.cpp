@@ -302,18 +302,6 @@ double ch::gray_level(crosshatching_swatch swatch)
     return static_cast<double>(n - white_pixels) / static_cast<double>(n);
 }
 
-//TODO: there needs to be an offset in here because of the new way rotation is handled.
-std::string polyline_to_svg(const ch::polyline& poly, int thickness) {
-    std::stringstream ss;
-    ss << "<polyline points=\"";
-    for (const auto& pt : poly) {
-       
-        ss << " " << pt.x << "," << pt.y;
-    }
-    ss << "\" style=\"fill:none;stroke:black;stroke-width:" << thickness << "\" />";
-    return ss.str();
-}
-
 void ch::to_svg(const std::string& filename, crosshatching_swatch swatch)
 {
     std::ofstream outfile(filename);

@@ -1,6 +1,7 @@
 #include "geometry.hpp"
 #include "crosshatch.hpp"
 #include "brush.hpp"
+#include "drawing.hpp"
 #include "imgproc.hpp"
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
@@ -42,15 +43,30 @@ int main()
     );
     br.build_n(10);
     
-    int n = 100;
-    for (int i = 0; i <= n; i++) {
-        double gray = i * (1.0 / n);
-        std::cout << gray << "\n";   
-        auto crosshatching = br.get_hatching(gray, { 1024, 1024});
-        auto mat = ch::paint_cross_hatching(crosshatching);
-        cv::imshow("crosshatch", mat);
-        int k = cv::waitKey(10);
-    }
+    ch::polygon_with_holes poly = { {
+            {10,10},
+            {10,60},
+            {20,60},
+            {20,40},
+            {30,40},
+            {30,60},
+            {40,60},
+            {40,10},
+            {30,10},
+            {30,30},
+            {20,30},
+            {20,10}
+        },
+        {}
+    };
+
+    ch::drawing drawing = {
+        ch::crosshatched_poly_with_holes(poly, 0.75, br),
+        {70,70},
+        1
+    };
+
+    ch::to_svg("C:\\test\\H.svg", drawing);
 
     return 0;
 }

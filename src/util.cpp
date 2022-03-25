@@ -69,3 +69,14 @@ double ch::ramp(double t, double k, bool right, bool up) {
 		return up ? 1.0 - ramp_up_right(t, k) : ramp_up_right(t, k);
 	}
 }
+
+std::string ch::polyline_to_svg(const ch::polyline& poly, int thickness) {
+	std::stringstream ss;
+	ss << "<polyline points=\"";
+	for (const auto& pt : poly) {
+
+		ss << " " << pt.x << "," << pt.y;
+	}
+	ss << "\" style=\"fill:none;stroke:black;stroke-width:" << thickness << "px\" />";
+	return ss.str();
+}
