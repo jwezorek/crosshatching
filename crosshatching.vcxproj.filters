@@ -28,6 +28,12 @@
     <ClCompile Include="src\util.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\clipper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\drawing.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\brush.hpp">
@@ -46,6 +52,12 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="src\util.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\clipper.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\drawing.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -20,8 +20,6 @@ namespace ch {
     cv::Mat do_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize);
     std::vector<gray_level_plane> extract_gray_level_planes(const cv::Mat& gray_scale_img);
     void write_to_svg(const std::string& filename, const std::vector<gray_level_plane>& levels, int wd, int hgt, double scale);
-    std::string to_string(const gray_level_plane& glp);
-    std::string to_string(const polygon_with_holes& poly);
 
     void debug();
 }

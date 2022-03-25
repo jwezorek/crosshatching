@@ -14,7 +14,7 @@ ch::brush_fn make_pipeline_fn(double theta, double start) {
         ch::brush_pipeline{    
             ch::make_ramp_fn(start, true,true),
             ch::make_linear_hatching_brush_fn(
-                ch::make_lerped_normal_dist_fn(100, 50, 1000, 100),
+                ch::make_lerped_normal_dist_fn(0, 50, 800, 100),
                 ch::make_lerped_normal_dist_fn(200, 20, 0, 0.05),
                 ch::make_lerped_normal_dist_fn(7, 0.5, 0.5, 0.05),
                 ch::make_default_hatching_unit()
@@ -33,7 +33,7 @@ int main()
             ch::brush_pipeline{
                 ch::make_merge_fn({
                     make_pipeline_fn(std::numbers::pi / 4.0, 0),
-                    make_pipeline_fn(-std::numbers::pi / 4.0, 0.5)
+                    make_pipeline_fn(-std::numbers::pi / 4.0, 0.65)
                 }),
                 ch::make_random_brush_adaptor(ch::jiggle, ch::normal_rnd_fn(0.0, 0.02))
             }
