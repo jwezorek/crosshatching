@@ -42,7 +42,10 @@ int main()
         1
     );
     br.build_n(10);
-    
+
+    auto drawing = ch::generate_crosshatched_drawing("C:\\test\\grace2.png", { 8, 3.0f, 12 }, 4.0, br);
+    ch::to_svg("C:\\test\\grace2-test.svg", drawing);
+    /*
     ch::polygon_with_holes poly = { {
             {10,10},
             {10,60},
@@ -65,8 +68,9 @@ int main()
         {70,70},
         1
     };
+    */
 
-    ch::to_svg("C:\\test\\H.svg", drawing);
+    
 
     return 0;
 }

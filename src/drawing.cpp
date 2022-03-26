@@ -6,6 +6,7 @@
 #include <opencv2/imgproc.hpp>
 #include <stdexcept>
 #include <fstream>
+#include <iostream>
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -112,7 +113,23 @@ namespace {
     }
 
     std::vector<ch::polyline> gray_levels_to_strokes(const std::vector<ch::gray_level_plane>& glps, ch::brush& brush) {
-        return {};
+        std::vector<ch::polyline> output;
+        output.reserve(10000);
+        int count = 0;
+        for (const auto& glp : glps) {
+            std::cout << ++count << " of " << glps.size() << "\n";
+            double gray = 1.0 - static_cast<double>(glp.gray) / 255.0;
+            if (gray == 0.0) {
+                continue;
+            }
+            int j = 0;
+            for (const auto& poly : glp.blobs) {
+                std::cout << "   " << ++j << " of " << glp.blobs.size() << "\n";
+                auto strokes = ch::crosshatched_poly_with_holes(poly, gray, brush);
+                std::copy(strokes.begin(), strokes.end(), std::back_inserter(output));
+            }
+        }
+        return output;
     }
 }
 
