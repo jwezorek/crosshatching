@@ -21,10 +21,8 @@
   <ItemGroup>
     <ClCompile Include="src\brush.cpp" />
     <ClCompile Include="src\clipper.cpp" />
-    <ClCompile Include="src\crosshatch.cpp" />
     <ClCompile Include="src\drawing.cpp" />
     <ClCompile Include="src\geometry.cpp" />
-    <ClCompile Include="src\imgproc.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\meanshift.cpp" />
     <ClCompile Include="src\util.cpp" />
@@ -32,10 +30,8 @@
   <ItemGroup>
     <ClInclude Include="src\brush.hpp" />
     <ClInclude Include="src\clipper.hpp" />
-    <ClInclude Include="src\crosshatch.hpp" />
     <ClInclude Include="src\drawing.hpp" />
     <ClInclude Include="src\geometry.hpp" />
-    <ClInclude Include="src\imgproc.hpp" />
     <ClInclude Include="src\meanshift.hpp" />
     <ClInclude Include="src\util.hpp" />
   </ItemGroup>

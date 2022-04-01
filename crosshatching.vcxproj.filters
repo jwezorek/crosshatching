@@ -10,9 +10,6 @@
     <ClCompile Include="src\brush.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\crosshatch.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\geometry.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -20,9 +17,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\meanshift.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgproc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\util.cpp">
@@ -39,16 +33,10 @@
     <ClInclude Include="src\brush.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\crosshatch.hpp">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\geometry.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="src\meanshift.hpp">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\imgproc.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="src\util.hpp">

@@ -1,8 +1,6 @@
 #include "geometry.hpp"
-#include "crosshatch.hpp"
 #include "brush.hpp"
 #include "drawing.hpp"
-#include "imgproc.hpp"
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <numbers>
@@ -43,8 +41,8 @@ int main()
     );
     br.build_n(10);
 
-    auto drawing = ch::generate_crosshatched_drawing("C:\\test\\grace2.png", { 8, 3.0f, 12 }, 4.0, br);
-    ch::to_svg("C:\\test\\grace2-test.svg", drawing);
+    auto drawing = ch::generate_crosshatched_drawing("C:\\test\\paris.png", { 8, 3.0f, 12 }, 4.0, br);
+    ch::to_svg("C:\\test\\paris.svg", drawing);
 
     return 0;
 }
