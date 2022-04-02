@@ -5,9 +5,49 @@
 #include <opencv2/imgcodecs.hpp>
 #include <numbers>
 #include <stdexcept>
+#include <array>
 
 namespace {
 
+	QMenu* create_view_menu(crosshatching* parent) {
+		auto tr = [parent](const char* str) {return parent->tr(str); };
+		QMenu* view_menu = new QMenu(tr("&View"));
+
+		QAction* action_bw = new QAction(tr("Black and white"), parent);
+		action_bw->setCheckable(true);
+
+		QActionGroup* scale_actions = new QActionGroup(parent);
+		std::array<int, 5> scales = { 100, 125, 150, 175, 200 };
+		for (int scale : scales) {
+			std::string str = std::to_string(scale) + "%";
+			auto scale_action = new QAction(QString::fromStdString(str), parent);
+			scale_action->setCheckable(true);
+			scale_actions->addAction(scale_action);
+		}
+		scale_actions->setExclusive(true);
+		scale_actions->setEnabled(true);
+
+		view_menu->addAction(action_bw);
+		view_menu->addSeparator()->setText(tr("Scale"));
+		view_menu->addActions(scale_actions->actions());
+
+		return view_menu;
+	}
+
+	QMenu* create_file_menu(crosshatching* parent) {
+		auto tr = [parent](const char* str) {return parent->tr(str); };
+		QMenu* file_menu = new QMenu(tr("&File"));
+
+		QAction* actionOpen = new QAction(tr("&Open"), parent);
+		parent->connect(actionOpen, &QAction::triggered, parent, &crosshatching::open);
+		file_menu->addAction(actionOpen);
+
+		QAction* action_generate = new QAction(tr("&Generate"), parent);
+		parent->connect(action_generate, &QAction::triggered, parent, &crosshatching::generate);
+		file_menu->addAction(action_generate);
+
+		return file_menu;
+	}
 }
 
 crosshatching::crosshatching(QWidget *parent)
@@ -81,14 +121,8 @@ void crosshatching::generate() {
 
 void crosshatching::createMainMenu()
 {
-	auto file_menu = menuBar()->addMenu(tr("&File"));
-	QAction* actionOpen = new QAction(tr("&Open"), this);
-	connect(actionOpen, &QAction::triggered, this, &crosshatching::open);
-	file_menu->addAction(actionOpen);
-
-	QAction* action_generate = new QAction(tr("&Generate"), this);
-	connect(action_generate, &QAction::triggered, this, &crosshatching::generate);
-	file_menu->addAction(action_generate);
+	menuBar()->addMenu(create_file_menu(this));
+	menuBar()->addMenu(create_view_menu(this));
 }
 
 QWidget* crosshatching::createContent()
@@ -102,6 +136,7 @@ QWidget* crosshatching::createContent()
 
 	QScrollArea* scroller = new QScrollArea();
 	scroller->setWidget(image_box_ = new QLabel());
+	scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
 	QSplitter* splitter = new QSplitter();
 	splitter->addWidget(tab);
