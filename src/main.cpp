@@ -1,48 +1,44 @@
-#include "geometry.hpp"
-#include "brush.hpp"
-#include "drawing.hpp"
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
-#include <numbers>
-#include <chrono>
-#include <iostream>
+#include "ui/crosshatching.h"
+#include <QtWidgets/QApplication>
+#include <qstylefactory.h>
 
-
-ch::brush_fn make_pipeline_fn(double theta, double start) {
-    return ch::make_run_pipeline_fn(
-        ch::brush_pipeline{    
-            ch::make_ramp_fn(start, true,true),
-            ch::make_linear_hatching_brush_fn(
-                ch::make_lerped_normal_dist_fn(0, 50, 800, 100),
-                ch::make_lerped_normal_dist_fn(200, 20, 0, 0.05),
-                ch::make_lerped_normal_dist_fn(7, 0.5, 0.5, 0.05),
-                ch::make_default_hatching_unit()
-            ),
-            ch::make_one_param_brush_adaptor(ch::rotate, ch::make_constant_fn(theta)),
-            ch::make_ramp_fn(0.20, false, true),
-            ch::disintegrate
-        }
-    );
+void setDarkTheme() {
+	// set style
+	qApp->setStyle(QStyleFactory::create("Fusion"));
+	// increase font size for better reading
+	QFont defaultFont = QApplication::font();
+	defaultFont.setPointSize(defaultFont.pointSize() + 2);
+	qApp->setFont(defaultFont);
+	// modify palette to dark
+	QPalette darkPalette;
+	darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
+	darkPalette.setColor(QPalette::WindowText, Qt::white);
+	darkPalette.setColor(QPalette::Disabled, QPalette::WindowText, QColor(127, 127, 127));
+	darkPalette.setColor(QPalette::Base, QColor(42, 42, 42));
+	darkPalette.setColor(QPalette::AlternateBase, QColor(66, 66, 66));
+	darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
+	darkPalette.setColor(QPalette::ToolTipText, Qt::white);
+	darkPalette.setColor(QPalette::Text, Qt::white);
+	darkPalette.setColor(QPalette::Disabled, QPalette::Text, QColor(127, 127, 127));
+	darkPalette.setColor(QPalette::Dark, QColor(35, 35, 35));
+	darkPalette.setColor(QPalette::Shadow, QColor(20, 20, 20));
+	darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
+	darkPalette.setColor(QPalette::ButtonText, Qt::white);
+	darkPalette.setColor(QPalette::Disabled, QPalette::ButtonText, QColor(127, 127, 127));
+	darkPalette.setColor(QPalette::BrightText, Qt::red);
+	darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
+	darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
+	darkPalette.setColor(QPalette::Disabled, QPalette::Highlight, QColor(80, 80, 80));
+	darkPalette.setColor(QPalette::HighlightedText, Qt::white);
+	darkPalette.setColor(QPalette::Disabled, QPalette::HighlightedText, QColor(127, 127, 127));
+	qApp->setPalette(darkPalette);
 }
 
-int main()
+int main(int argc, char *argv[])
 {
-    ch::brush br(
-        ch::make_run_pipeline_fn(
-            ch::brush_pipeline{
-                ch::make_merge_fn({
-                    make_pipeline_fn(std::numbers::pi / 4.0, 0),
-                    make_pipeline_fn(-std::numbers::pi / 4.0, 0.65)
-                }),
-                ch::make_random_brush_adaptor(ch::jiggle, ch::normal_rnd_fn(0.0, 0.02))
-            }
-        ),
-        1
-    );
-    br.build_n(10);
-
-    auto drawing = ch::generate_crosshatched_drawing("C:\\test\\paris.png", { 8, 3.0f, 12 }, 4.0, br);
-    ch::to_svg("C:\\test\\paris.svg", drawing);
-
-    return 0;
+    QApplication a(argc, argv);
+	setDarkTheme();
+    crosshatching w;
+    w.show();
+    return a.exec();
 }

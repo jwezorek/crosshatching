@@ -3,50 +3,77 @@
   <ItemGroup>
     <Filter Include="Source Files">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>qrc;rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Translation Files">
+      <UniqueIdentifier>{639EADAA-A684-42e4-A9AD-28FC9BCB8F7C}</UniqueIdentifier>
+      <Extensions>ts</Extensions>
+    </Filter>
+    <Filter Include="Source Files\ui">
+      <UniqueIdentifier>{d282810d-9f76-4ca9-aa4d-70cec484cb67}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\crosshatching">
+      <UniqueIdentifier>{073aae5e-350c-4ab2-b6eb-7dfc51a8a003}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\brush.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\geometry.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\meanshift.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="src\ui\crosshatching.cpp">
+      <Filter>Source Files\ui</Filter>
     </ClCompile>
-    <ClCompile Include="src\util.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="src\crosshatching\brush.cpp">
+      <Filter>Source Files\crosshatching</Filter>
     </ClCompile>
-    <ClCompile Include="src\clipper.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="src\crosshatching\clipper.cpp">
+      <Filter>Source Files\crosshatching</Filter>
     </ClCompile>
-    <ClCompile Include="src\drawing.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="src\crosshatching\drawing.cpp">
+      <Filter>Source Files\crosshatching</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crosshatching\geometry.cpp">
+      <Filter>Source Files\crosshatching</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crosshatching\meanshift.cpp">
+      <Filter>Source Files\crosshatching</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crosshatching\util.cpp">
+      <Filter>Source Files\crosshatching</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\brush.hpp">
-      <Filter>Source Files</Filter>
+    <QtRcc Include="src\ui\crosshatching.qrc">
+      <Filter>Resource Files</Filter>
+    </QtRcc>
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="src\ui\crosshatching.h">
+      <Filter>Source Files\ui</Filter>
+    </QtMoc>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\crosshatching\brush.hpp">
+      <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
-    <ClInclude Include="src\geometry.hpp">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="src\crosshatching\clipper.hpp">
+      <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
-    <ClInclude Include="src\meanshift.hpp">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="src\crosshatching\drawing.hpp">
+      <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
-    <ClInclude Include="src\util.hpp">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="src\crosshatching\geometry.hpp">
+      <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
-    <ClInclude Include="src\clipper.hpp">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="src\crosshatching\meanshift.hpp">
+      <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
-    <ClInclude Include="src\drawing.hpp">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="src\crosshatching\util.hpp">
+      <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

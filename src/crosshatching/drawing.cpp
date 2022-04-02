@@ -450,7 +450,6 @@ namespace {
     }
 }
 
-
 cv::Mat ch::do_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize) {
     cv::Mat output;
     cv::Mat labels;
@@ -522,7 +521,8 @@ void ch::debug() {
 }
 
 ch::drawing ch::generate_crosshatched_drawing(const std::string& image_file, segmentation_params params, double scale, brush& br)
-{
+{   
+    
     cv::Mat img = cv::imread(image_file);
     cv::Mat mat = ch::do_segmentation(img, params.sigmaS, params.sigmaR, params.minSize);
     auto gray_levels = extract_gray_level_planes(mat);
