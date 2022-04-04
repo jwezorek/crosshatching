@@ -32,4 +32,7 @@ namespace ch {
         );
     }
 
+    double sigmoidal_contrast(double u, double contrast, double thresh);
+    uchar sigmoidal_contrast(uchar u, double contrast, double thresh);
+    std::string to_string(double val, int precision);
 }

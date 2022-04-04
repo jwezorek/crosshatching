@@ -14,6 +14,12 @@ public:
     void open();
     void generate();
 
+signals:
+    void change_source_image(cv::Mat& img);
+
+public slots:
+    void handle_source_image_change(cv::Mat& img);
+
 private:
     void createMainMenu();
     QWidget* createContent();

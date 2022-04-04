@@ -80,6 +80,20 @@ double ch::ramp(double t, double k, bool right, bool up) {
 	}
 }
 
+double ch::sigmoidal_contrast(double u, double contrast, double thresh)
+{
+	return (1.0 / (1.0 + std::exp(contrast * (thresh - u))) - 1.0 / (1.0 + std::exp(contrast * thresh))) /
+		(1.0 / (1.0 + std::exp(contrast * (thresh - 1.0))) - 1.0 / (1.0 + std::exp(contrast * thresh)));
+}
+
+uchar ch::sigmoidal_contrast(uchar u, double contrast, double thresh) {
+	return static_cast<uchar>(
+		255.0 * sigmoidal_contrast(
+			static_cast<double>(u) / 255.0, contrast, thresh
+		) 
+	);
+}
+
 std::string ch::polyline_to_svg(const ch::polyline& poly, double thickness) {
 	std::stringstream ss;
 	ss << "<polyline points=\"";
@@ -88,5 +102,11 @@ std::string ch::polyline_to_svg(const ch::polyline& poly, double thickness) {
 		ss << " " << pt.x << "," << pt.y;
 	}
 	ss << "\" style=\"fill:none;stroke:black;stroke-width:" << thickness << "px\" />";
+	return ss.str();
+}
+
+std::string ch::to_string(double val, int precision) {
+	std::stringstream ss;
+	ss << std::fixed << std::setprecision(2) << val;
 	return ss.str();
 }

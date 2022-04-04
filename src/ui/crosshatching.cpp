@@ -1,6 +1,8 @@
 #include "crosshatching.h"
 #include "../crosshatching/drawing.hpp"
+#include "../crosshatching/util.hpp"
 #include <QtWidgets>
+#include <QSlider>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <numbers>
@@ -8,6 +10,9 @@
 #include <array>
 
 namespace {
+
+	constexpr auto k_view_menu_index = 1;
+	constexpr auto k_controls_width = 400;
 
 	QMenu* create_view_menu(crosshatching* parent) {
 		auto tr = [parent](const char* str) {return parent->tr(str); };
@@ -56,6 +61,7 @@ crosshatching::crosshatching(QWidget *parent)
 	resize(QGuiApplication::primaryScreen()->availableGeometry().size() * 0.7);
 	createMainMenu();
     setCentralWidget(createContent());
+	handle_source_image_change(src_image_);
 }
 
 void crosshatching::open()
@@ -73,6 +79,8 @@ void crosshatching::open()
 	image_box_->setFixedHeight(hgt);
 	image_box_->setFixedWidth(wd);
 	image_box_->setPixmap(QPixmap::fromImage(QImage(src_image_.data, wd,  hgt, stride, QImage::Format_BGR888)));
+
+	change_source_image(src_image_);
 }
 
 void crosshatching::generate() {
@@ -121,16 +129,85 @@ void crosshatching::generate() {
 
 void crosshatching::createMainMenu()
 {
-	menuBar()->addMenu(create_file_menu(this));
-	menuBar()->addMenu(create_view_menu(this));
+	menuBar()->addMenu( create_file_menu(this) );
+	menuBar()->addMenu( create_view_menu(this) );
+	connect(this, &crosshatching::change_source_image, this, &crosshatching::handle_source_image_change);
 }
+
+void crosshatching::handle_source_image_change(cv::Mat& img) {
+	auto view_menu = menuBar()->actions()[k_view_menu_index];
+	if (img.empty()) {
+		view_menu->setEnabled(false);
+		return;
+	} 
+	view_menu->setEnabled(true);
+}
+
+QWidget* create_labeled_vert_slider(const QString& title, int range, double min, double max, double initial_val) {
+
+	auto pos_to_val = [=](double p) { 
+		return min + ((max - min) * p) / static_cast<double>(range); 
+	};
+	auto val_to_pos = [=](double v) {
+		return static_cast<int>(range * ((v - min) / (max - min)));
+	};
+	QWidget* box = new QWidget();
+	QVBoxLayout* layout = new QVBoxLayout();
+	QLabel* lbl_title = new QLabel(title);
+
+	QSlider* slider = new QSlider();
+	slider->setOrientation(Qt::Vertical);
+	slider->setMinimum(0);
+	slider->setMaximum(range);
+	slider->setTickPosition(QSlider::TicksBothSides);
+	slider->setTickInterval(10);
+
+	slider->setSliderPosition( val_to_pos(initial_val) );
+
+	QLabel* lbl_val = new QLabel(ch::to_string(initial_val,2).c_str());
+
+	layout->addWidget(lbl_title);
+	layout->addWidget(slider);
+	layout->addWidget(lbl_val);
+	box->setLayout(layout);
+
+	slider->connect(slider, &QSlider::valueChanged, 
+		[pos_to_val,lbl_val](int new_pos)->void {
+			lbl_val->setText(ch::to_string(pos_to_val(new_pos),2).c_str());
+		}
+	);
+
+	return box;
+}
+
+QWidget* create_preprocess_controls() {
+	QWidget* ctrls = new QWidget();
+	QHBoxLayout* layout = new QHBoxLayout();
+
+	QGroupBox* contrast_box = new QGroupBox("Contrast");
+	QHBoxLayout* cb_layout = new QHBoxLayout();
+	auto contrast_slider = create_labeled_vert_slider("beta", 100, 1, 20, 1);
+	auto thresh_slider = create_labeled_vert_slider("sigma", 100, 0, 1, 0.5);
+	cb_layout->addWidget(contrast_slider);
+	cb_layout->addWidget(thresh_slider);
+	contrast_box->setLayout(cb_layout);
+
+	auto scale_slider = create_labeled_vert_slider("Scale", 100, 20, 100, 100);
+
+	layout->addWidget(scale_slider);
+	layout->addWidget(contrast_box);
+
+	ctrls->setLayout(layout);
+	return ctrls;
+}
+
 
 QWidget* crosshatching::createContent()
 {
 	QTabWidget* tab = new QTabWidget();
-	tab->setMaximumWidth(300);
+	tab->setMaximumWidth(k_controls_width);
 
-	tab->addTab(new QWidget(), tr("Contrast"));
+	tab->addTab(create_preprocess_controls(), tr("Preprocess"));
 	tab->addTab(new QWidget(), tr("filter"));
 	tab->addTab(new QWidget(), tr("segmentation"));
 
