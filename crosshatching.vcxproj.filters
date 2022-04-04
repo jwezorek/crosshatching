@@ -9,10 +9,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>qrc;rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Translation Files">
-      <UniqueIdentifier>{639EADAA-A684-42e4-A9AD-28FC9BCB8F7C}</UniqueIdentifier>
-      <Extensions>ts</Extensions>
-    </Filter>
     <Filter Include="Source Files\ui">
       <UniqueIdentifier>{d282810d-9f76-4ca9-aa4d-70cec484cb67}</UniqueIdentifier>
     </Filter>
@@ -45,6 +41,9 @@
     <ClCompile Include="src\crosshatching\util.cpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClCompile>
+    <ClCompile Include="src\ui\settingctrls.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="src\ui\crosshatching.qrc">
@@ -53,6 +52,9 @@
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="src\ui\crosshatching.h">
+      <Filter>Source Files\ui</Filter>
+    </QtMoc>
+    <QtMoc Include="src\ui\settingctrls.hpp">
       <Filter>Source Files\ui</Filter>
     </QtMoc>
   </ItemGroup>

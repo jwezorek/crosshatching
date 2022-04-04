@@ -113,6 +113,7 @@
     <ClCompile Include="src\crosshatching\util.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\ui\crosshatching.cpp" />
+    <ClCompile Include="src\ui\settingctrls.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="src\ui\crosshatching.qrc" />
@@ -127,6 +128,7 @@
     <ClInclude Include="src\crosshatching\geometry.hpp" />
     <ClInclude Include="src\crosshatching\meanshift.hpp" />
     <ClInclude Include="src\crosshatching\util.hpp" />
+    <QtMoc Include="src\ui\settingctrls.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

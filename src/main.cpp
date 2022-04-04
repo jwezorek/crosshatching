@@ -1,6 +1,7 @@
 #include "ui/crosshatching.h"
 #include <QtWidgets/QApplication>
 #include <qstylefactory.h>
+#include <functional>
 
 void setDarkTheme() {
 	// set style
@@ -38,7 +39,7 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 	setDarkTheme();
-    crosshatching w;
+    ui::crosshatching w;
     w.show();
     return a.exec();
 }

@@ -1,29 +1,39 @@
 #pragma once
 
+#include "settingctrls.hpp"
 #include <QtWidgets>
 #include <QtWidgets/QMainWindow>
 #include <opencv2/core.hpp>
+#include <tuple>
 
-class crosshatching : public QMainWindow
-{
-    Q_OBJECT
+namespace ui {
 
-public:
-    crosshatching(QWidget *parent = Q_NULLPTR);
+    class crosshatching : public QMainWindow
+    {
+        Q_OBJECT
 
-    void open();
-    void generate();
+    public:
+        crosshatching(QWidget* parent = Q_NULLPTR);
 
-signals:
-    void change_source_image(cv::Mat& img);
+        void open();
+        void generate();
 
-public slots:
-    void handle_source_image_change(cv::Mat& img);
+    signals:
+        void change_source_image(cv::Mat& img);
 
-private:
-    void createMainMenu();
-    QWidget* createContent();
+    public slots:
+        void handle_source_image_change(cv::Mat& img);
 
-    QLabel* image_box_;
-    cv::Mat src_image_;
+    private:
+        void createMainMenu();
+        QWidget* createContent();
+
+        void handle_scale_change(double new_scale);
+        void handle_contrast_changed(std::tuple<double, double> params);
+
+        preprocess_settings* preprocess_settings_;
+        QLabel* image_box_;
+        cv::Mat src_image_;
+    };
+
 };
