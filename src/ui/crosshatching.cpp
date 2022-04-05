@@ -22,14 +22,21 @@ namespace {
 
 		QAction* action_bw = new QAction(tr("Black and white"), parent);
 		action_bw->setCheckable(true);
+		parent->connect(action_bw, &QAction::toggled, parent, &ui::crosshatching::handle_view_bw_change);
 
 		QActionGroup* scale_actions = new QActionGroup(parent);
-		std::array<int, 5> scales = { 100, 125, 150, 175, 200 };
+		std::array<int,10> scales = { 100, 125, 150, 175, 200, 250, 300, 350, 400, 500 };
 		for (int scale : scales) {
 			std::string str = std::to_string(scale) + "%";
 			auto scale_action = new QAction(QString::fromStdString(str), parent);
 			scale_action->setCheckable(true);
 			scale_actions->addAction(scale_action);
+			double new_scale_value = static_cast<double>(scale) / 100.0;
+			parent->connect(scale_action, &QAction::triggered,
+				[parent, new_scale_value]() {
+					parent->handle_view_scale_change(new_scale_value);
+				}
+			);
 		}
 		scale_actions->setExclusive(true);
 		scale_actions->setEnabled(true);
@@ -69,7 +76,7 @@ ui::crosshatching::crosshatching(QWidget *parent)
 void ui::crosshatching::open()
 {
 	auto image_filename = QFileDialog::getOpenFileName(this,
-		tr("Open image"), "", tr("PNG Files (*.png)"));
+		tr("Open image"), "/home", tr("PNG (*.png);; Bitmap (*.bmp);; JPeg (*.jpeg *.jpg)"));
 	auto str = image_filename.toStdString();
 
 	src_image_ = cv::imread(str.c_str());
@@ -143,9 +150,9 @@ QWidget* ui::crosshatching::createContent()
 	QTabWidget* tab = new QTabWidget();
 	tab->setMaximumWidth(k_controls_width);
 
-	tab->addTab(preprocess_settings_ = new ui::preprocess_settings(), tr("Preprocess"));
+	tab->addTab(preprocess_settings_ = new ui::preprocess_settings(), tr("pre"));
 	tab->addTab(new QWidget(), tr("filter"));
-	tab->addTab(new QWidget(), tr("segmentation"));
+	tab->addTab(new QWidget(), tr("post"));
 
 	QScrollArea* scroller = new QScrollArea();
 	scroller->setWidget(image_box_ = new QLabel());
@@ -162,7 +169,18 @@ QWidget* ui::crosshatching::createContent()
 	return splitter;
 }
 
-void ui::crosshatching::display(cv::Mat mat) {
+void ui::crosshatching::display(cv::Mat img) {
+	if (!img.empty()) {
+		current_image_ = img;
+	}
+
+	cv::Mat mat = current_image_;
+	if (view_state_.black_and_white) {
+		mat = ch::convert_to_3channel_grayscale(mat);
+	}
+	if (view_state_.scale != 1.0) {
+		mat = ch::scale(mat, view_state_.scale);
+	}
 	int wd = mat.cols;
 	int hgt = mat.rows;
 	int stride = mat.step;
@@ -173,6 +191,9 @@ void ui::crosshatching::display(cv::Mat mat) {
 
 
 void ui::crosshatching::preprocess_image(double scale, double beta, double sigma) {
+	if (src_image_.empty()) {
+		return;
+	}
 
 	if (scale < 0) {
 		scale = preprocess_settings_->scale();
@@ -197,6 +218,7 @@ void ui::crosshatching::preprocess_image(double scale, double beta, double sigma
 
 void ui::crosshatching::handle_scale_change(double new_scale) {
 	preprocess_image(new_scale, -1, -1);
+	auto vs = view_state();
 }
 
 void ui::crosshatching::handle_contrast_changed(std::tuple<double, double> params) {
@@ -204,7 +226,22 @@ void ui::crosshatching::handle_contrast_changed(std::tuple<double, double> param
 	preprocess_image(-1, beta, sigma);
 }
 
-
 std::tuple<int, int> ui::crosshatching::source_image_sz() const {
 	return { src_image_.cols, src_image_.rows };
+}
+
+void ui::crosshatching::handle_view_scale_change(double scale) {
+	view_state_.scale = scale;
+	display();
+}
+
+void ui::crosshatching::handle_view_bw_change(bool bw) {
+	view_state_.black_and_white = bw;
+	display();
+}
+
+ui::view_state ui::crosshatching::view_state() const {
+	auto view_menu = menuBar()->actions()[k_view_menu_index];
+	auto items = view_menu->children();
+	return {};
 }

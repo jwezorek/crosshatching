@@ -35,4 +35,5 @@ namespace ch {
     cv::Mat apply_contrast(cv::Mat img, double beta, double sigma);
     std::string to_string(double val, int precision);
     cv::Mat scale(cv::Mat mat, double scale);
+    cv::Mat convert_to_3channel_grayscale(cv::Mat img);
 }
