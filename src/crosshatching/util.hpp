@@ -34,5 +34,7 @@ namespace ch {
 
     double sigmoidal_contrast(double u, double contrast, double thresh);
     uchar sigmoidal_contrast(uchar u, double contrast, double thresh);
+    cv::Mat apply_contrast(cv::Mat img, double beta, double sigma);
     std::string to_string(double val, int precision);
+    cv::Mat scale(cv::Mat mat, double scale);
 }

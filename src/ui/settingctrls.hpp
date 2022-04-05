@@ -11,7 +11,7 @@ namespace ui {
 
     public:
         labeled_slider(const QString& txt, double min, double max, double init_val, int range = 100);
-
+        void set(double value);
         double value() const;
 
     signals:
@@ -41,7 +41,10 @@ namespace ui {
 
     public:
         preprocess_settings();
+        void initialize();
         double scale() const;
+        double beta() const;
+        double sigma() const;
         std::tuple<double, double> contrast_params() const;
 
     signals:

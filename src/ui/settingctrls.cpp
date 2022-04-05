@@ -45,6 +45,10 @@ ui::labeled_slider::labeled_slider(const QString& txt, double min, double max, d
 	connect(slider_, &QSlider::sliderReleased, this, &labeled_slider::handle_released);
 }
 
+void ui::labeled_slider::set(double value) {
+	slider_->setSliderPosition(value_to_position(value));
+}
+
 void ui::labeled_slider::handle_position_change(int new_pos) {
 	double new_value = position_to_value(new_pos);
 	lbl_val_->setText(ch::to_string(new_value, 2).c_str());
@@ -77,8 +81,22 @@ ui::preprocess_settings::preprocess_settings() :
 	connect(thresh_slider_, &labeled_slider::slider_released, [this]() { contrast_changed( this->contrast_params() ); });
 }
 
+void ui::preprocess_settings::initialize() {
+	contrast_slider_->set(1.0);
+	thresh_slider_->set(0.5);
+	scale_slider_->set(100.0);
+}
+
 double ui::preprocess_settings::scale() const {
 	return scale_slider_->value();
+}
+
+double ui::preprocess_settings::beta() const {
+	return contrast_slider_->value();
+}
+
+double ui::preprocess_settings::sigma() const {
+	return thresh_slider_->value();
 }
 
 std::tuple<double, double> ui::preprocess_settings::contrast_params() const {

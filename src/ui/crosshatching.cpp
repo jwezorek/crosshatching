@@ -70,17 +70,9 @@ void ui::crosshatching::open()
 	auto image_filename = QFileDialog::getOpenFileName(this,
 		tr("Open image"), "", tr("PNG Files (*.png)"));
 	auto str = image_filename.toStdString();
+
 	src_image_ = cv::imread(str.c_str());
-	
-
-	int wd = src_image_.cols;
-	int hgt = src_image_.rows;
-	int stride = src_image_.step;
-
-	image_box_->setFixedHeight(hgt);
-	image_box_->setFixedWidth(wd);
-	image_box_->setPixmap(QPixmap::fromImage(QImage(src_image_.data, wd,  hgt, stride, QImage::Format_BGR888)));
-
+	display(src_image_);
 	change_source_image(src_image_);
 }
 
@@ -136,6 +128,7 @@ void ui::crosshatching::createMainMenu()
 }
 
 void ui::crosshatching::handle_source_image_change(cv::Mat& img) {
+	preprocess_settings_->initialize();
 	auto view_menu = menuBar()->actions()[k_view_menu_index];
 	if (img.empty()) {
 		view_menu->setEnabled(false);
@@ -168,15 +161,51 @@ QWidget* ui::crosshatching::createContent()
 	return splitter;
 }
 
+void ui::crosshatching::display(cv::Mat mat) {
+	int wd = mat.cols;
+	int hgt = mat.rows;
+	int stride = mat.step;
+	image_box_->setFixedHeight(hgt);
+	image_box_->setFixedWidth(wd);
+	image_box_->setPixmap(QPixmap::fromImage(QImage(mat.data, wd, hgt, stride, QImage::Format_BGR888)));
+}
+
+
+void ui::crosshatching::preprocess_image(double scale, double beta, double sigma) {
+
+	if (scale < 0) {
+		scale = preprocess_settings_->scale();
+	}
+
+	if (beta < 0) {
+		beta = preprocess_settings_->beta();
+	}
+
+	if (sigma < 0) {
+		sigma = preprocess_settings_->sigma();
+	}
+
+	scale /= 100.0;
+	auto [src_wd, src_hgt] = source_image_sz();
+	int scaled_wd = static_cast<int>(scale * src_wd);
+	int scaled_hgt = static_cast<int>(scale * src_hgt);
+
+	cv::Mat mat = (scaled_wd == scaled_image_.cols && scaled_hgt == scaled_image_.rows) ? scaled_image_ :
+		(scaled_image_ = ch::scale(src_image_, scale));
+
+	display(contrast_applied_image_ = ch::apply_contrast(mat, beta, sigma));
+}
+
 void ui::crosshatching::handle_scale_change(double new_scale) {
-	QMessageBox mb;
-	mb.setText(std::to_string(new_scale).c_str());
-	mb.exec();
+	preprocess_image(new_scale, -1, -1);
 }
 
 void ui::crosshatching::handle_contrast_changed(std::tuple<double, double> params) {
 	auto [beta, sigma] = params;
-	QMessageBox mb;
-	mb.setText((std::to_string(beta) + " , " + std::to_string(sigma)).c_str());
-	mb.exec();
+	preprocess_image(-1, beta, sigma);
+}
+
+
+std::tuple<int, int> ui::crosshatching::source_image_sz() const {
+	return { src_image_.cols, src_image_.rows };
 }

@@ -1,4 +1,5 @@
 #include "util.hpp"
+#include <opencv2/imgproc.hpp>
 #include <sstream>
 #include <random>
 #include <iomanip>
@@ -94,6 +95,10 @@ uchar ch::sigmoidal_contrast(uchar u, double contrast, double thresh) {
 	);
 }
 
+cv::Mat ch::apply_contrast(cv::Mat img, double beta, double sigma) {
+	return img;
+}
+
 std::string ch::polyline_to_svg(const ch::polyline& poly, double thickness) {
 	std::stringstream ss;
 	ss << "<polyline points=\"";
@@ -109,4 +114,12 @@ std::string ch::to_string(double val, int precision) {
 	std::stringstream ss;
 	ss << std::fixed << std::setprecision(2) << val;
 	return ss.str();
+}
+
+cv::Mat ch::scale(cv::Mat mat, double scale) {
+	cv::Mat scaled;
+	int scaled_wd = static_cast<int>(scale * mat.cols);
+	int scaled_hgt = static_cast<int>(scale * mat.rows);
+	cv::resize(mat, scaled, cv::Size(scaled_wd, scaled_hgt), 0, 0, cv::INTER_CUBIC);
+	return scaled;
 }
