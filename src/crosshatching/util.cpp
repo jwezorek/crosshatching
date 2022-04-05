@@ -14,6 +14,31 @@ namespace {
 	double ramp_up_right(double t, double k) {
 		return (t <= k) ? 0.0 : (t - k) / (1.0 - k);
 	}
+
+	double sigmoidal_contrast(double u, double contrast, double thresh)
+	{
+		
+	}
+
+	uchar sigmoidal_contrast(uchar u, double contrast, double thresh) {
+		auto sigmoidal_contrast = [contrast, thresh](double u) {
+			return (1.0 / (1.0 + std::exp(contrast * (thresh - u))) - 1.0 / (1.0 + std::exp(contrast * thresh))) /
+				(1.0 / (1.0 + std::exp(contrast * (thresh - 1.0))) - 1.0 / (1.0 + std::exp(contrast * thresh)));
+		};
+		return static_cast<uchar>(
+			255.0 * sigmoidal_contrast( static_cast<double>(u) / 255.0 )
+		);
+	}
+
+	std::vector<uchar> make_contrast_lookup_table(double beta, double sigma) {
+		return rv::iota(0,256) |
+			rv::transform(
+				[beta, sigma](int u) {
+					return sigmoidal_contrast(static_cast<uchar>(u), beta, sigma);
+				}
+			) | 
+			r::to_vector;
+	}
 }
 
 std::string ch::svg_header(int wd, int hgt, bool bkgd_rect)
@@ -81,22 +106,22 @@ double ch::ramp(double t, double k, bool right, bool up) {
 	}
 }
 
-double ch::sigmoidal_contrast(double u, double contrast, double thresh)
-{
-	return (1.0 / (1.0 + std::exp(contrast * (thresh - u))) - 1.0 / (1.0 + std::exp(contrast * thresh))) /
-		(1.0 / (1.0 + std::exp(contrast * (thresh - 1.0))) - 1.0 / (1.0 + std::exp(contrast * thresh)));
-}
-
-uchar ch::sigmoidal_contrast(uchar u, double contrast, double thresh) {
-	return static_cast<uchar>(
-		255.0 * sigmoidal_contrast(
-			static_cast<double>(u) / 255.0, contrast, thresh
-		) 
-	);
-}
 
 cv::Mat ch::apply_contrast(cv::Mat img, double beta, double sigma) {
-	return img;
+	using hsv_pixel = cv::Point3_<uchar>;
+	auto lookup_table = make_contrast_lookup_table(beta, sigma);
+	cv::Mat hsv;
+	cv::cvtColor(img, hsv, cv::COLOR_BGR2HSV);
+
+	hsv.forEach<hsv_pixel>(
+		[&lookup_table](hsv_pixel& pix, const int* position) {
+			pix.z = lookup_table[pix.z];
+		}
+	);
+
+	cv::Mat output;
+	cv::cvtColor(hsv, output, cv::COLOR_HSV2BGR);
+	return output;
 }
 
 std::string ch::polyline_to_svg(const ch::polyline& poly, double thickness) {

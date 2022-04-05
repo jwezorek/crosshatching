@@ -6,6 +6,7 @@
 #include <QSlider>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/highgui.hpp>
 #include <numbers>
 #include <stdexcept>
 #include <array>
@@ -190,10 +191,8 @@ void ui::crosshatching::preprocess_image(double scale, double beta, double sigma
 	int scaled_wd = static_cast<int>(scale * src_wd);
 	int scaled_hgt = static_cast<int>(scale * src_hgt);
 
-	cv::Mat mat = (scaled_wd == scaled_image_.cols && scaled_hgt == scaled_image_.rows) ? scaled_image_ :
-		(scaled_image_ = ch::scale(src_image_, scale));
-
-	display(contrast_applied_image_ = ch::apply_contrast(mat, beta, sigma));
+	scaled_image_ = ch::scale(src_image_, scale);
+	display(contrast_applied_image_ = ch::apply_contrast(scaled_image_, beta, sigma));
 }
 
 void ui::crosshatching::handle_scale_change(double new_scale) {
