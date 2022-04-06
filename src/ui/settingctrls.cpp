@@ -122,3 +122,11 @@ double ui::preprocess_settings::sigma() const {
 std::tuple<double, double> ui::preprocess_settings::contrast_params() const {
 	return { contrast_slider_->value(), thresh_slider_->value() };
 }
+
+ui::shock_filter_settings::shock_filter_settings()
+{
+}
+
+void ui::shock_filter_settings::initialize()
+{
+}

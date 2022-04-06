@@ -36,4 +36,5 @@ namespace ch {
     std::string to_string(double val, int precision);
     cv::Mat scale(cv::Mat mat, double scale);
     cv::Mat convert_to_3channel_grayscale(cv::Mat img);
+    cv::Mat coherence_filter(cv::Mat img, int sigma, int str_sigma, float blend, int iter);
 }

@@ -66,4 +66,23 @@ namespace ui {
         void contrast_changed(std::tuple<double, double>);
         void scale_changed(double);
     };
+
+    class shock_filter_settings : public QWidget {
+        Q_OBJECT
+    private:
+        labeled_slider* sigma_slider_;
+        labeled_slider* str_sigma_slider_;
+        labeled_slider* blend_slider_;
+        labeled_slider* iter_slider_;
+    public:
+
+        cv::Mat filtered_image;
+
+        shock_filter_settings();
+        void initialize();
+
+    signals:
+        void changed(std::tuple<double, double>);
+    };
+
 }
