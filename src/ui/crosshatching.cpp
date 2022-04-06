@@ -212,8 +212,8 @@ void ui::crosshatching::preprocess_image(double scale, double beta, double sigma
 	int scaled_wd = static_cast<int>(scale * src_wd);
 	int scaled_hgt = static_cast<int>(scale * src_hgt);
 
-	scaled_image_ = ch::scale(src_image_, scale);
-	display(contrast_applied_image_ = ch::apply_contrast(scaled_image_, beta, sigma));
+	preprocess_settings_->scaled_image = ch::scale(src_image_, scale);
+	display(preprocess_settings_->contrast_applied_image = ch::apply_contrast(preprocess_settings_->scaled_image, beta, sigma));
 }
 
 void ui::crosshatching::handle_scale_change(double new_scale) {

@@ -47,8 +47,6 @@ namespace ui {
         preprocess_settings* preprocess_settings_;
         QLabel* image_box_;
         cv::Mat src_image_;
-        cv::Mat scaled_image_;
-        cv::Mat contrast_applied_image_;
         cv::Mat current_image_;
         ui::view_state view_state_;
     };

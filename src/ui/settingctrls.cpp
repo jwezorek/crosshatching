@@ -8,19 +8,21 @@ double ui::labeled_slider::range() const {
 }
 
 int ui::labeled_slider::value_to_position(double val) const {
-	return static_cast<int>(range() * ((val - min_) / (max_ - min_)));
+	return val_to_pos_(val, range(), min_, max_);
 }
 
 double ui::labeled_slider::position_to_value(int pos) const {
-	return min_ + ((max_ - min_) * pos) / range();
+	return pos_to_val_(pos, range(), min_, max_);
 }
 
 double ui::labeled_slider::value() const {
 	return position_to_value(slider_->sliderPosition());
 }
 
-ui::labeled_slider::labeled_slider(const QString& txt, double min, double max, double init_val, int range) :
-	min_(min), max_(max)
+ui::labeled_slider::labeled_slider(const QString& txt, double min, double max, double init_val, int range, 
+		val_to_pos_fn val_to_pos, pos_to_val_fn pos_to_val) :
+	min_(min), max_(max),
+	val_to_pos_(val_to_pos), pos_to_val_(pos_to_val)
 {
 	QVBoxLayout* layout = new QVBoxLayout();
 	QLabel* lbl_title = new QLabel(txt);
@@ -59,8 +61,26 @@ void ui::labeled_slider::handle_released() {
 	slider_released();
 }
 
+int ui::labeled_slider::linear_value_to_position(double val, double range, double min, double max) {
+	return static_cast<int>(range * ((val - min) / (max - min)));
+}
+
+double ui::labeled_slider::linear_position_to_value(int pos, double range, double min, double max) {
+	return min + ((max - min) * pos) / range;
+}
+
+int exp_val_to_pos(double val, double range, double min, double max) {
+	double base = std::pow(max, 1.0 / range);
+	return std::log(val) / std::log(base);
+}
+
+double exp_pos_to_val(int pos, double range, double min, double max) {
+	double base = std::pow(max, 1.0 / range);
+	return std::pow(base, static_cast<double>(pos));
+}
+
 ui::preprocess_settings::preprocess_settings() :
-	contrast_slider_(new ui::labeled_slider("beta", 1, 20, 1)),
+	contrast_slider_(new ui::labeled_slider("beta", 1, 20, 1, 1000, exp_val_to_pos, exp_pos_to_val)),
 	thresh_slider_(new ui::labeled_slider("sigma", 0, 1, 0.5)),
 	scale_slider_(new ui::labeled_slider("Scale", 20, 100, 100))
 {
