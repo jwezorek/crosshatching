@@ -151,7 +151,7 @@ QWidget* ui::crosshatching::createContent()
 	tab->setMaximumWidth(k_controls_width);
 
 	tab->addTab(preprocess_settings_ = new ui::preprocess_settings(), tr("pre"));
-	tab->addTab(new QWidget(), tr("filter"));
+	tab->addTab(shock_filter_settings_ = new ui::shock_filter_settings(), tr("filter"));
 	tab->addTab(new QWidget(), tr("post"));
 
 	QScrollArea* scroller = new QScrollArea();
@@ -165,7 +165,7 @@ QWidget* ui::crosshatching::createContent()
 
 	connect(preprocess_settings_, &preprocess_settings::scale_changed, this, &crosshatching::handle_scale_change);
 	connect(preprocess_settings_, &preprocess_settings::contrast_changed, this, &crosshatching::handle_contrast_changed);
-
+	connect(shock_filter_settings_, &shock_filter_settings::changed, this, &crosshatching::handle_shock_filter_changed);
 	return splitter;
 }
 
@@ -216,6 +216,11 @@ void ui::crosshatching::preprocess_image(double scale, double beta, double sigma
 	display(preprocess_settings_->contrast_applied_image = ch::apply_contrast(preprocess_settings_->scaled_image, beta, sigma));
 }
 
+cv::Mat ui::crosshatching::preprocess_output() const {
+	cv::Mat mat = (!preprocess_settings_->contrast_applied_image.empty()) ? preprocess_settings_->contrast_applied_image : preprocess_settings_->scaled_image;
+	return !mat.empty() ? mat : src_image_;
+}
+
 void ui::crosshatching::handle_scale_change(double new_scale) {
 	preprocess_image(new_scale, -1, -1);
 	auto vs = view_state();
@@ -224,6 +229,15 @@ void ui::crosshatching::handle_scale_change(double new_scale) {
 void ui::crosshatching::handle_contrast_changed(std::tuple<double, double> params) {
 	auto [beta, sigma] = params;
 	preprocess_image(-1, beta, sigma);
+}
+
+void ui::crosshatching::handle_shock_filter_changed(std::tuple<int,int,double,int> params) {
+	auto [sigma_1, sigma_2, blend, iterations] = params;
+	if (iterations == 0) {
+		display(preprocess_output());
+	} else {
+		display(ch::coherence_filter(preprocess_output(), 2*sigma_1+1, 2*sigma_2+1, blend, iterations));
+	}
 }
 
 std::tuple<int, int> ui::crosshatching::source_image_sz() const {

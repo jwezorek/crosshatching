@@ -9,7 +9,7 @@ namespace ui {
     using val_to_pos_fn = std::function<int(double val, double range, double min, double max)>;
     using pos_to_val_fn = std::function<double(int val, double range, double min, double max)>;
 
-    class labeled_slider : public QWidget {
+    class float_value_slider : public QWidget {
 
         Q_OBJECT
 
@@ -17,7 +17,7 @@ namespace ui {
         static int linear_value_to_position(double val, double range, double min, double max);
         static double linear_position_to_value(int pos, double range, double min, double max);
 
-        labeled_slider(const QString& txt, double min, double max, double init_val, int range = 1000,
+        float_value_slider(const QString& txt, double min, double max, double init_val, int range = 1000,
             val_to_pos_fn val_to_pos = linear_value_to_position, pos_to_val_fn pos_to_val = linear_position_to_value);
         void set(double value);
         double value() const;
@@ -43,12 +43,31 @@ namespace ui {
 
     };
 
+    class int_value_slider : public QWidget {
+
+        Q_OBJECT
+
+    private:
+        QSlider* slider_;
+        QLabel* lbl_val_;
+
+        void handle_position_change(int pos);
+        void handle_released();
+    public:
+        int_value_slider(const QString& txt, int min, int max, int init_val);
+        void set(int val);
+        int value() const;
+    signals:
+        void value_changed(int new_val);
+        void slider_released();
+    };
+
     class preprocess_settings : public QWidget {
         Q_OBJECT
     private:
-        labeled_slider* scale_slider_;
-        labeled_slider* contrast_slider_;
-        labeled_slider* thresh_slider_;
+        float_value_slider* scale_slider_;
+        float_value_slider* contrast_slider_;
+        float_value_slider* thresh_slider_;
 
     public:
         
@@ -70,19 +89,19 @@ namespace ui {
     class shock_filter_settings : public QWidget {
         Q_OBJECT
     private:
-        labeled_slider* sigma_slider_;
-        labeled_slider* str_sigma_slider_;
-        labeled_slider* blend_slider_;
-        labeled_slider* iter_slider_;
+        int_value_slider* sigma_slider_;
+        int_value_slider* str_sigma_slider_;
+        float_value_slider* blend_slider_;
+        int_value_slider* iter_slider_;
     public:
 
         cv::Mat filtered_image;
 
         shock_filter_settings();
         void initialize();
-
+        std::tuple<int, int, double, int> state() const;
     signals:
-        void changed(std::tuple<double, double>);
+        void changed(std::tuple<int, int, double, int>);
     };
 
 }
