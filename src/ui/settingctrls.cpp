@@ -168,7 +168,7 @@ std::tuple<double, double> ui::preprocess_settings::contrast_params() const {
 ui::shock_filter_settings::shock_filter_settings() :
 	sigma_slider_(new ui::int_value_slider("sigma 1", 1, 15, 5)),
 	str_sigma_slider_(new ui::int_value_slider("sigma 2", 1, 15, 5)),
-	blend_slider_(new ui::float_value_slider("blend", 0.0, 2.5, 0.5)),
+	blend_slider_(new ui::float_value_slider("blend", 0.0, 1.0, 0.5)),
 	iter_slider_(new ui::int_value_slider("n", 0, 25, 0))
 {
 	QHBoxLayout* layout = new QHBoxLayout();
@@ -200,5 +200,35 @@ std::tuple<int, int, double, int>  ui::shock_filter_settings::state() const {
 		str_sigma_slider_->value(),
 		blend_slider_->value(),
 		iter_slider_->value()
+	};
+}
+
+ui::segmentation_settings::segmentation_settings() :
+	sigmaS_slider_(new ui::int_value_slider("sigma S", 0, 15, 8)),
+	sigmaR_slider_(new ui::float_value_slider("sigma R", 0.0, 15, 3.0)), 
+	min_size_slider_(new ui::int_value_slider("sigma S", 0, 100, 12))
+{
+	QHBoxLayout* layout = new QHBoxLayout();
+
+	layout->addWidget(sigmaS_slider_);
+	layout->addWidget(sigmaR_slider_);
+	layout->addWidget(min_size_slider_);
+	setLayout(layout);
+
+	connect(sigmaS_slider_, &int_value_slider::slider_released, [this]() { changed(state()); });
+	connect(sigmaR_slider_, &float_value_slider::slider_released, [this]() { changed(state()); });
+	connect(min_size_slider_, &int_value_slider::slider_released, [this]() { changed(state()); });
+}
+
+void ui::segmentation_settings::initialize()
+{
+}
+
+std::tuple<int, double, int> ui::segmentation_settings::state() const
+{
+	return {
+		sigmaS_slider_->value(),
+		sigmaR_slider_->value(),
+		min_size_slider_->value()
 	};
 }

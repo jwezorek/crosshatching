@@ -39,15 +39,20 @@ namespace ui {
         void display(cv::Mat mat = {});
         void preprocess_image(double scale, double beta, double sigma);
         cv::Mat preprocess_output() const;
+        cv::Mat filter_output() const;
 
         void handle_scale_change(double new_scale);
         void handle_contrast_changed(std::tuple<double, double> params);
         void handle_shock_filter_changed(std::tuple<int, int, double, int> params);
+        void handle_segmentation_changed(std::tuple<int, double, int> params);
+
         std::tuple<int, int> source_image_sz() const;
         ui::view_state view_state() const;
 
         preprocess_settings* preprocess_settings_;
         shock_filter_settings* shock_filter_settings_;
+        segmentation_settings* segmentation_settings_;
+
         QLabel* image_box_;
         cv::Mat src_image_;
         cv::Mat current_image_;

@@ -1,4 +1,5 @@
 #include "util.hpp"
+#include "meanshift.hpp"
 #include <opencv2/imgproc.hpp>
 #include <sstream>
 #include <random>
@@ -224,14 +225,16 @@ cv::Mat ch::coherence_filter(cv::Mat img, int sigma, int str_sigma, float blend,
 	return I;
 }
 
-/*
-int main()
-{
-	Mat img = imread("D:/Pictures/beard.jpg", 1);
-	Mat result = CoherenceFilter(img, 11, 11, 0.5, 2);
-	imshow("Result", result);
-	waitKey(0);
-
-	return 0;
+cv::Mat ch::do_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize) {
+	cv::Mat output;
+	cv::Mat labels;
+	auto mss = createMeanShiftSegmentation(sigmaS, sigmaR, minSize, true);
+	mss->processImage(input, output, labels);
+	return output;
 }
-*/
+
+cv::Mat ch::convert_to_gray(const cv::Mat& color) {
+	cv::Mat gray;
+	cv::cvtColor(color, gray, cv::COLOR_BGR2GRAY);
+	return gray;
+}

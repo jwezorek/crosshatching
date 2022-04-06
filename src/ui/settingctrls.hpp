@@ -104,4 +104,20 @@ namespace ui {
         void changed(std::tuple<int, int, double, int>);
     };
 
+    class segmentation_settings : public QWidget {
+        Q_OBJECT
+    private:
+        int_value_slider* sigmaS_slider_;
+        float_value_slider* sigmaR_slider_;
+        int_value_slider* min_size_slider_;
+    public:
+
+        cv::Mat segmented_image;
+
+        segmentation_settings();
+        void initialize();
+        std::tuple<int, double, int> state() const;
+    signals:
+        void changed(std::tuple<int, double, int>);
+    };
 }

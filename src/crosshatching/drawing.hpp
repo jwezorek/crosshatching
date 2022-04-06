@@ -30,7 +30,6 @@ namespace ch {
         std::vector<polygon_with_holes> blobs;
     };
 
-    cv::Mat do_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize);
     std::vector<gray_level_plane> extract_gray_level_planes(const cv::Mat& gray_scale_img);
     std::vector<gray_level_plane> scale(const std::vector<gray_level_plane>& planes, double scale);
     void write_to_svg(const std::string& filename, const std::vector<gray_level_plane>& levels, int wd, int hgt, double scale);

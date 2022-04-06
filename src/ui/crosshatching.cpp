@@ -152,7 +152,7 @@ QWidget* ui::crosshatching::createContent()
 
 	tab->addTab(preprocess_settings_ = new ui::preprocess_settings(), tr("pre"));
 	tab->addTab(shock_filter_settings_ = new ui::shock_filter_settings(), tr("filter"));
-	tab->addTab(new QWidget(), tr("post"));
+	tab->addTab(segmentation_settings_ = new ui::segmentation_settings(), tr("post"));
 
 	QScrollArea* scroller = new QScrollArea();
 	scroller->setWidget(image_box_ = new QLabel());
@@ -166,6 +166,8 @@ QWidget* ui::crosshatching::createContent()
 	connect(preprocess_settings_, &preprocess_settings::scale_changed, this, &crosshatching::handle_scale_change);
 	connect(preprocess_settings_, &preprocess_settings::contrast_changed, this, &crosshatching::handle_contrast_changed);
 	connect(shock_filter_settings_, &shock_filter_settings::changed, this, &crosshatching::handle_shock_filter_changed);
+	connect(segmentation_settings_, &segmentation_settings::changed, this, &crosshatching::handle_segmentation_changed);
+
 	return splitter;
 }
 
@@ -217,8 +219,17 @@ void ui::crosshatching::preprocess_image(double scale, double beta, double sigma
 }
 
 cv::Mat ui::crosshatching::preprocess_output() const {
-	cv::Mat mat = (!preprocess_settings_->contrast_applied_image.empty()) ? preprocess_settings_->contrast_applied_image : preprocess_settings_->scaled_image;
+	cv::Mat mat = (!preprocess_settings_->contrast_applied_image.empty()) ? 
+		preprocess_settings_->contrast_applied_image : 
+		preprocess_settings_->scaled_image;
 	return !mat.empty() ? mat : src_image_;
+}
+
+cv::Mat ui::crosshatching::filter_output() const {
+	if (!shock_filter_settings_->filtered_image.empty())
+		return shock_filter_settings_->filtered_image;
+	else
+		return preprocess_output();
 }
 
 void ui::crosshatching::handle_scale_change(double new_scale) {
@@ -234,10 +245,15 @@ void ui::crosshatching::handle_contrast_changed(std::tuple<double, double> param
 void ui::crosshatching::handle_shock_filter_changed(std::tuple<int,int,double,int> params) {
 	auto [sigma_1, sigma_2, blend, iterations] = params;
 	if (iterations == 0) {
-		display(preprocess_output());
+		display(shock_filter_settings_->filtered_image = preprocess_output());
 	} else {
-		display(ch::coherence_filter(preprocess_output(), 2*sigma_1+1, 2*sigma_2+1, blend, iterations));
+		display(shock_filter_settings_->filtered_image = ch::coherence_filter(preprocess_output(), 2*sigma_1+1, 2*sigma_2+1, blend, iterations));
 	}
+}
+
+void ui::crosshatching::handle_segmentation_changed(std::tuple<int, double, int> params) {
+	auto [sigmaS, sigmaR, minSize] = params;
+	display(segmentation_settings_->segmented_image = ch::do_segmentation(filter_output(), sigmaS, sigmaR, minSize));
 }
 
 std::tuple<int, int> ui::crosshatching::source_image_sz() const {

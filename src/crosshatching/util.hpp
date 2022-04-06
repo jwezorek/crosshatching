@@ -37,4 +37,6 @@ namespace ch {
     cv::Mat scale(cv::Mat mat, double scale);
     cv::Mat convert_to_3channel_grayscale(cv::Mat img);
     cv::Mat coherence_filter(cv::Mat img, int sigma, int str_sigma, float blend, int iter);
+    cv::Mat do_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize);
+    cv::Mat convert_to_gray(const cv::Mat& color);
 }
