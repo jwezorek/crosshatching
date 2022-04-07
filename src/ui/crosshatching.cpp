@@ -253,7 +253,11 @@ void ui::crosshatching::handle_shock_filter_changed(std::tuple<int,int,double,in
 
 void ui::crosshatching::handle_segmentation_changed(std::tuple<int, double, int> params) {
 	auto [sigmaS, sigmaR, minSize] = params;
-	display(segmentation_settings_->segmented_image = ch::do_segmentation(filter_output(), sigmaS, sigmaR, minSize));
+	if (sigmaS == 0 || sigmaR == 0.0) {
+		display(segmentation_settings_->segmented_image = filter_output());
+	} else {
+		display(segmentation_settings_->segmented_image = ch::do_segmentation(filter_output(), sigmaS, sigmaR, minSize));
+	}
 }
 
 std::tuple<int, int> ui::crosshatching::source_image_sz() const {
