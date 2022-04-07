@@ -60,22 +60,22 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\libraries\vcpkg\packages\opencv4_x64-windows-static\include;$(BOOST_DIR);$(EIGEN3_INCLUDE_DIR);C:\libraries\vcpkg\packages\range-v3_x64-windows\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\libraries\vcpkg\packages\opencv4_x64-windows-static-md\include;$(BOOST_DIR);$(EIGEN3_INCLUDE_DIR);C:\libraries\vcpkg\packages\range-v3_x64-windows\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>C:\libraries\vcpkg\packages\libwebp_x64-windows-static-md\debug\lib;C:\libraries\vcpkg\packages\liblzma_x64-windows-static-md\debug\lib;C:\libraries\vcpkg\packages\libpng_x64-windows-static\debug\lib;C:\libraries\vcpkg\packages\tiff_x64-windows-static-md\debug\lib;C:\libraries\vcpkg\packages\libjpeg-turbo_x64-windows-static-md\debug\lib;C:\libraries\vcpkg\packages\zlib_x64-windows-static-md\debug\lib;C:\libraries\vcpkg\packages\opencv4_x64-windows-static-md\debug\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>webpd.lib;lzmad.lib;libpng16d.lib;tiffd.lib;turbojpegd.lib;zlibd.lib;opencv_cored.lib;opencv_highguid.lib;opencv_imgcodecsd.lib;opencv_imgprocd.lib;%(AdditionalDependencies);$(Qt_LIBS_)</AdditionalDependencies>
+      <AdditionalDependencies>opencv_ximgprocd.lib;webpd.lib;lzmad.lib;libpng16d.lib;tiffd.lib;turbojpegd.lib;zlibd.lib;opencv_cored.lib;opencv_highguid.lib;opencv_imgcodecsd.lib;opencv_imgprocd.lib;%(AdditionalDependencies);$(Qt_LIBS_)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\libraries\vcpkg\packages\opencv4_x64-windows-static\include;$(BOOST_DIR);$(EIGEN3_INCLUDE_DIR);C:\libraries\vcpkg\packages\range-v3_x64-windows\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\libraries\vcpkg\packages\opencv4_x64-windows-static-md\include;$(BOOST_DIR);$(EIGEN3_INCLUDE_DIR);C:\libraries\vcpkg\packages\range-v3_x64-windows\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>C:\libraries\vcpkg\packages\libwebp_x64-windows-static-md\lib;C:\libraries\vcpkg\packages\liblzma_x64-windows-static-md\lib;C:\libraries\vcpkg\packages\libpng_x64-windows-static\lib;C:\libraries\vcpkg\packages\tiff_x64-windows-static-md\lib;C:\libraries\vcpkg\packages\libjpeg-turbo_x64-windows-static-md\lib;C:\libraries\vcpkg\packages\zlib_x64-windows-static-md\lib;C:\libraries\vcpkg\packages\opencv4_x64-windows-static-md\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>webp.lib;lzma.lib;libpng16.lib;tiff.lib;turbojpeg.lib;zlib.lib;opencv_core.lib;opencv_highgui.lib;opencv_imgcodecs.lib;opencv_imgproc.lib;%(AdditionalDependencies);$(Qt_LIBS_)</AdditionalDependencies>
+      <AdditionalDependencies>opencv_ximgproc.lib;webp.lib;lzma.lib;libpng16.lib;tiff.lib;turbojpeg.lib;zlib.lib;opencv_core.lib;opencv_highgui.lib;opencv_imgcodecs.lib;opencv_imgproc.lib;%(AdditionalDependencies);$(Qt_LIBS_)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">

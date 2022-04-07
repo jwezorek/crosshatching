@@ -1,6 +1,7 @@
 #include "util.hpp"
 #include "meanshift.hpp"
 #include <opencv2/imgproc.hpp>
+#include <opencv2/ximgproc.hpp>
 #include <sstream>
 #include <random>
 #include <iomanip>
@@ -223,6 +224,12 @@ cv::Mat ch::coherence_filter(cv::Mat img, int sigma, int str_sigma, float blend,
 		I = I * (1.0 - blend) + img1 * blend;
 	}
 	return I;
+}
+
+cv::Mat ch::anisotropic_diffusion(cv::Mat img, double alpha, double k, int iters) {
+	cv::Mat output;
+	cv::ximgproc::anisotropicDiffusion(img, output, alpha, k, iters);
+	return output;
 }
 
 cv::Mat ch::do_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize) {
