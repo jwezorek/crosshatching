@@ -14,7 +14,7 @@
 namespace {
 
 	constexpr auto k_view_menu_index = 1;
-	constexpr auto k_controls_width = 400;
+	constexpr auto k_controls_width = 300;
 
 	QMenu* create_view_menu(ui::crosshatching* parent) {
 		auto tr = [parent](const char* str) {return parent->tr(str); };
@@ -136,7 +136,9 @@ void ui::crosshatching::createMainMenu()
 }
 
 void ui::crosshatching::handle_source_image_change(cv::Mat& img) {
-	preprocess_settings_->initialize();
+	for (auto* pipeline_stage : imgproc_pipeline_) {
+		pipeline_stage->initialize();
+	}
 	auto view_menu = menuBar()->actions()[k_view_menu_index];
 	if (img.empty()) {
 		view_menu->setEnabled(false);
@@ -147,28 +149,61 @@ void ui::crosshatching::handle_source_image_change(cv::Mat& img) {
 
 QWidget* ui::crosshatching::createContent()
 {
-	QTabWidget* tab = new QTabWidget();
-	tab->setMaximumWidth(k_controls_width);
+	QTabWidget* tab_ctrl = new QTabWidget();
+	tab_ctrl->setMaximumWidth(k_controls_width);
 
-	tab->addTab(preprocess_settings_ = new ui::preprocess_settings(), tr("pre"));
-	tab->addTab(shock_filter_settings_ = new ui::shock_filter_settings(), tr("filter"));
-	tab->addTab(segmentation_settings_ = new ui::segmentation_settings(), tr("post"));
+	imgproc_pipeline_ = std::vector<ui::image_processing_pipeline_item*>{
+		new ui::scale_and_contrast(),
+		new ui::anisotropic_diffusion_filter(),
+		new ui::shock_filter(),
+		new ui::mean_shift_segmentation()
+	};
+
+	for (auto* stage: imgproc_pipeline_) {
+		stage->populate();
+		tab_ctrl->addTab(stage, (std::string("< ") + std::to_string(stage->index() + 1) + " >").c_str());
+		connect(stage, &ui::image_processing_pipeline_item::changed, this, &crosshatching::handle_pipeline_change);
+	}
 
 	QScrollArea* scroller = new QScrollArea();
 	scroller->setWidget(image_box_ = new QLabel());
 	scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
 	QSplitter* splitter = new QSplitter();
-	splitter->addWidget(tab);
+	splitter->addWidget(tab_ctrl);
 	splitter->addWidget(scroller);
 	splitter->setSizes(QList<int>({ INT_MAX, INT_MAX }));
 
-	connect(preprocess_settings_, &preprocess_settings::scale_changed, this, &crosshatching::handle_scale_change);
-	connect(preprocess_settings_, &preprocess_settings::contrast_changed, this, &crosshatching::handle_contrast_changed);
-	connect(shock_filter_settings_, &shock_filter_settings::changed, this, &crosshatching::handle_shock_filter_changed);
-	connect(segmentation_settings_, &segmentation_settings::changed, this, &crosshatching::handle_segmentation_changed);
-
 	return splitter;
+}
+
+void ui::crosshatching::handle_pipeline_change(int index) {
+	std::for_each(imgproc_pipeline_.begin() + index, imgproc_pipeline_.end(),
+		[](ui::image_processing_pipeline_item* stage) {
+			stage->clear_output();
+		}
+	);
+
+	cv::Mat input;
+	if (index == 0) {
+		input = src_image_;
+	} else {
+		int j = index - 1;
+		do {
+			input = imgproc_pipeline_.at(j--)->output();
+		} while (input.empty());
+	}
+
+	cv::Mat mat = input;
+	std::for_each(imgproc_pipeline_.begin() + index, imgproc_pipeline_.end(),
+		[&mat](ui::image_processing_pipeline_item* stage) {
+			if (stage->is_on()) {
+				mat = stage->process_image(mat);
+			}
+		}
+	);
+
+	display(mat);
 }
 
 void ui::crosshatching::display(cv::Mat img) {
@@ -189,75 +224,6 @@ void ui::crosshatching::display(cv::Mat img) {
 	image_box_->setFixedHeight(hgt);
 	image_box_->setFixedWidth(wd);
 	image_box_->setPixmap(QPixmap::fromImage(QImage(mat.data, wd, hgt, stride, QImage::Format_BGR888)));
-}
-
-
-void ui::crosshatching::preprocess_image(double scale, double beta, double sigma) {
-	if (src_image_.empty()) {
-		return;
-	}
-
-	if (scale < 0) {
-		scale = preprocess_settings_->scale();
-	}
-
-	if (beta < 0) {
-		beta = preprocess_settings_->beta();
-	}
-
-	if (sigma < 0) {
-		sigma = preprocess_settings_->sigma();
-	}
-
-	scale /= 100.0;
-	auto [src_wd, src_hgt] = source_image_sz();
-	int scaled_wd = static_cast<int>(scale * src_wd);
-	int scaled_hgt = static_cast<int>(scale * src_hgt);
-
-	preprocess_settings_->scaled_image = ch::scale(src_image_, scale);
-	display(preprocess_settings_->contrast_applied_image = ch::apply_contrast(preprocess_settings_->scaled_image, beta, sigma));
-}
-
-cv::Mat ui::crosshatching::preprocess_output() const {
-	cv::Mat mat = (!preprocess_settings_->contrast_applied_image.empty()) ? 
-		preprocess_settings_->contrast_applied_image : 
-		preprocess_settings_->scaled_image;
-	return !mat.empty() ? mat : src_image_;
-}
-
-cv::Mat ui::crosshatching::filter_output() const {
-	if (!shock_filter_settings_->filtered_image.empty())
-		return shock_filter_settings_->filtered_image;
-	else
-		return preprocess_output();
-}
-
-void ui::crosshatching::handle_scale_change(double new_scale) {
-	preprocess_image(new_scale, -1, -1);
-	auto vs = view_state();
-}
-
-void ui::crosshatching::handle_contrast_changed(std::tuple<double, double> params) {
-	auto [beta, sigma] = params;
-	preprocess_image(-1, beta, sigma);
-}
-
-void ui::crosshatching::handle_shock_filter_changed(std::tuple<int,int,double,int> params) {
-	auto [sigma_1, sigma_2, blend, iterations] = params;
-	if (iterations == 0) {
-		display(shock_filter_settings_->filtered_image = preprocess_output());
-	} else {
-		display(shock_filter_settings_->filtered_image = ch::coherence_filter(preprocess_output(), 2*sigma_1+1, 2*sigma_2+1, blend, iterations));
-	}
-}
-
-void ui::crosshatching::handle_segmentation_changed(std::tuple<int, double, int> params) {
-	auto [sigmaS, sigmaR, minSize] = params;
-	if (sigmaS == 0 || sigmaR == 0.0) {
-		display(segmentation_settings_->segmented_image = filter_output());
-	} else {
-		display(segmentation_settings_->segmented_image = ch::do_segmentation(filter_output(), sigmaS, sigmaR, minSize));
-	}
 }
 
 std::tuple<int, int> ui::crosshatching::source_image_sz() const {
