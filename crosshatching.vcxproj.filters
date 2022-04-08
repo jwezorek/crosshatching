@@ -15,6 +15,11 @@
     <Filter Include="Source Files\crosshatching">
       <UniqueIdentifier>{073aae5e-350c-4ab2-b6eb-7dfc51a8a003}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+      <ParseFiles>true</ParseFiles>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -44,6 +49,9 @@
     <ClCompile Include="src\ui\settingctrls.cpp">
       <Filter>Source Files\ui</Filter>
     </ClCompile>
+    <ClCompile Include="src\ui\float_value_slider.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="src\ui\crosshatching.qrc">
@@ -55,6 +63,9 @@
       <Filter>Source Files\ui</Filter>
     </QtMoc>
     <QtMoc Include="src\ui\settingctrls.hpp">
+      <Filter>Source Files\ui</Filter>
+    </QtMoc>
+    <QtMoc Include="src\ui\float_value_slider.h">
       <Filter>Source Files\ui</Filter>
     </QtMoc>
   </ItemGroup>

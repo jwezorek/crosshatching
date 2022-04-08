@@ -60,7 +60,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\libraries\vcpkg\packages\opencv4_x64-windows-static-md\include;$(BOOST_DIR);$(EIGEN3_INCLUDE_DIR);C:\libraries\vcpkg\packages\range-v3_x64-windows\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\libraries\vcpkg\packages\opencv4_x64-windows-static-md\include;$(BOOST_DIR);$(EIGEN3_INCLUDE_DIR);C:\libraries\vcpkg\packages\range-v3_x64-windows\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_);.\src\ui</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -70,7 +70,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\libraries\vcpkg\packages\opencv4_x64-windows-static-md\include;$(BOOST_DIR);$(EIGEN3_INCLUDE_DIR);C:\libraries\vcpkg\packages\range-v3_x64-windows\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\libraries\vcpkg\packages\opencv4_x64-windows-static-md\include;$(BOOST_DIR);$(EIGEN3_INCLUDE_DIR);C:\libraries\vcpkg\packages\range-v3_x64-windows\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_);.\src\ui</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -113,6 +113,7 @@
     <ClCompile Include="src\crosshatching\util.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\ui\crosshatching.cpp" />
+    <ClCompile Include="src\ui\float_value_slider.cpp" />
     <ClCompile Include="src\ui\settingctrls.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -128,6 +129,7 @@
     <ClInclude Include="src\crosshatching\geometry.hpp" />
     <ClInclude Include="src\crosshatching\meanshift.hpp" />
     <ClInclude Include="src\crosshatching\util.hpp" />
+    <QtMoc Include="src\ui\float_value_slider.h" />
     <QtMoc Include="src\ui\settingctrls.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
