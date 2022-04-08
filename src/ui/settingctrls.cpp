@@ -101,8 +101,8 @@ ui::anisotropic_diffusion_filter::anisotropic_diffusion_filter() :
 void ui::anisotropic_diffusion_filter::populate() {
 	QHBoxLayout* layout = new QHBoxLayout();
 
-	layout->addWidget(alpha_slider_ = new float_value_slider("alpha", 0, 1.0, 0.5));
-	layout->addWidget(k_slider_ = new float_value_slider("k", 0, 2, 0.5));
+	layout->addWidget(alpha_slider_ = new float_value_slider("alpha", 0, 0.5, 0.15));
+	layout->addWidget(k_slider_ = new float_value_slider("k", 0, 0.5, 0.15));
 	layout->addWidget(iters_slider_ = new int_value_slider("iterations", 0, 25, 0));
 	content_area_->setLayout(layout);
 
@@ -112,8 +112,8 @@ void ui::anisotropic_diffusion_filter::populate() {
 }
 
 void ui::anisotropic_diffusion_filter::initialize() {
-	alpha_slider_->set(0.5);
-	k_slider_->set(0.5);
+	alpha_slider_->set(0.15);
+	k_slider_->set(0.15);
 	iters_slider_->set(0);
 }
 

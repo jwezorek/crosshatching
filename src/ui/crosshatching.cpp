@@ -161,7 +161,7 @@ QWidget* ui::crosshatching::createContent()
 
 	for (auto* stage: imgproc_pipeline_) {
 		stage->populate();
-		tab_ctrl->addTab(stage, (std::string("< ") + std::to_string(stage->index() + 1) + " >").c_str());
+		tab_ctrl->addTab(stage, (std::string("stage ") + std::to_string(stage->index() + 1)).c_str());
 		connect(stage, &ui::image_processing_pipeline_item::changed, this, &crosshatching::handle_pipeline_change);
 	}
 
