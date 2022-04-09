@@ -177,6 +177,21 @@ QWidget* ui::crosshatching::createContent()
 	return splitter;
 }
 
+cv::Mat ui::crosshatching::input_to_nth_stage(int index) const {
+	if (index == 0) {
+		return src_image_;
+	} 
+	cv::Mat input;
+	int j = index - 1;
+	do {
+		input = imgproc_pipeline_.at(j--)->output();
+	} while (input.empty() && j > 1);
+	if (input.empty()) {
+		input = src_image_;
+	}
+	return input;
+}
+
 void ui::crosshatching::handle_pipeline_change(int index) {
 	std::for_each(imgproc_pipeline_.begin() + index, imgproc_pipeline_.end(),
 		[](ui::image_processing_pipeline_item* stage) {
@@ -184,17 +199,7 @@ void ui::crosshatching::handle_pipeline_change(int index) {
 		}
 	);
 
-	cv::Mat input;
-	if (index == 0) {
-		input = src_image_;
-	} else {
-		int j = index - 1;
-		do {
-			input = imgproc_pipeline_.at(j--)->output();
-		} while (input.empty());
-	}
-
-	cv::Mat mat = input;
+	cv::Mat mat = input_to_nth_stage(index);
 	std::for_each(imgproc_pipeline_.begin() + index, imgproc_pipeline_.end(),
 		[&mat](ui::image_processing_pipeline_item* stage) {
 			if (stage->is_on()) {

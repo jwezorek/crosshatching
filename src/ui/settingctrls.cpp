@@ -161,8 +161,8 @@ void ui::shock_filter::initialize() {
 cv::Mat ui::shock_filter::process_image(cv::Mat input) {
 	return output_ = ch::coherence_filter(
 		input,
-		sigma_slider_->value(),
-		str_sigma_slider_->value(),
+		2*sigma_slider_->value()+1,
+		2*str_sigma_slider_->value()+1,
 		blend_slider_->value(),
 		iter_slider_->value()
 	);
