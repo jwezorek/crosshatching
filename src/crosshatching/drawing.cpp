@@ -20,7 +20,7 @@ namespace {
         N, NE, E, SE, S, SW, W, NW
     };
 
-    std::vector<uchar> get_gray_levels(const cv::Mat& input) {
+    std::vector<uchar> get_gray_values(const cv::Mat& input) {
         if (input.channels() != 1) {
             throw std::runtime_error("called get_gray_levels on color image");
         }
@@ -32,14 +32,14 @@ namespace {
             r::to<std::vector<uchar>>();
     }
 
-    std::vector<std::tuple<uchar, cv::Mat>> gray_planes(const cv::Mat& input) {
-        auto levels = get_gray_levels(input);
+    std::vector<std::tuple<uchar, cv::Mat>> gray_planes(const cv::Mat& input, bool full_range = false) {
+        auto levels = get_gray_values(input);
         return
             levels |
             rv::transform(
-                [&input](auto val)->std::map<uchar, cv::Mat>::value_type {
+                [&input,full_range](auto val)->std::map<uchar, cv::Mat>::value_type {
                     cv::Mat output;
-                    cv::inRange(input, val, val, output);
+                    cv::inRange(input, !full_range ? val : 0, val, output);
                     return { val, output };
                 }
             ) |
@@ -475,6 +475,10 @@ std::vector<ch::gray_level_plane> ch::extract_gray_level_planes(const cv::Mat& g
         r::to<std::vector<ch::gray_level_plane>>();
 }
 
+std::vector<ch::gray_levels> ch::extract_gray_levels(const cv::Mat& gray_scale_img) {
+    return {};
+}
+
 std::vector<ch::gray_level_plane> ch::scale(const std::vector<gray_level_plane>& planes, double scale)
 {
     return planes |
@@ -512,6 +516,7 @@ ch::drawing ch::generate_crosshatched_drawing(const std::string& image_file, seg
     
     cv::Mat img = cv::imread(image_file);
     cv::Mat mat = ch::do_segmentation(img, params.sigmaS, params.sigmaR, params.minSize);
+    mat = ch::convert_to_gray(mat);
     auto gray_levels = extract_gray_level_planes(mat);
     gray_levels = ch::scale(gray_levels, scale);
 

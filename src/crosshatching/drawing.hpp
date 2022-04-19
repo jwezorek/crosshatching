@@ -30,7 +30,13 @@ namespace ch {
         std::vector<polygon_with_holes> blobs;
     };
 
+    struct gray_levels {
+        double value;
+        std::vector<polygon_with_holes> blobs;
+    };
+
     std::vector<gray_level_plane> extract_gray_level_planes(const cv::Mat& gray_scale_img);
+    std::vector<gray_levels> extract_gray_levels(const cv::Mat& gray_scale_img);
     std::vector<gray_level_plane> scale(const std::vector<gray_level_plane>& planes, double scale);
     void write_to_svg(const std::string& filename, const std::vector<gray_level_plane>& levels, int wd, int hgt, double scale);
     void debug();

@@ -119,7 +119,7 @@ void ui::crosshatching::generate() {
 		);
 		br.build_n(10);
 		auto drawing = ch::generate_crosshatched_drawing("C:\\test\\paris.png", { 8, 3.0f, 12 }, 4.0, br);
-		ch::to_svg("C:\\test\\paris-2.svg", drawing); 
+		ch::to_svg("C:\\test\\paris-3.svg", drawing); 
 
 	} catch (std::runtime_error err) {
 		QMessageBox msg_box;
