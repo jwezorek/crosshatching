@@ -32,7 +32,7 @@ namespace {
             r::to<std::vector<uchar>>();
     }
 
-    std::vector<std::tuple<uchar, cv::Mat>> gray_planes(const cv::Mat& input, bool full_range = false) {
+    std::vector<std::tuple<uchar, cv::Mat>> gray_planes(const cv::Mat& input, bool full_range) {
         auto levels = get_gray_values(input);
         return
             levels |
@@ -53,8 +53,8 @@ namespace {
         std::vector<cv::Vec4i> hierarchy;
     };
 
-    std::vector<std::tuple<uchar, find_contour_output>> perform_find_contours(const cv::Mat& input) {
-        auto planes = gray_planes(input);
+    std::vector<std::tuple<uchar, find_contour_output>> perform_find_contours(const cv::Mat& input, bool full_range) {
+        auto planes = gray_planes(input, full_range);
         return planes |
             rv::transform(
                 [](const auto& pair)->std::tuple<uchar, find_contour_output> {
@@ -231,8 +231,8 @@ namespace {
         return poly;
     }
 
-    ch::gray_level_plane contour_info_to_gray_level_plane(uchar gray, const find_contour_output& contours) {
-        ch::gray_level_plane glp = { gray,{} };
+    ch::gray_level contour_info_to_gray_level(uchar gray, const find_contour_output& contours) {
+        ch::gray_level gl = { (255.0 - gray)/255.0,{} };
         std::unordered_map<int, int> contour_index_to_poly_index;
 
         for (int i = 0; i < contours.hierarchy.size(); ++i) {
@@ -240,8 +240,8 @@ namespace {
             int parent = h[3];
             const auto& contour = contours.contours[i];
             if (parent == -1) {
-                int poly_index = static_cast<int>(glp.blobs.size());
-                glp.blobs.emplace_back(
+                int poly_index = static_cast<int>(gl.blobs.size());
+                gl.blobs.emplace_back(
                     ch::polygon_with_holes{ contour_to_polygon(contour, true), {} }
                 );
                 contour_index_to_poly_index[i] = poly_index;
@@ -250,10 +250,10 @@ namespace {
                 if (iter == contour_index_to_poly_index.end()) {
                     throw std::runtime_error("contour hierearchy had a child contour before its parent");
                 }
-                glp.blobs[iter->second].holes.push_back(contour_to_polygon(contour, false));
+                gl.blobs[iter->second].holes.push_back(contour_to_polygon(contour, false));
             }
         }
-        return glp;
+        return gl;
     }
 
     ch::polyline simplify(const ch::polyline& poly, double param) {
@@ -268,7 +268,7 @@ namespace {
             poly.holes | rv::transform([param](const auto& p) {return simplify(p, param); }) | r::to_vector
         };
     }
-
+    /*
     ch::gray_level_plane simplify(const ch::gray_level_plane& p, double param) {
         return {
             p.gray,
@@ -279,7 +279,7 @@ namespace {
     std::vector<ch::gray_level_plane> simplify(const std::vector<ch::gray_level_plane>& planes, double param) {
         return planes | rv::transform([param](const auto& p) {return simplify(p, param); }) | r::to_vector;
     }
-
+    */
     std::string loop_to_path_commands(const ch::polyline& poly, double scale) {
         std::stringstream ss;
         ss << "M " << scale * poly[0].x << "," << scale * poly[0].y << " L";
@@ -308,10 +308,10 @@ namespace {
         return ss.str();
     }
 
-    std::string gray_level_plane_to_svg(const ch::gray_level_plane& lvl, double scale) {
+    std::string gray_level_plane_to_svg(const ch::gray_level& lvl, double scale) {
         std::stringstream ss;
         for (const auto& poly : lvl.blobs) {
-            ss << poly_with_holes_to_svg(lvl.gray, poly, scale) << "\n";
+            ss << poly_with_holes_to_svg( static_cast<uchar>((1.0 - lvl.value)*255.0), poly, scale) << "\n";
         }
         return ss.str();
     }
@@ -323,9 +323,9 @@ namespace {
         };
     }
 
-    ch::gray_level_plane scale(const ch::gray_level_plane& glp, double scale) {
+    ch::gray_level scale(const ch::gray_level& glp, double scale) {
         return {
-            glp.gray,
+            glp.value,
             glp.blobs | rv::transform([scale](const auto& poly) { return ::scale(poly,scale); }) | r::to_vector
         };
     }
@@ -428,20 +428,19 @@ namespace {
         return clipper_paths_to_polylines(clipped, scale);
     }
 
-    std::vector<ch::polyline> gray_levels_to_strokes(const std::vector<ch::gray_level_plane>& glps, ch::brush& brush) {
+    std::vector<ch::polyline> gray_levels_to_strokes(const std::vector<ch::gray_level>& glps, ch::brush& brush) {
         std::vector<ch::polyline> output;
         output.reserve(10000);
         int count = 0;
         for (const auto& glp : glps) {
             std::cout << ++count << " of " << glps.size() << "\n";
-            double gray = 1.0 - static_cast<double>(glp.gray) / 255.0;
-            if (gray == 0.0) {
+            if (glp.value == 0.0) {
                 continue;
             }
             int j = 0;
             for (const auto& poly : glp.blobs) {
                 std::cout << "   " << ++j << " of " << glp.blobs.size() << "\n";
-                auto strokes = ch::crosshatched_poly_with_holes(poly, gray, brush);
+                auto strokes = ch::crosshatched_poly_with_holes(poly, glp.value, brush);
                 std::copy(strokes.begin(), strokes.end(), std::back_inserter(output));
             }
         }
@@ -462,35 +461,30 @@ ch::polyline int_polyline_to_polyline(const int_polyline& ip) {
         r::to<ch::polyline>();
 }
 
-std::vector<ch::gray_level_plane> ch::extract_gray_level_planes(const cv::Mat& gray_scale_img)
-{
-    auto contours = perform_find_contours(gray_scale_img);
+std::vector<ch::gray_level> ch::extract_gray_levels(const cv::Mat& gray_scale_img, bool hierarchical) {
+    auto contours = perform_find_contours(gray_scale_img, hierarchical);
     return contours |
         rv::transform(
-            [](const auto& tup)->ch::gray_level_plane {
+            [](const auto& tup)->ch::gray_level {
                 const auto& [gray, contour_info] = tup;
-                return contour_info_to_gray_level_plane(gray, contour_info);
+                return contour_info_to_gray_level(gray, contour_info);
             }
         ) |
-        r::to<std::vector<ch::gray_level_plane>>();
+        r::to<std::vector<ch::gray_level>>();
 }
 
-std::vector<ch::gray_levels> ch::extract_gray_levels(const cv::Mat& gray_scale_img) {
-    return {};
-}
-
-std::vector<ch::gray_level_plane> ch::scale(const std::vector<gray_level_plane>& planes, double scale)
+std::vector<ch::gray_level> ch::scale(const std::vector<gray_level>& planes, double scale)
 {
     return planes |
         rv::transform(
-            [scale](const ch::gray_level_plane& plane)->ch::gray_level_plane {
+            [scale](const ch::gray_level& plane)->ch::gray_level {
                 return ::scale(plane, scale);
             }
         ) |
         r::to_vector;
 }
 
-void ch::write_to_svg(const std::string& filename, const std::vector<gray_level_plane>& levels, int wd, int hgt, double scale)
+void ch::write_to_svg(const std::string& filename, const std::vector<gray_level>& levels, int wd, int hgt, double scale)
 {
     std::ofstream outfile(filename);
 
@@ -503,6 +497,7 @@ void ch::write_to_svg(const std::string& filename, const std::vector<gray_level_
     outfile.close();
 }
 
+/*
 void ch::debug() {
     cv::Mat img = cv::imread("C:\\test\\dunjon2.png");
     cv::Mat mat = ch::do_segmentation(img, 8, 3.0f, 12);
@@ -510,6 +505,7 @@ void ch::debug() {
     //gray_levels = simplify(gray_levels, 1.0);
     write_to_svg("C:\\test\\dunjon2.svg", gray_levels, mat.cols, mat.rows, 4.0);
 }
+*/
 
 ch::drawing ch::generate_crosshatched_drawing(const std::string& image_file, segmentation_params params, double scale, brush& br)
 {   
@@ -517,11 +513,11 @@ ch::drawing ch::generate_crosshatched_drawing(const std::string& image_file, seg
     cv::Mat img = cv::imread(image_file);
     cv::Mat mat = ch::do_segmentation(img, params.sigmaS, params.sigmaR, params.minSize);
     mat = ch::convert_to_gray(mat);
-    auto gray_levels = extract_gray_level_planes(mat);
-    gray_levels = ch::scale(gray_levels, scale);
+    auto gray_level = extract_gray_levels(mat, false);
+    gray_level = ch::scale(gray_level, scale);
 
     return ch::drawing{
-        gray_levels_to_strokes(gray_levels, br),
+        gray_levels_to_strokes(gray_level, br),
         { img.cols * scale, img.rows * scale},
         br.stroke_width()
     };

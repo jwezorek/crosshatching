@@ -25,21 +25,14 @@ namespace ch {
         std::vector<polyline> holes;
     };
 
-    struct gray_level_plane {
-        uchar gray;
-        std::vector<polygon_with_holes> blobs;
-    };
-
-    struct gray_levels {
+    struct gray_level {
         double value;
         std::vector<polygon_with_holes> blobs;
     };
 
-    std::vector<gray_level_plane> extract_gray_level_planes(const cv::Mat& gray_scale_img);
-    std::vector<gray_levels> extract_gray_levels(const cv::Mat& gray_scale_img);
-    std::vector<gray_level_plane> scale(const std::vector<gray_level_plane>& planes, double scale);
-    void write_to_svg(const std::string& filename, const std::vector<gray_level_plane>& levels, int wd, int hgt, double scale);
-    void debug();
+    std::vector<gray_level> extract_gray_levels(const cv::Mat& gray_scale_img, bool hierarchical);
+    std::vector<gray_level> scale(const std::vector<gray_level>& planes, double scale);
+    void write_to_svg(const std::string& filename, const std::vector<ch::gray_level>& levels, int wd, int hgt, double scale);
 
     drawing generate_crosshatched_drawing(const std::string& image_file, segmentation_params params, double scale, brush& br);
     std::vector<polyline> crosshatched_poly_with_holes(const polygon_with_holes& poly, double color, brush& br);

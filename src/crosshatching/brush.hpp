@@ -40,7 +40,7 @@ namespace ch {
     crosshatching_swatch disintegrate(crosshatching_swatch rng, double amount);
 
     cv::Mat paint_cross_hatching(crosshatching_swatch swatch);
-    double gray_level(crosshatching_swatch rng);
+    double measure_gray_level(crosshatching_swatch rng);
     void to_svg(const std::string& filename, crosshatching_swatch swatch);
 
     constexpr int k_swatch_sz = 512;

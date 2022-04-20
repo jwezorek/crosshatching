@@ -327,7 +327,7 @@ cv::Mat ch::paint_cross_hatching(ch::crosshatching_swatch swatch) {
     return mat;
 }
 
-double ch::gray_level(crosshatching_swatch swatch)
+double ch::measure_gray_level(crosshatching_swatch swatch)
 {
     auto mat = paint_cross_hatching(swatch);
     auto n = swatch.sz.wd * swatch.sz.hgt;
@@ -470,7 +470,7 @@ double sample(ch::dimensions sz, ch::brush_fn fn, double t, int n, int thickness
     std::vector<std::future<double>> samples(n);
 
     auto compute_gray_level = [sz](int th, ch::brush_fn f, double t)->double {
-        return ch::gray_level(f(th, sz, t));
+        return ch::measure_gray_level(f(th, sz, t));
     };
     std::generate(samples.begin(), samples.end(),
         [=]() {return std::async(std::launch::async, compute_gray_level, thickness, fn, t); }
