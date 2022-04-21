@@ -319,17 +319,21 @@ ch::crosshatching_swatch ch::disintegrate(ch::crosshatching_swatch swatch, doubl
     };
 }
 
-cv::Mat ch::paint_cross_hatching(ch::crosshatching_swatch swatch) {
-    cv::Mat mat(static_cast<int>(swatch.sz.hgt), static_cast<int>(swatch.sz.wd), CV_8U, 255);
+cv::Mat ch::paint_cross_hatching(ch::crosshatching_swatch swatch, cv::Mat bkgd) {
+    cv::Mat mat = (bkgd.empty()) ?
+        cv::Mat(static_cast<int>(swatch.sz.hgt), static_cast<int>(swatch.sz.wd), CV_8U, 255) :
+        bkgd.clone();
+
     for (const auto& ls : swatch.content) {
         ch::paint_polyline(mat, ls, swatch.stroke_wd, 0, point{ swatch.sz.wd / 2.0, swatch.sz.hgt / 2.0 });
     }
+
     return mat;
 }
 
-double ch::measure_gray_level(crosshatching_swatch swatch)
+double ch::measure_gray_level(crosshatching_swatch swatch, cv::Mat bkgd)
 {
-    auto mat = paint_cross_hatching(swatch);
+    auto mat = paint_cross_hatching(swatch, bkgd);
     auto n = swatch.sz.wd * swatch.sz.hgt;
     auto white_pixels = cv::countNonZero(mat);
     return static_cast<double>(n - white_pixels) / static_cast<double>(n);
@@ -449,14 +453,12 @@ ch::param_adapter_fn ch::make_ramp_fn(double k, bool right, bool up)
     return [k, up, right](double t) {return ch::ramp(t, k, right, up); };
 }
 
-//std::map<double, double> gray_to_param_;
-//brush_fn brush_fn_;
-//int line_thickness_;
-ch::brush::brush(brush_fn fn, int line_thickness, double epsilon, dimensions sz) :
+ch::brush::brush(brush_fn fn, int line_thickness, double epsilon, dimensions sz, const std::vector<cv::Mat>& bkgds) :
     brush_fn_(fn),
     line_thickness_(line_thickness),
     swatch_sz_{ sz },
-    eps_(epsilon)
+    eps_(epsilon),
+    bkgds_(bkgds)
 {}
 
 struct range_queue_item {
@@ -466,15 +468,25 @@ struct range_queue_item {
     double gray_level_right;
 };
 
-double sample(ch::dimensions sz, ch::brush_fn fn, double t, int n, int thickness) {
-    std::vector<std::future<double>> samples(n);
+double sample(ch::dimensions sz, ch::brush_fn fn, double t, int n, int thickness, const std::vector<cv::Mat>& bkgds) {
+    ;
 
-    auto compute_gray_level = [sz](int th, ch::brush_fn f, double t)->double {
-        return ch::measure_gray_level(f(th, sz, t));
+    auto compute_gray_level = [sz](int th, ch::brush_fn f, double t, cv::Mat bkgd) -> double {
+        return ch::measure_gray_level(f(th, sz, t), bkgd);
     };
+    /*
     std::generate(samples.begin(), samples.end(),
-        [=]() {return std::async(std::launch::async, compute_gray_level, thickness, fn, t); }
+        [=, &bkgds]() { return std::async(std::launch::async, compute_gray_level, thickness, fn, t); }
     );
+    */
+    std::vector<std::future<double>> samples = rv::iota(0, n) | 
+        rv::transform(
+            [=, &bkgds](int i)->std::future<double> {
+                cv::Mat bkgd = (bkgds.empty()) ? cv::Mat() : bkgds.at(i);
+                return std::async(std::launch::async, compute_gray_level, thickness, fn, t, bkgd);
+            }
+        ) | r::to_vector;
+
     double sum = std::accumulate(samples.begin(), samples.end(), 0.0,
         [](double s, std::future<double>& fut) {
             return s + fut.get();
@@ -513,7 +525,7 @@ double ch::brush::get_or_sample_param(double param) {
     if (iter != param_to_gray_.end()) {
         return iter->second;
     }
-    auto gray = sample(swatch_sz_, brush_fn_, param, k_num_samples, line_thickness_);
+    auto gray = sample(swatch_sz_, brush_fn_, param, k_num_samples, line_thickness_, bkgds_);
     gray_to_param_[gray] = param;
     param_to_gray_[param] = gray;
 
@@ -619,3 +631,23 @@ double ch::brush::max_gray_level() const {
     }
     return std::prev(gray_to_param_.end())->first;
 }
+
+/*
+
+cv::Mat ch::background_mats::get(ch::dimensions sz) const
+{
+    cv::Mat mat = bkgds_.at(ch::uniform_rnd_int(0, bkgds_.size()));
+    if (mat.cols <= sz.wd || mat.rows <= sz.hgt) {
+        throw std::runtime_error( "swatch too large for bkgd");
+    }
+
+    int x = ch::uniform_rnd_int(0, mat.cols - sz.wd);
+    int y = ch::uniform_rnd_int(0, mat.rows - sz.hgt);
+    cv::Mat roi = cv::Mat(mat, cv::Rect(x, y, sz.wd, sz.hgt));
+    cv::Mat bkgd;
+    roi.copyTo(bkgd);
+
+    return bkgd;
+}
+
+*/

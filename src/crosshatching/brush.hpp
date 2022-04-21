@@ -39,8 +39,8 @@ namespace ch {
     crosshatching_swatch rotate(crosshatching_swatch rng, double theta);
     crosshatching_swatch disintegrate(crosshatching_swatch rng, double amount);
 
-    cv::Mat paint_cross_hatching(crosshatching_swatch swatch);
-    double measure_gray_level(crosshatching_swatch rng);
+    cv::Mat paint_cross_hatching(crosshatching_swatch swatch, cv::Mat bkgd);
+    double measure_gray_level(crosshatching_swatch rng, cv::Mat bkgd);
     void to_svg(const std::string& filename, crosshatching_swatch swatch);
 
     constexpr int k_swatch_sz = 512;
@@ -81,6 +81,7 @@ namespace ch {
         int line_thickness_;
         dimensions swatch_sz_;
         double eps_;
+        std::vector<cv::Mat> bkgds_;
 
         bool is_uinitiailized() const;
         double get_or_sample_param(double param);
@@ -88,7 +89,9 @@ namespace ch {
         double build_to_gray_level(double gray_level);
 
     public:
-        brush(brush_fn fn, int line_thickness = 1, double epsilon = k_epsilon,  dimensions swatch_sz = { k_swatch_sz });
+        brush(brush_fn fn, int line_thickness = 1, double epsilon = k_epsilon, 
+            dimensions swatch_sz = { k_swatch_sz }, const std::vector<cv::Mat>& bkgds = {});
+
         void build();
         void build_n(int n);
         double stroke_width() const;
