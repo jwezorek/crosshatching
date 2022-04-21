@@ -582,8 +582,8 @@ void ch::brush::build_n(int n)
     if (!is_uinitiailized()) {
         throw std::runtime_error("brush is already built");
     }
-    double delta = 1.0 / static_cast<double>(n);
-    for (int i = 0; i <= n; ++i) {
+    double delta = 1.0 / (static_cast<double>(n)-1.0);
+    for (int i = 0; i < n; ++i) {
         get_or_sample_param(delta * i);
     }
 }
