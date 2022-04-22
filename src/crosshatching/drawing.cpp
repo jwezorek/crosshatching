@@ -545,3 +545,16 @@ void ch::to_svg(const std::string& filename, const drawing& d)
     outfile << "</svg>" << std::endl;
     outfile.close();
 }
+
+ch::drawing ch::generate_hierarchical_drawing(cv::Mat image, double scale, const std::vector<brush_fn>& brush_fns, const std::vector<double>& gray_intervals,
+    int line_thickness, double epsilon, dimensions swatch_sz) {
+
+    cv::Mat mat = ch::convert_to_gray(image);
+    auto gray_levels = extract_gray_levels(mat, true);
+    gray_levels = ch::scale(gray_levels, scale);
+
+    auto gray_values = gray_levels |
+        rv::transform([](const auto& gl) {return gl.value; }) |
+        r::to_vector;
+
+}

@@ -38,4 +38,6 @@ namespace ch {
     std::vector<polyline> crosshatched_poly_with_holes(const polygon_with_holes& poly, double color, brush& br);
     void to_svg(const std::string& filename, const drawing& d);
 
+    drawing generate_hierarchical_drawing(cv::Mat image, double scale, const std::vector<brush_fn>& brush_fns, const std::vector<double>& gray_intervals,
+        int line_thickness = 1, double epsilon = k_epsilon, dimensions swatch_sz = { k_swatch_sz });
 }

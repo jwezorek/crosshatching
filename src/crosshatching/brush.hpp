@@ -95,9 +95,29 @@ namespace ch {
         void build();
         void build_n(int n);
         double stroke_width() const;
-        crosshatching_swatch get_hatching(double gray_level, dimensions sz);
+        double gray_value_to_param(double gray_val);
+        crosshatching_swatch get_hatching(double gray_val, dimensions sz);
+        std::vector<cv::Mat> render_swatches(double gray_level);
         double min_gray_level() const;
         double max_gray_level() const;
+        static int num_samples();
+    };
+
+    class hierarchical_brush {
+    private:
+        std::map<double, brush_fn> gray_val_to_brush_;
+        double epsilon_;
+        double line_thickness_;
+        dimensions swatch_sz_;
+        std::map<double, std::function<ch::crosshatching_swatch(dimensions)>> brushes_;
+
+        brush_fn gray_val_to_brush(double gray_val);
+
+    public:
+        hierarchical_brush(const std::vector<brush_fn>& brush_fns, const std::vector<double>& gray_intervals, 
+            int line_thickness = 1, double epsilon = k_epsilon, dimensions swatch_sz = { k_swatch_sz });
+        void build(const std::vector<double>& gray_values);
+        crosshatching_swatch get_hatching(double gray_level, dimensions sz);
     };
 
 }

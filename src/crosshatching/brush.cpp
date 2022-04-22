@@ -618,6 +618,14 @@ ch::crosshatching_swatch ch::brush::get_hatching(double gray_level, dimensions s
     return brush_fn_(line_thickness_, sz, param);
 }
 
+
+double ch::brush::gray_value_to_param(double gray) {
+    if (is_uinitiailized()) {
+        throw std::runtime_error("brush is not built");
+    }
+    return build_to_gray_level( gray );
+}
+
 double ch::brush::min_gray_level() const {
     if (is_uinitiailized()) {
         throw std::runtime_error("brush is not built");
@@ -632,22 +640,64 @@ double ch::brush::max_gray_level() const {
     return std::prev(gray_to_param_.end())->first;
 }
 
-/*
-
-cv::Mat ch::background_mats::get(ch::dimensions sz) const
-{
-    cv::Mat mat = bkgds_.at(ch::uniform_rnd_int(0, bkgds_.size()));
-    if (mat.cols <= sz.wd || mat.rows <= sz.hgt) {
-        throw std::runtime_error( "swatch too large for bkgd");
+std::vector<cv::Mat> ch::brush::render_swatches(double gray_value) {
+    auto bkgds = bkgds_;
+    if (bkgds.empty()) {
+        bkgds.resize(k_num_samples);
     }
-
-    int x = ch::uniform_rnd_int(0, mat.cols - sz.wd);
-    int y = ch::uniform_rnd_int(0, mat.rows - sz.hgt);
-    cv::Mat roi = cv::Mat(mat, cv::Rect(x, y, sz.wd, sz.hgt));
-    cv::Mat bkgd;
-    roi.copyTo(bkgd);
-
-    return bkgd;
+    return rv::iota(0, k_num_samples) |
+        rv::transform(
+            [&](int i)->cv::Mat {
+                auto bkgd = bkgds.at(i);
+                auto swatch = this->get_hatching( gray_value, swatch_sz_);
+                return paint_cross_hatching(swatch, bkgd);
+            }
+        ) |
+        r::to_vector;
 }
 
-*/
+int ch::brush::num_samples() {
+    return k_num_samples;
+}
+
+
+//double epsilon_;
+//double line_thickness_;
+//dimensions swatch_sz_;
+//std::map<double, std::function<ch::crosshatching_swatch()>> brushes_;
+
+ch::hierarchical_brush::hierarchical_brush(
+    const std::vector<brush_fn>& brush_fns, const std::vector<double>& gray_intervals,
+    int line_thickness, double epsilon, dimensions swatch_sz) :
+        line_thickness_(line_thickness),
+        epsilon_(epsilon),
+        swatch_sz_(swatch_sz)
+{
+    if (gray_intervals.size() != brush_fns.size() - 1) {
+        throw std::runtime_error("hierarchical_brush gray value to brush args are inconsistent");
+    }
+    gray_val_to_brush_ = rv::zip(rv::concat(gray_intervals, rv::single(1.0)), brush_fns) | r::to<std::map<double, brush_fn>>;
+}
+
+ch::brush_fn ch::hierarchical_brush::gray_val_to_brush(double gray_val) {
+    return gray_val_to_brush_.upper_bound(gray_val)->second;
+}
+
+void ch::hierarchical_brush::build(const std::vector<double>& gray_values) {
+    std::vector<cv::Mat> bkgds;
+    for (auto gray : gray_values) {
+        auto brush_func = gray_val_to_brush(gray);
+        ch::brush brush = ch::brush(brush_func, line_thickness_, epsilon_, swatch_sz_, bkgds);
+        brush.build_n(2);
+        double param = brush.gray_value_to_param(gray);
+        brushes_[gray] = [=](dimensions d) {
+            return brush_func(line_thickness_, d, param);
+        };
+        bkgds = brush.render_swatches(gray);
+    }
+}
+    
+ch::crosshatching_swatch ch::hierarchical_brush::get_hatching(double gray_level, dimensions sz) {
+    auto brush_func = brushes_.at(gray_level);
+    return brush_func(sz);
+}
