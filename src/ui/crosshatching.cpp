@@ -128,6 +128,34 @@ void ui::crosshatching::generate() {
 	}
 }
 
+/*
+void ui::crosshatching::generate() {
+	auto make_pipeline_fn = [](double theta, double start) {
+		return ch::make_run_pipeline_fn(
+			ch::brush_pipeline{
+				ch::make_ramp_fn(start, true,true),
+				ch::make_linear_hatching_brush_fn(
+					ch::make_lerped_normal_dist_fn(0, 50, 800, 100),
+					ch::make_lerped_normal_dist_fn(200, 20, 0, 0.05),
+					ch::make_lerped_normal_dist_fn(7, 0.5, 0.5, 0.05),
+					ch::make_default_hatching_unit()
+				),
+				ch::make_one_param_brush_adaptor(ch::rotate, ch::make_constant_fn(theta)),
+				ch::make_ramp_fn(0.20, false, true),
+				ch::disintegrate
+			}
+		);
+	};
+
+	cv::Mat mat = cv::imread("C:\\test\\hier-gray.png");
+	std::vector<ch::brush_fn> brushes = {
+		make_pipeline_fn(std::numbers::pi / 4.0, 0),
+		make_pipeline_fn(-std::numbers::pi / 4.0, 0)
+	};
+	auto drawing = ch::generate_hierarchical_drawing(mat, 1.0, brushes, { 0.5 });
+}
+*/
+
 void ui::crosshatching::createMainMenu()
 {
 	menuBar()->addMenu( create_file_menu(this) );

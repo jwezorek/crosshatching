@@ -29,7 +29,8 @@ namespace {
         return rv::iota(0) |
             rv::take(256) |
             rv::filter([&grays](int g) {return grays[g]; }) |
-            r::to<std::vector<uchar>>();
+            r::to<std::vector<uchar>>() |
+            r::action::reverse;
     }
 
     std::vector<std::tuple<uchar, cv::Mat>> gray_planes(const cv::Mat& input, bool full_range) {
@@ -157,6 +158,9 @@ namespace {
     }
 
     bool can_flip(const pixel_crawler& pc, const cv::Point& to_pt) {
+        if (pc.loc == to_pt) {
+            return false;
+        }
         auto [shared_vert_1, shared_vert_2] = get_shared_vert_directions(pc.loc, to_pt);
         return pc.head == shared_vert_1 || pc.head == shared_vert_2;
     }
@@ -557,4 +561,5 @@ ch::drawing ch::generate_hierarchical_drawing(cv::Mat image, double scale, const
         rv::transform([](const auto& gl) {return gl.value; }) |
         r::to_vector;
 
+    return {};
 }
