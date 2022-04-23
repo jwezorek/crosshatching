@@ -84,6 +84,7 @@ void ui::crosshatching::open()
 	change_source_image(src_image_);
 }
 
+/*
 void ui::crosshatching::generate() {
 	//src_image_ = ch::do_segmentation(src_image_, 8, 3.0f, 12);
 	//image_box_->setPixmap(QPixmap::fromImage(QImage(src_image_.data, src_image_.cols, src_image_.rows, src_image_.step, QImage::Format_BGR888)));
@@ -127,8 +128,8 @@ void ui::crosshatching::generate() {
 		msg_box.exec();
 	}
 }
+*/
 
-/*
 void ui::crosshatching::generate() {
 	auto make_pipeline_fn = [](double theta, double start) {
 		return ch::make_run_pipeline_fn(
@@ -140,6 +141,7 @@ void ui::crosshatching::generate() {
 					ch::make_lerped_normal_dist_fn(7, 0.5, 0.5, 0.05),
 					ch::make_default_hatching_unit()
 				),
+				ch::make_random_brush_adaptor(ch::jiggle, ch::normal_rnd_fn(0.0, 0.02)),
 				ch::make_one_param_brush_adaptor(ch::rotate, ch::make_constant_fn(theta)),
 				ch::make_ramp_fn(0.20, false, true),
 				ch::disintegrate
@@ -152,9 +154,10 @@ void ui::crosshatching::generate() {
 		make_pipeline_fn(std::numbers::pi / 4.0, 0),
 		make_pipeline_fn(-std::numbers::pi / 4.0, 0)
 	};
-	auto drawing = ch::generate_hierarchical_drawing(mat, 1.0, brushes, { 0.5 });
+	auto drawing = ch::generate_hierarchical_drawing(mat, 100.0, brushes, { 0.5 });
+	ch::to_svg("C:\\test\\test-hier.svg", drawing);
 }
-*/
+
 
 void ui::crosshatching::createMainMenu()
 {

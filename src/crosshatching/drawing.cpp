@@ -450,6 +450,25 @@ namespace {
         }
         return output;
     }
+
+    std::vector<ch::polyline> gray_levels_to_strokes(const std::vector<ch::gray_level>& glps, ch::hierarchical_brush& brush) {
+        std::vector<ch::polyline> output;
+        output.reserve(10000);
+        int count = 0;
+        for (const auto& glp : glps) {
+            std::cout << ++count << " of " << glps.size() << "\n";
+            if (glp.value == 0.0) {
+                continue;
+            }
+            int j = 0;
+            for (const auto& poly : glp.blobs) {
+                std::cout << "   " << ++j << " of " << glp.blobs.size() << "\n";
+                auto strokes = ch::crosshatched_poly_with_holes(poly, glp.value, brush);
+                std::copy(strokes.begin(), strokes.end(), std::back_inserter(output));
+            }
+        }
+        return output;
+    }
 }
 
 ch::polyline int_polyline_to_polyline(const int_polyline& ip) {
@@ -537,6 +556,16 @@ std::vector<ch::polyline> ch::crosshatched_poly_with_holes(const ch::polygon_wit
     return transform(strokes, translation_matrix(center));
 }
 
+std::vector<ch::polyline> ch::crosshatched_poly_with_holes(const ch::polygon_with_holes& input, double color, ch::hierarchical_brush& brush)
+{
+    auto [x1, y1, x2, y2] = bounds(input.border);
+    cv::Point2d center = { (x1 + x2) / 2.0,(y1 + y2) / 2.0 };
+    auto poly = ::transform(input, translation_matrix(-center));
+    auto swatch = brush.get_hatching(color, { x2 - x1,y2 - y1 });
+    auto strokes = clip_swatch_to_poly(swatch, poly);
+    return transform(strokes, translation_matrix(center));
+}
+
 void ch::to_svg(const std::string& filename, const drawing& d)
 {
     std::ofstream outfile(filename);
@@ -561,5 +590,12 @@ ch::drawing ch::generate_hierarchical_drawing(cv::Mat image, double scale, const
         rv::transform([](const auto& gl) {return gl.value; }) |
         r::to_vector;
 
-    return {};
+    auto hbr = hierarchical_brush(brush_fns, gray_intervals, line_thickness, epsilon, swatch_sz);
+    hbr.build(gray_values);
+
+    return ch::drawing{
+        gray_levels_to_strokes(gray_levels, hbr),
+        { mat.cols * scale, mat.rows * scale},
+        hbr.stroke_width()
+    };
 }

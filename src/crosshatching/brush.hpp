@@ -118,6 +118,7 @@ namespace ch {
             int line_thickness = 1, double epsilon = k_epsilon, dimensions swatch_sz = { k_swatch_sz });
         void build(const std::vector<double>& gray_values);
         crosshatching_swatch get_hatching(double gray_level, dimensions sz);
+        double stroke_width() const;
     };
 
 }

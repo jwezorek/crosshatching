@@ -595,6 +595,10 @@ double ch::brush::stroke_width() const
 
 double ch::brush::build_to_gray_level(double gray_level) {
     auto right = gray_to_param_.lower_bound(gray_level);
+    if (right == gray_to_param_.end()) {
+        return gray_to_param_.rbegin()->second;
+    }
+
     auto left = (right != gray_to_param_.begin()) ? std::prev(right) : right;
     if (std::abs(gray_level - left->first) < eps_) {
         return left->second;
@@ -680,7 +684,10 @@ ch::hierarchical_brush::hierarchical_brush(
 }
 
 ch::brush_fn ch::hierarchical_brush::gray_val_to_brush(double gray_val) {
-    return gray_val_to_brush_.upper_bound(gray_val)->second;
+    auto iter = gray_val_to_brush_.find(gray_val);
+    return (iter != gray_val_to_brush_.end()) ?
+        iter->second :
+        gray_val_to_brush_.upper_bound(gray_val)->second;
 }
 
 void ch::hierarchical_brush::build(const std::vector<double>& gray_values) {
@@ -700,4 +707,8 @@ void ch::hierarchical_brush::build(const std::vector<double>& gray_values) {
 ch::crosshatching_swatch ch::hierarchical_brush::get_hatching(double gray_level, dimensions sz) {
     auto brush_func = brushes_.at(gray_level);
     return brush_func(sz);
+}
+
+double ch::hierarchical_brush::stroke_width() const {
+    return line_thickness_;
 }
