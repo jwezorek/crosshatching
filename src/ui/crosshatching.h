@@ -35,7 +35,8 @@ namespace ui {
 
     private:
         void createMainMenu();
-        QWidget* createContent();
+        QWidget* createImageProcPipelineCtrls();
+        QWidget* createCrosshatchCtrls();
         void display(cv::Mat mat = {});
         void handle_pipeline_change(int index);
         cv::Mat input_to_nth_stage(int index) const;

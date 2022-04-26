@@ -69,7 +69,13 @@ ui::crosshatching::crosshatching(QWidget *parent)
 {
 	resize(QGuiApplication::primaryScreen()->availableGeometry().size() * 0.7);
 	createMainMenu();
-    setCentralWidget(createContent());
+
+	QTabWidget* tab_ctrl = new QTabWidget();
+	tab_ctrl->setTabPosition(QTabWidget::TabPosition::East);
+	tab_ctrl->addTab( createImageProcPipelineCtrls(), "image");
+	tab_ctrl->addTab( createCrosshatchCtrls(), "crosshatch");
+
+    setCentralWidget(tab_ctrl);
 	handle_source_image_change(src_image_);
 }
 
@@ -211,7 +217,11 @@ void ui::crosshatching::handle_source_image_change(cv::Mat& img) {
 	view_menu->setEnabled(true);
 }
 
-QWidget* ui::crosshatching::createContent()
+QWidget* ui::crosshatching::createCrosshatchCtrls() {
+	return new QWidget();
+}
+
+QWidget* ui::crosshatching::createImageProcPipelineCtrls()
 {
 	QTabWidget* tab_ctrl = new QTabWidget();
 	tab_ctrl->setMaximumWidth(k_controls_width);
