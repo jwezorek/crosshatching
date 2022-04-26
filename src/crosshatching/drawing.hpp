@@ -35,10 +35,15 @@ namespace ch {
     void write_to_svg(const std::string& filename, const std::vector<ch::gray_level>& levels, int wd, int hgt, double scale);
 
     drawing generate_crosshatched_drawing(const std::string& image_file, segmentation_params params, double scale, brush& br);
+    drawing generate_crosshatched_drawing(cv::Mat img, double scale, brush& br);
     std::vector<polyline> crosshatched_poly_with_holes(const polygon_with_holes& poly, double color, brush& br);
     std::vector<polyline> crosshatched_poly_with_holes(const polygon_with_holes& poly, double color, hierarchical_brush& br);
     void to_svg(const std::string& filename, const drawing& d);
 
+
     drawing generate_hierarchical_drawing(cv::Mat image, double scale, const std::vector<brush_fn>& brush_fns, const std::vector<double>& gray_intervals,
+        int line_thickness = 1, double epsilon = k_epsilon, dimensions swatch_sz = { k_swatch_sz });
+
+    drawing generate_hierarchical_drawing(cv::Mat image, double scale, const std::vector<hierarchical_brush_component>& brush_fns, const std::vector<double>& gray_intervals,
         int line_thickness = 1, double epsilon = k_epsilon, dimensions swatch_sz = { k_swatch_sz });
 }

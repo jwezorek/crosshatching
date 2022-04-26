@@ -683,11 +683,31 @@ ch::hierarchical_brush::hierarchical_brush(
     gray_val_to_brush_ = rv::zip(rv::concat(gray_intervals, rv::single(1.0)), brush_fns) | r::to<std::map<double, brush_fn>>;
 }
 
+
+ch::hierarchical_brush::hierarchical_brush(const std::vector<hierarchical_brush_component>& brush_gens, const std::vector<double>& gray_intervals,
+    int line_thickness, double epsilon, dimensions swatch_sz) :
+    line_thickness_(line_thickness),
+    epsilon_(epsilon),
+    swatch_sz_(swatch_sz)
+{
+    if (gray_intervals.size() != brush_gens.size() - 1) {
+        throw std::runtime_error("hierarchical_brush gray value to brush args are inconsistent");
+    }
+    gray_val_to_brush_gen_ = rv::zip(rv::concat(gray_intervals, rv::single(1.0)), brush_gens) | r::to<std::map<double, hierarchical_brush_component>>;
+}
+
 ch::brush_fn ch::hierarchical_brush::gray_val_to_brush(double gray_val) {
-    auto iter = gray_val_to_brush_.find(gray_val);
-    return (iter != gray_val_to_brush_.end()) ?
-        iter->second :
-        gray_val_to_brush_.upper_bound(gray_val)->second;
+    if (!gray_val_to_brush_.empty()) {
+        auto iter = gray_val_to_brush_.find(gray_val);
+        return (iter != gray_val_to_brush_.end()) ?
+            iter->second :
+            gray_val_to_brush_.upper_bound(gray_val)->second;
+    } else {
+        auto iter = gray_val_to_brush_gen_.find(gray_val);
+        return (iter != gray_val_to_brush_gen_.end()) ?
+            (iter->second)(gray_val) :
+            (gray_val_to_brush_gen_.upper_bound(gray_val)->second)(gray_val);
+    }
 }
 
 void ch::hierarchical_brush::build(const std::vector<double>& gray_values) {

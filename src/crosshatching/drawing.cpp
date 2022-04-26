@@ -532,10 +532,22 @@ void ch::debug() {
 
 ch::drawing ch::generate_crosshatched_drawing(const std::string& image_file, segmentation_params params, double scale, brush& br)
 {   
-    
     cv::Mat img = cv::imread(image_file);
     cv::Mat mat = ch::do_segmentation(img, params.sigmaS, params.sigmaR, params.minSize);
     mat = ch::convert_to_gray(mat);
+    auto gray_level = extract_gray_levels(mat, false);
+    gray_level = ch::scale(gray_level, scale);
+
+    return ch::drawing{
+        gray_levels_to_strokes(gray_level, br),
+        { img.cols * scale, img.rows * scale},
+        br.stroke_width()
+    };
+}
+
+ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, double scale, ch::brush& br)
+{
+    cv::Mat mat = ch::convert_to_gray(img);
     auto gray_level = extract_gray_levels(mat, false);
     gray_level = ch::scale(gray_level, scale);
 
@@ -577,6 +589,27 @@ void ch::to_svg(const std::string& filename, const drawing& d)
 
     outfile << "</svg>" << std::endl;
     outfile.close();
+}
+
+ch::drawing ch::generate_hierarchical_drawing(cv::Mat image, double scale, const std::vector<hierarchical_brush_component>& brush_fns, const std::vector<double>& gray_intervals,
+    int line_thickness, double epsilon, dimensions swatch_sz) {
+
+    cv::Mat mat = ch::convert_to_gray(image);
+    auto gray_levels = extract_gray_levels(mat, true);
+    gray_levels = ch::scale(gray_levels, scale);
+
+    auto gray_values = gray_levels |
+        rv::transform([](const auto& gl) {return gl.value; }) |
+        r::to_vector;
+
+    auto hbr = hierarchical_brush(brush_fns, gray_intervals, line_thickness, epsilon, swatch_sz);
+    hbr.build(gray_values);
+
+    return ch::drawing{
+        gray_levels_to_strokes(gray_levels, hbr),
+        { mat.cols * scale, mat.rows * scale},
+        hbr.stroke_width()
+    };
 }
 
 ch::drawing ch::generate_hierarchical_drawing(cv::Mat image, double scale, const std::vector<brush_fn>& brush_fns, const std::vector<double>& gray_intervals,

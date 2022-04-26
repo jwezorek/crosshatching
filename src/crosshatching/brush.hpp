@@ -103,9 +103,12 @@ namespace ch {
         static int num_samples();
     };
 
+    using hierarchical_brush_component = std::function< brush_fn(double) >;
+
     class hierarchical_brush {
     private:
-        std::map<double, brush_fn> gray_val_to_brush_;
+        std::map<double, brush_fn> gray_val_to_brush_; 
+        std::map<double, hierarchical_brush_component> gray_val_to_brush_gen_;
         double epsilon_;
         double line_thickness_;
         dimensions swatch_sz_;
@@ -115,6 +118,8 @@ namespace ch {
 
     public:
         hierarchical_brush(const std::vector<brush_fn>& brush_fns, const std::vector<double>& gray_intervals, 
+            int line_thickness = 1, double epsilon = k_epsilon, dimensions swatch_sz = { k_swatch_sz });
+        hierarchical_brush(const std::vector<hierarchical_brush_component>& brush_fns, const std::vector<double>& gray_intervals,
             int line_thickness = 1, double epsilon = k_epsilon, dimensions swatch_sz = { k_swatch_sz });
         void build(const std::vector<double>& gray_values);
         crosshatching_swatch get_hatching(double gray_level, dimensions sz);
