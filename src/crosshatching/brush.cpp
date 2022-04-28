@@ -378,13 +378,19 @@ ch::param_adapter_fn ch::make_lerp_fn(double v1, double v2)
 {
     return [v1, v2](double t) { return std::lerp(v1, v2, t);  };
 }
-
+/*
 ch::param_adapter_fn ch::make_lerped_normal_dist_fn(double mu1, double sigma1, double mu2, double sigma2)
 {
     return [mu1, sigma1, mu2, sigma2](double t) {
         auto mu = std::lerp(mu1, mu2, t);
         auto sigma = std::lerp(sigma1, sigma2, t);
         return ch::normal_rnd(mu, sigma);
+    };
+}
+*/
+ch::param_adapter_fn ch::make_normal_dist_fn(ch::param_adapter_fn mu_fn, ch::param_adapter_fn sigma_fn) {
+    return [=](double t)->double {
+        return ch::normal_rnd( mu_fn(t), sigma_fn(t) );
     };
 }
 

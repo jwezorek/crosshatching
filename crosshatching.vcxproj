@@ -106,6 +106,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\crosshatching\brush.cpp" />
+    <ClCompile Include="src\crosshatching\brush_language.cpp" />
     <ClCompile Include="src\crosshatching\clipper.cpp" />
     <ClCompile Include="src\crosshatching\drawing.cpp" />
     <ClCompile Include="src\crosshatching\geometry.cpp" />
@@ -124,10 +125,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\crosshatching\brush.hpp" />
+    <ClInclude Include="src\crosshatching\brush_language.hpp" />
     <ClInclude Include="src\crosshatching\clipper.hpp" />
     <ClInclude Include="src\crosshatching\drawing.hpp" />
     <ClInclude Include="src\crosshatching\geometry.hpp" />
     <ClInclude Include="src\crosshatching\meanshift.hpp" />
+    <ClInclude Include="src\crosshatching\peglib.h" />
     <ClInclude Include="src\crosshatching\util.hpp" />
     <QtMoc Include="src\ui\float_value_slider.h" />
     <QtMoc Include="src\ui\settingctrls.hpp" />

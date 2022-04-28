@@ -57,7 +57,8 @@ namespace ch {
 
     param_adapter_fn make_constant_fn(double k);
     param_adapter_fn make_lerp_fn(double v1, double v2);
-    param_adapter_fn make_lerped_normal_dist_fn(double mu1, double sigma1, double mu2, double sigma2);
+    //param_adapter_fn make_lerped_normal_dist_fn(double mu1, double sigma1, double mu2, double sigma2);
+    param_adapter_fn make_normal_dist_fn(param_adapter_fn mu_fn, param_adapter_fn sigma_fn);
 
     param_unit_of_hatching_fn make_default_hatching_unit();
     brush_adapter_fn make_one_param_brush_adaptor(brush_adapter_fn fn, param_adapter_fn param);

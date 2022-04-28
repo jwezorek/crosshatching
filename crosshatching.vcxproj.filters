@@ -52,6 +52,9 @@
     <ClCompile Include="src\ui\float_value_slider.cpp">
       <Filter>Source Files\ui</Filter>
     </ClCompile>
+    <ClCompile Include="src\crosshatching\brush_language.cpp">
+      <Filter>Source Files\crosshatching</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="src\ui\crosshatching.qrc">
@@ -86,6 +89,12 @@
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
     <ClInclude Include="src\crosshatching\util.hpp">
+      <Filter>Source Files\crosshatching</Filter>
+    </ClInclude>
+    <ClInclude Include="src\crosshatching\brush_language.hpp">
+      <Filter>Source Files\crosshatching</Filter>
+    </ClInclude>
+    <ClInclude Include="src\crosshatching\peglib.h">
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
   </ItemGroup>

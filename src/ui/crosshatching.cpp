@@ -2,6 +2,7 @@
 #include "settingctrls.hpp"
 #include "../crosshatching/drawing.hpp"
 #include "../crosshatching/util.hpp"
+#include "../crosshatching/brush_language.hpp"
 #include <QtWidgets>
 #include <QSlider>
 #include <opencv2/core.hpp>
@@ -77,6 +78,8 @@ ui::crosshatching::crosshatching(QWidget *parent)
 
     setCentralWidget(tab_ctrl);
 	handle_source_image_change(src_image_);
+
+	//auto foo = ch::parse_brush_language("(norm_rnd (lerp 24 1.50 30.5) true false)");
 }
 
 void ui::crosshatching::open()
@@ -99,9 +102,9 @@ void ui::crosshatching::generate() {
 				ch::brush_pipeline{
 					ch::make_ramp_fn(start, true,true),
 					ch::make_linear_hatching_brush_fn(
-						ch::make_lerped_normal_dist_fn(0, 50, 800, 100),
-						ch::make_lerped_normal_dist_fn(200, 20, 0, 0.05),
-						ch::make_lerped_normal_dist_fn(7, 0.5, 0.5, 0.05),
+						ch::make_normal_dist_fn( ch::make_lerp_fn(0, 800), ch::make_lerp_fn(50, 100)),
+						ch::make_normal_dist_fn(ch::make_lerp_fn(200, 0), ch::make_lerp_fn(20, 0.05)),
+						ch::make_normal_dist_fn( ch::make_lerp_fn(7, 0.5), ch::make_lerp_fn(0.5,  0.05)),
 						ch::make_default_hatching_unit()
 					),
 					ch::make_one_param_brush_adaptor(ch::rotate, ch::make_constant_fn(theta)),
@@ -127,7 +130,7 @@ void ui::crosshatching::generate() {
 		br.build_n(10);
 		cv::Mat mat = current_image_;
 		auto drawing = ch::generate_crosshatched_drawing(mat, 5.0, br);
-		ch::to_svg("C:\\test\\lenna-ch.svg", drawing); 
+		ch::to_svg("C:\\test\\testo.svg", drawing); 
 
 	} catch (std::runtime_error err) {
 		QMessageBox msg_box;
