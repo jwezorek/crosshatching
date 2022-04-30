@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <optional>
+#include <variant>
 #include <iterator>
 
 namespace ch {
@@ -13,11 +14,14 @@ namespace ch {
         true_,
         false_,
         pipe,
+        linear_brush,
         norm_rnd,
         lerp,
         ramp,
         rotate,
-        disintegrate
+        disintegrate,
+        jiggle,
+        merge
     };
 
     class brush_expr_base {
@@ -25,6 +29,7 @@ namespace ch {
         virtual brush_pipeline_item eval() const = 0;
         virtual std::optional<symbol> sym_type() const = 0;
         virtual std::string to_string() const = 0;
+        virtual std::optional<double> to_number() const = 0;
     };
     using brush_expr_ptr = std::shared_ptr<brush_expr_base>;
 
@@ -40,6 +45,7 @@ namespace ch {
         brush_pipeline_item eval() const override;
         std::optional<symbol> sym_type() const override;
         std::string to_string() const override;
+        std::optional<double>  to_number() const override;
     
     private:
         ch::symbol op_;
@@ -53,6 +59,8 @@ namespace ch {
         brush_pipeline_item eval() const override;
         virtual std::optional<symbol> sym_type() const override;
         std::string to_string() const override;
+        std::optional<double> to_number() const override;
+
     private:
         symbol sym_;
     };
@@ -63,9 +71,11 @@ namespace ch {
         brush_pipeline_item eval() const override;
         virtual std::optional<symbol> sym_type() const override;
         std::string to_string() const override;
+        std::optional<double> to_number() const override;
+
     private:
         double val_;
     };
 
-    brush_expr_ptr parse_brush_language(const std::string& input);
+    std::variant<ch::brush_fn, std::string> parse_brush_language(const std::string& input);
 };

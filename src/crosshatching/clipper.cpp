@@ -3789,7 +3789,6 @@ ClipperOffset::ClipperOffset(double miterLimit, double arcTolerance)
   this->ArcTolerance = arcTolerance;
   m_lowest.X = -1;
 }
-//------------------------------------------------------------------------------
 
 ClipperOffset::~ClipperOffset()
 {

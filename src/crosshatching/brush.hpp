@@ -37,6 +37,7 @@ namespace ch {
     crosshatching_swatch jitter(crosshatching_swatch rng, ch::rnd_fn jitter);
     crosshatching_swatch jiggle(crosshatching_swatch rng, ch::rnd_fn jiggle);
     crosshatching_swatch rotate(crosshatching_swatch rng, double theta);
+    crosshatching_swatch rotate_in_degrees(crosshatching_swatch rng, double theta);
     crosshatching_swatch disintegrate(crosshatching_swatch rng, double amount);
 
     cv::Mat paint_cross_hatching(crosshatching_swatch swatch, cv::Mat bkgd);
@@ -56,13 +57,12 @@ namespace ch {
     ch::crosshatching_swatch run_brush_pipeline(const brush_pipeline& pipeline, double thickness, dimensions sz, double t);
 
     param_adapter_fn make_constant_fn(double k);
-    param_adapter_fn make_lerp_fn(double v1, double v2);
-    //param_adapter_fn make_lerped_normal_dist_fn(double mu1, double sigma1, double mu2, double sigma2);
+    param_adapter_fn make_lerp_fn(param_adapter_fn v1, param_adapter_fn v2);
     param_adapter_fn make_normal_dist_fn(param_adapter_fn mu_fn, param_adapter_fn sigma_fn);
 
     param_unit_of_hatching_fn make_default_hatching_unit();
     brush_adapter_fn make_one_param_brush_adaptor(brush_adapter_fn fn, param_adapter_fn param);
-    brush_adapter_fn make_random_brush_adaptor(random_brush_adaptor_fn fn, rnd_fn rnd);
+    brush_adapter_fn make_random_brush_adaptor(random_brush_adaptor_fn fn, param_adapter_fn param);
 
     brush_fn make_linear_hatching_brush_fn(const param_adapter_fn& run_length, const param_adapter_fn& space_length, const param_adapter_fn& vert_space,
         const param_unit_of_hatching_fn& h_fn);
@@ -70,7 +70,7 @@ namespace ch {
     brush_fn make_run_pipeline_fn(const brush_pipeline& pipeline);
     brush_fn make_merge_fn(const std::vector<brush_fn>& brushes);
 
-    param_adapter_fn make_ramp_fn(double k, bool right, bool up);
+    param_adapter_fn make_ramp_fn(param_adapter_fn k, bool right, bool up);
     //param_adapter_fn make_one_parameter_param_adapter(param_adapter_fn f, param_adapter_fn arg);
 
     class brush {

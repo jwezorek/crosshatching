@@ -300,6 +300,10 @@ ch::crosshatching_swatch ch::rotate(ch::crosshatching_swatch swatch, double thet
     };
 }
 
+ch::crosshatching_swatch ch::rotate_in_degrees(ch::crosshatching_swatch swatch, double theta) {
+    return rotate(swatch, ch::degrees_to_radians(theta) );
+}
+
 ch::crosshatching_swatch ch::disintegrate(ch::crosshatching_swatch swatch, double amount) {
 
     if (amount >= 1.0) {
@@ -374,20 +378,11 @@ ch::param_adapter_fn ch::make_constant_fn(double k) {
     return [k](double t) {return k; };
 }
 
-ch::param_adapter_fn ch::make_lerp_fn(double v1, double v2)
+ch::param_adapter_fn ch::make_lerp_fn(param_adapter_fn v1, param_adapter_fn v2)
 {
-    return [v1, v2](double t) { return std::lerp(v1, v2, t);  };
+    return [v1, v2](double t) { return std::lerp(v1(t), v2(t), t);  };
 }
-/*
-ch::param_adapter_fn ch::make_lerped_normal_dist_fn(double mu1, double sigma1, double mu2, double sigma2)
-{
-    return [mu1, sigma1, mu2, sigma2](double t) {
-        auto mu = std::lerp(mu1, mu2, t);
-        auto sigma = std::lerp(sigma1, sigma2, t);
-        return ch::normal_rnd(mu, sigma);
-    };
-}
-*/
+
 ch::param_adapter_fn ch::make_normal_dist_fn(ch::param_adapter_fn mu_fn, ch::param_adapter_fn sigma_fn) {
     return [=](double t)->double {
         return ch::normal_rnd( mu_fn(t), sigma_fn(t) );
@@ -406,9 +401,9 @@ ch::brush_adapter_fn ch::make_one_param_brush_adaptor(brush_adapter_fn fn, param
     };
 }
 
-ch::brush_adapter_fn ch::make_random_brush_adaptor(random_brush_adaptor_fn fn, rnd_fn rnd) {
-    return [fn, rnd](crosshatching_swatch input, double t)->crosshatching_swatch {
-        return fn(input, rnd);
+ch::brush_adapter_fn ch::make_random_brush_adaptor(random_brush_adaptor_fn fn, param_adapter_fn param) {
+    return [fn, param](crosshatching_swatch input, double t)->crosshatching_swatch {
+        return fn(input, [param, t]() { return param(t); });
     };
 }
 
@@ -454,9 +449,9 @@ ch::brush_fn ch::make_merge_fn(const std::vector<ch::brush_fn>& brushes) {
     };
 }
 
-ch::param_adapter_fn ch::make_ramp_fn(double k, bool right, bool up)
+ch::param_adapter_fn ch::make_ramp_fn(param_adapter_fn k, bool right, bool up)
 {
-    return [k, up, right](double t) {return ch::ramp(t, k, right, up); };
+    return [k, up, right](double t) {return ch::ramp(t, k(t), right, up); };
 }
 
 ch::brush::brush(brush_fn fn, int line_thickness, double epsilon, dimensions sz, const std::vector<cv::Mat>& bkgds) :

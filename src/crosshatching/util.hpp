@@ -40,4 +40,5 @@ namespace ch {
     cv::Mat anisotropic_diffusion(cv::Mat img, double alpha, double k, int iters);
     cv::Mat do_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize);
     cv::Mat convert_to_gray(const cv::Mat& color);
+    double degrees_to_radians(double degrees);
 }

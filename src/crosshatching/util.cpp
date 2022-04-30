@@ -5,6 +5,7 @@
 #include <sstream>
 #include <random>
 #include <iomanip>
+#include <numbers>
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -244,4 +245,9 @@ cv::Mat ch::convert_to_gray(const cv::Mat& color) {
 	cv::Mat gray;
 	cv::cvtColor(color, gray, cv::COLOR_BGR2GRAY);
 	return gray;
+}
+
+double ch::degrees_to_radians(double degrees)
+{
+	return (std::numbers::pi * degrees) / 180.0;
 }

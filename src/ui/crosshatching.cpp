@@ -11,6 +11,7 @@
 #include <numbers>
 #include <stdexcept>
 #include <array>
+#include <chrono>
 
 namespace {
 
@@ -78,8 +79,6 @@ ui::crosshatching::crosshatching(QWidget *parent)
 
     setCentralWidget(tab_ctrl);
 	handle_source_image_change(src_image_);
-
-	//auto foo = ch::parse_brush_language("(norm_rnd (lerp 24 1.50 30.5) true false)");
 }
 
 void ui::crosshatching::open()
@@ -94,80 +93,54 @@ void ui::crosshatching::open()
 }
 
 void ui::crosshatching::generate() {
-	//src_image_ = ch::do_segmentation(src_image_, 8, 3.0f, 12);
-	//image_box_->setPixmap(QPixmap::fromImage(QImage(src_image_.data, src_image_.cols, src_image_.rows, src_image_.step, QImage::Format_BGR888)));
-	try {
-		auto make_pipeline_fn = [](double theta, double start) {
-			return ch::make_run_pipeline_fn(
-				ch::brush_pipeline{
-					ch::make_ramp_fn(start, true,true),
-					ch::make_linear_hatching_brush_fn(
-						ch::make_normal_dist_fn( ch::make_lerp_fn(0, 800), ch::make_lerp_fn(50, 100)),
-						ch::make_normal_dist_fn(ch::make_lerp_fn(200, 0), ch::make_lerp_fn(20, 0.05)),
-						ch::make_normal_dist_fn( ch::make_lerp_fn(7, 0.5), ch::make_lerp_fn(0.5,  0.05)),
-						ch::make_default_hatching_unit()
-					),
-					ch::make_one_param_brush_adaptor(ch::rotate, ch::make_constant_fn(theta)),
-					ch::make_ramp_fn(0.20, false, true),
-					ch::disintegrate
-				}
-			);
-		};
-
-		ch::brush br(
-			ch::make_run_pipeline_fn(
-				ch::brush_pipeline{
-					ch::make_merge_fn({
-						make_pipeline_fn(0, 0),
-						make_pipeline_fn(std::numbers::pi / 4.0, 0.3333),
-						make_pipeline_fn(-std::numbers::pi / 4.0, 0.6666)
-					}),
-					ch::make_random_brush_adaptor(ch::jiggle, ch::normal_rnd_fn(0.0, 0.02))
-				}
-			),
-			1
-		);
-		br.build_n(10);
-		cv::Mat mat = current_image_;
-		auto drawing = ch::generate_crosshatched_drawing(mat, 5.0, br);
-		ch::to_svg("C:\\test\\testo.svg", drawing); 
-
-	} catch (std::runtime_error err) {
+	auto start_time = std::chrono::system_clock::now();
+	std::string script = R"(
+        (pipe
+            (merge
+                (pipe 
+                    (lin_brush
+                        (norm_rnd (lerp 0 800) (lerp 50 100))
+                        (norm_rnd (lerp 200 0) (lerp 20 0.05))
+                        (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
+                    )
+                	(rot 45)
+                    (dis (ramp 0.20 false true))
+                )
+                (pipe 
+                    (ramp 0.50 true true)
+                    (lin_brush
+                        (norm_rnd (lerp 0 800) (lerp 50 100))
+                        (norm_rnd (lerp 200 0) (lerp 20 0.05))
+                        (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
+                    )
+                    (rot 315)
+                    (dis (ramp 0.20 false true))
+                )
+            )
+            (jiggle (norm_rnd 0.0 0.05))
+        )
+	)";
+    auto result = ch::parse_brush_language(script);
+	if (std::holds_alternative<std::string>(result)) {
 		QMessageBox msg_box;
-		msg_box.setText(err.what());
+		msg_box.setText(std::get<std::string>(result).c_str());
 		msg_box.exec();
+		return;
 	}
-}
+	ch::brush br(std::get<ch::brush_fn>(result));
+	br.build_n(10);
 
-/*
-void ui::crosshatching::generate() {
-	auto make_pipeline_fn = [](double theta, double start) {
-		return ch::make_run_pipeline_fn(
-			ch::brush_pipeline{
-				ch::make_ramp_fn(start, true,true),
-				ch::make_linear_hatching_brush_fn(
-					ch::make_lerped_normal_dist_fn(0, 50, 800, 100),
-					ch::make_lerped_normal_dist_fn(200, 20, 0, 0.05),
-					ch::make_lerped_normal_dist_fn(7, 0.5, 0.5, 0.05),
-					ch::make_default_hatching_unit()
-				),
-				ch::make_random_brush_adaptor(ch::jiggle, ch::normal_rnd_fn(0.0, 0.02)),
-				ch::make_one_param_brush_adaptor(ch::rotate, ch::make_constant_fn(theta)),
-				ch::make_ramp_fn(0.20, false, true),
-				ch::disintegrate
-			}
-		);
-	};
+	auto param = br.gray_value_to_param(1.0);
+	qDebug() << param;
+	cv::Mat mat = current_image_;
+	auto drawing = ch::generate_crosshatched_drawing(mat, 5.0, br);
+	ch::to_svg("C:\\test\\testo.svg", drawing);
 
-	cv::Mat mat = cv::imread("C:\\test\\hier-gray.png");
-	std::vector<ch::brush_fn> brushes = {
-		make_pipeline_fn(std::numbers::pi / 4.0, 0),
-		make_pipeline_fn(-std::numbers::pi / 4.0, 0)
-	};
-	auto drawing = ch::generate_hierarchical_drawing(mat, 100.0, brushes, { 0.5 });
-	ch::to_svg("C:\\test\\test-hier.svg", drawing);
+	std::chrono::duration<double> elapsed = std::chrono::system_clock::now() - start_time;
+	QMessageBox msg_box;
+	msg_box.setText(std::to_string(elapsed.count()).c_str());
+	msg_box.exec();
 }
-*/
 
 /*
 void ui::crosshatching::generate() {
