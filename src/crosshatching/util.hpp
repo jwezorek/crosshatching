@@ -4,11 +4,14 @@
 #include <functional>
 #include <range/v3/all.hpp>
 #include <opencv2/core.hpp>
+#include <tuple>
 
 namespace ch {
 
     using point = cv::Point2d;
-    using polyline = std::vector<point>;
+    using polyline = std::vector<point>; 
+    using line_segment = std::tuple< ch::point, ch::point>;
+    using rectangle = std::tuple<double, double, double, double>;
 
     std::string svg_header(int wd, int hgt, bool bkgd_rect = false);
     std::string polyline_to_svg(const ch::polyline& poly, double thickness);
@@ -41,4 +44,7 @@ namespace ch {
     cv::Mat do_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize);
     cv::Mat convert_to_gray(const cv::Mat& color);
     double degrees_to_radians(double degrees);
+    
+    std::optional<line_segment> linesegment_rectangle_intersection( const line_segment& line_seg, const rectangle& rect );
+    rectangle bounding_rectangle(const polyline& poly);
 }

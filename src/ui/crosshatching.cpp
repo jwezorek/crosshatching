@@ -117,7 +117,7 @@ void ui::crosshatching::generate() {
                     (dis (ramp 0.20 false true))
                 )
             )
-            (jiggle (norm_rnd 0.0 0.05))
+            (jiggle (norm_rnd 0.0 0.02))
         )
 	)";
     auto result = ch::parse_brush_language(script);

@@ -272,18 +272,7 @@ namespace {
             poly.holes | rv::transform([param](const auto& p) {return simplify(p, param); }) | r::to_vector
         };
     }
-    /*
-    ch::gray_level_plane simplify(const ch::gray_level_plane& p, double param) {
-        return {
-            p.gray,
-            p.blobs | rv::transform([param](const auto& p) {return simplify(p, param); }) | r::to_vector
-        };
-    }
 
-    std::vector<ch::gray_level_plane> simplify(const std::vector<ch::gray_level_plane>& planes, double param) {
-        return planes | rv::transform([param](const auto& p) {return simplify(p, param); }) | r::to_vector;
-    }
-    */
     std::string loop_to_path_commands(const ch::polyline& poly, double scale) {
         std::stringstream ss;
         ss << "M " << scale * poly[0].x << "," << scale * poly[0].y << " L";
@@ -331,17 +320,6 @@ namespace {
         return {
             glp.value,
             glp.blobs | rv::transform([scale](const auto& poly) { return ::scale(poly,scale); }) | r::to_vector
-        };
-    }
-
-    std::tuple<double, double, double, double> bounds(const ch::polyline& poly) {
-        auto floats = poly | rv::transform([](const cv::Point2d& pt) {return cv::Point2f(pt); }) | r::to_vector;
-        cv::Rect2d rect = cv::boundingRect(floats);
-        return {
-            static_cast<double>(rect.x),
-            static_cast<double>(rect.y),
-            static_cast<double>(rect.x + rect.width),
-            static_cast<double>(rect.y + rect.height)
         };
     }
 
@@ -413,11 +391,34 @@ namespace {
             r::to_vector;
     }
 
+    std::vector<ch::polyline> clip_crosshatching_to_bbox(ch::crosshatching_range swatch, const ch::rectangle& bbox) {
+        auto input = swatch | r::to_vector;
+        size_t n = 0;
+        for (const auto& poly : input) {
+            n += poly.size() - 1;
+        }
+        std::vector<ch::polyline> output;
+        output.reserve(n);
+        for (const auto& poly : input) {
+            for (auto rng : poly | rv::sliding(2)) {
+                auto p1 = rng[0];
+                auto p2 = rng[1];
+                auto clipped = ch::linesegment_rectangle_intersection(  { p1,p2 }, bbox );
+                if (clipped) {
+                    auto [clipped_p1, clipped_p2] = *clipped;
+                    output.push_back({ clipped_p1, clipped_p2 });
+                }
+            }
+        }
+        return output;
+    }
+
     std::vector<ch::polyline> clip_swatch_to_poly( ch::crosshatching_swatch swatch, ch::polygon_with_holes& poly, double scale = 100.0) {
         cl::PolyTree polytree;
         cl::Clipper clipper;
-
-        auto subject = polylines_to_clipper_paths(swatch.content | r::to<std::vector<ch::polyline>>(), scale);
+        auto bbox = ch::bounding_rectangle(poly.border);
+        auto cross_hatching_segments = clip_crosshatching_to_bbox(swatch.content, bbox);
+        auto subject = polylines_to_clipper_paths( cross_hatching_segments, scale );
         auto clip = poly_with_holes_to_clipper_paths(poly, scale);
 
         clipper.AddPaths(subject, cl::ptSubject, false);
@@ -520,16 +521,6 @@ void ch::write_to_svg(const std::string& filename, const std::vector<gray_level>
     outfile.close();
 }
 
-/*
-void ch::debug() {
-    cv::Mat img = cv::imread("C:\\test\\dunjon2.png");
-    cv::Mat mat = ch::do_segmentation(img, 8, 3.0f, 12);
-    auto gray_levels = extract_gray_level_planes(mat);
-    //gray_levels = simplify(gray_levels, 1.0);
-    write_to_svg("C:\\test\\dunjon2.svg", gray_levels, mat.cols, mat.rows, 4.0);
-}
-*/
-
 ch::drawing ch::generate_crosshatched_drawing(const std::string& image_file, segmentation_params params, double scale, brush& br)
 {   
     cv::Mat img = cv::imread(image_file);
@@ -560,7 +551,7 @@ ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, double scale, ch::bru
 
 std::vector<ch::polyline> ch::crosshatched_poly_with_holes(const ch::polygon_with_holes& input, double color, ch::brush& brush)
 {
-    auto [x1, y1, x2, y2] = bounds(input.border);
+    auto [x1, y1, x2, y2] = bounding_rectangle(input.border);
     cv::Point2d center = { (x1 + x2) / 2.0,(y1 + y2) / 2.0 };
     auto poly = ::transform(input, translation_matrix(-center));
     auto swatch = brush.get_hatching(color, { x2 - x1,y2 - y1 });
@@ -570,7 +561,7 @@ std::vector<ch::polyline> ch::crosshatched_poly_with_holes(const ch::polygon_wit
 
 std::vector<ch::polyline> ch::crosshatched_poly_with_holes(const ch::polygon_with_holes& input, double color, ch::hierarchical_brush& brush)
 {
-    auto [x1, y1, x2, y2] = bounds(input.border);
+    auto [x1, y1, x2, y2] = bounding_rectangle(input.border);
     cv::Point2d center = { (x1 + x2) / 2.0,(y1 + y2) / 2.0 };
     auto poly = ::transform(input, translation_matrix(-center));
     auto swatch = brush.get_hatching(color, { x2 - x1,y2 - y1 });
