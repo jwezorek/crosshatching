@@ -14,7 +14,7 @@ namespace ch {
     using rectangle = std::tuple<double, double, double, double>;
 
     std::string svg_header(int wd, int hgt, bool bkgd_rect = false);
-    std::string polyline_to_svg(const ch::polyline& poly, double thickness);
+    std::string polyline_to_svg(const ch::polyline& poly, double thickness, bool closed = false);
     std::string gray_to_svg_color(unsigned char gray);
 
     polyline scale(const polyline& poly, double scale);
@@ -44,6 +44,7 @@ namespace ch {
     cv::Mat do_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize);
     cv::Mat convert_to_gray(const cv::Mat& color);
     double degrees_to_radians(double degrees);
+    ch::polyline simplify_rectilinear_polygon(const ch::polyline& poly);
     
     std::optional<line_segment> linesegment_rectangle_intersection( const line_segment& line_seg, const rectangle& rect );
     rectangle bounding_rectangle(const polyline& poly);

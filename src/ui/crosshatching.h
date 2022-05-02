@@ -24,6 +24,7 @@ namespace ui {
 
         void open();
         void generate();
+        void debug();
 
     signals:
         void change_source_image(cv::Mat& img);

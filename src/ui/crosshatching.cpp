@@ -12,6 +12,7 @@
 #include <stdexcept>
 #include <array>
 #include <chrono>
+#include <fstream>
 
 namespace {
 
@@ -61,6 +62,10 @@ namespace {
 		QAction* action_generate = new QAction(tr("&Generate"), parent);
 		parent->connect(action_generate, &QAction::triggered, parent, &ui::crosshatching::generate);
 		file_menu->addAction(action_generate);
+
+		QAction* action_debug = new QAction(tr("&Debug"), parent);
+		parent->connect(action_debug, &QAction::triggered, parent, &ui::crosshatching::debug);
+		file_menu->addAction(action_debug);
 
 		return file_menu;
 	}
@@ -140,6 +145,21 @@ void ui::crosshatching::generate() {
 	QMessageBox msg_box;
 	msg_box.setText(std::to_string(elapsed.count()).c_str());
 	msg_box.exec();
+}
+
+void ui::crosshatching::debug() {
+	cv::Mat mat = ch::convert_to_gray(cv::imread("C:\\test\\big_blob.png"));
+	auto polygon = ch::debug(mat);
+
+	polygon = ch::simplify_rectilinear_polygon(polygon);
+
+	int scale = 10;
+	std::ofstream outfile("C:\\test\\poly_simplification_1.svg");
+	outfile << ch::svg_header(mat.cols * scale, mat.rows*scale);
+	outfile << ch::polyline_to_svg( ch::scale(polygon, 10), 1, true) << std::endl;
+	outfile << "</svg>" << std::endl;
+	outfile.close();
+
 }
 
 /*

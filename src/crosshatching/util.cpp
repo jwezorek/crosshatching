@@ -42,6 +42,34 @@ namespace {
 			) | 
 			r::to_vector;
 	}
+
+	bool are_parallel(ch::point p1, ch::point p2, ch::point p3) {
+		if (p1.x == p2.x && p2.x == p3.x) {
+			return true;
+		}
+		if (p1.y == p2.y && p2.y == p3.y) {
+			return true;
+		}
+		return false;
+	}
+
+	ch::polyline elide_adjacent_parallel_edges(const ch::polyline& poly) {
+		auto first = poly.front();
+		auto last = poly.back();
+		return rv::concat(rv::concat(rv::single(last), poly), rv::single(first) ) |
+			rv::sliding(3) |
+			rv::remove_if(
+				[](auto rng3)->bool {
+					return are_parallel(rng3[0], rng3[1], rng3[2]);
+				}
+			) |
+			rv::transform(
+				[](auto rng3)->ch::point {
+					return rng3[1];
+				}
+			) |
+			r::to_vector;
+	}
 }
 
 std::string ch::svg_header(int wd, int hgt, bool bkgd_rect)
@@ -127,9 +155,10 @@ cv::Mat ch::apply_contrast(cv::Mat img, double beta, double sigma) {
 	return output;
 }
 
-std::string ch::polyline_to_svg(const ch::polyline& poly, double thickness) {
+std::string ch::polyline_to_svg(const ch::polyline& poly, double thickness, bool closed) {
 	std::stringstream ss;
-	ss << "<polyline points=\"";
+	std::string cmd = (closed) ? "polygon" : "polyline";
+	ss << "<" << cmd << " points = \"";
 	for (const auto& pt : poly) {
 
 		ss << " " << pt.x << "," << pt.y;
@@ -250,6 +279,10 @@ cv::Mat ch::convert_to_gray(const cv::Mat& color) {
 double ch::degrees_to_radians(double degrees)
 {
 	return (std::numbers::pi * degrees) / 180.0;
+}
+
+ch::polyline ch::simplify_rectilinear_polygon(const ch::polyline& poly) {
+	return elide_adjacent_parallel_edges(poly);
 }
 
 namespace cohen_sutherland {

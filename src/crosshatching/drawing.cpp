@@ -232,7 +232,7 @@ namespace {
         } while (get_vertex(crawler) != poly.front());
 
         poly.shrink_to_fit();
-        return poly;
+        return ch::simplify_rectilinear_polygon(poly);
     }
 
     ch::gray_level contour_info_to_gray_level(uchar gray, const find_contour_output& contours) {
@@ -580,6 +580,13 @@ void ch::to_svg(const std::string& filename, const drawing& d)
 
     outfile << "</svg>" << std::endl;
     outfile.close();
+}
+
+ch::polyline ch::debug(cv::Mat mat)
+{
+    auto gl = ch::extract_gray_levels(mat, false);
+    auto black_plane = gl.front();
+    return black_plane.blobs.front().border;
 }
 
 ch::drawing ch::generate_hierarchical_drawing(cv::Mat image, double scale, const std::vector<hierarchical_brush_component>& brush_fns, const std::vector<double>& gray_intervals,
