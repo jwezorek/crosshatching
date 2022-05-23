@@ -90,6 +90,7 @@ namespace ch {
         double build_to_gray_level(double gray_level);
 
     public:
+        brush() {};
         brush(brush_fn fn, int line_thickness = 1, double epsilon = k_epsilon, 
             dimensions swatch_sz = { k_swatch_sz }, const std::vector<cv::Mat>& bkgds = {});
 

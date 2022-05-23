@@ -138,7 +138,7 @@ void ui::crosshatching::generate() {
 	auto param = br.gray_value_to_param(1.0);
 	qDebug() << param;
 	cv::Mat mat = current_image_;
-	auto drawing = ch::generate_crosshatched_drawing(mat, 5.0, br);
+	auto drawing = ch::generate_crosshatched_drawing(mat, 5.0, { {br, 1.0} });
 	ch::to_svg("C:\\test\\testo.svg", drawing);
 
 	std::chrono::duration<double> elapsed = std::chrono::system_clock::now() - start_time;
@@ -148,18 +148,7 @@ void ui::crosshatching::generate() {
 }
 
 void ui::crosshatching::debug() {
-	cv::Mat mat = ch::convert_to_gray(cv::imread("C:\\test\\big_blob.png"));
-	auto polygon = ch::debug(mat);
-
-	polygon = ch::simplify_rectilinear_polygon(polygon);
-
-	int scale = 10;
-	std::ofstream outfile("C:\\test\\poly_simplification_1.svg");
-	outfile << ch::svg_header(mat.cols * scale, mat.rows*scale);
-	outfile << ch::polyline_to_svg( ch::scale(polygon, 10), 1, true) << std::endl;
-	outfile << "</svg>" << std::endl;
-	outfile.close();
-
+	ch::debug(current_image_, segmentation());
 }
 
 /*
@@ -260,6 +249,10 @@ cv::Mat ui::crosshatching::input_to_nth_stage(int index) const {
 		input = src_image_;
 	}
 	return input;
+}
+
+cv::Mat ui::crosshatching::segmentation() const {
+	return static_cast<ui::mean_shift_segmentation*>(imgproc_pipeline_.back())->labels();
 }
 
 void ui::crosshatching::handle_pipeline_change(int index) {

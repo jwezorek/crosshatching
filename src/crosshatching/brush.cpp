@@ -38,11 +38,12 @@ namespace {
                     return h_fn(x1, x2, y, hgt);
                 }
             ) |
-                    rv::take_while([half_wd](auto rng) {
+            rv::take_while(
+                [half_wd](auto rng) {
                     return (*rng.begin()).front().x < half_wd;
-                        }
-                    )
-                    );
+                }
+            )
+        );
     }
 
     auto fragment_length(double len, const ch::rnd_fn& run_length) {

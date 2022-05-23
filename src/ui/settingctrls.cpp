@@ -198,12 +198,17 @@ void ui::mean_shift_segmentation::initialize() {
 }
 
 cv::Mat ui::mean_shift_segmentation::process_image(cv::Mat input) {
-	return output_ = ch::do_segmentation(
+	std::tie(output_, label_image_) = ch::meanshift_segmentation(
 		input,
 		sigmaS_slider_->value(),
 		sigmaR_slider_->value(),
 		min_size_slider_->value()
 	);
+	return output_;
+}
+
+cv::Mat ui::mean_shift_segmentation::labels() const {
+	return label_image_;
 }
 
 bool ui::mean_shift_segmentation::is_on() const {

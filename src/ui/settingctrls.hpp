@@ -79,11 +79,13 @@ namespace ui {
         int_value_slider* sigmaS_slider_;
         float_value_slider* sigmaR_slider_;
         int_value_slider* min_size_slider_;
+        cv::Mat label_image_;
     public: 
         mean_shift_segmentation();
         void populate() override;
         void initialize() override;
         cv::Mat process_image(cv::Mat input) override;
+        cv::Mat labels() const;
         bool is_on() const override;
     };
 }

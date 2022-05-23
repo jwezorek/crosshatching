@@ -1,7 +1,8 @@
-#include "util.hpp"
+﻿#include "util.hpp"
 #include "meanshift.hpp"
 #include <opencv2/imgproc.hpp>
 #include <opencv2/ximgproc.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <sstream>
 #include <random>
 #include <iomanip>
@@ -114,6 +115,11 @@ double ch::normal_rnd(double mean, double stddev)
 double ch::uniform_rnd(double lower_bound, double upper_bound)
 {
 	std::uniform_real_distribution<> ud(lower_bound, upper_bound);
+	return ud(random);
+}
+
+int ch::uniform_rnd_int(int low, int high) {
+	std::uniform_int_distribution<> ud(low, high);
 	return ud(random);
 }
 
@@ -262,12 +268,12 @@ cv::Mat ch::anisotropic_diffusion(cv::Mat img, double alpha, double k, int iters
 	return output;
 }
 
-cv::Mat ch::do_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize) {
+std::tuple<cv::Mat, cv::Mat> ch::meanshift_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize) {
 	cv::Mat output;
 	cv::Mat labels;
-	auto mss = createMeanShiftSegmentation(sigmaS, sigmaR, minSize, true);
+	auto mss = createMeanShiftSegmentation(sigmaS, sigmaR, minSize, 4, true);
 	mss->processImage(input, output, labels);
-	return output;
+	return { output, labels };
 }
 
 cv::Mat ch::convert_to_gray(const cv::Mat& color) {
@@ -318,7 +324,7 @@ namespace cohen_sutherland {
 		return code;
 	}
 
-	// Cohen�Sutherland clipping algorithm clips a line from
+	// Cohen–Sutherland clipping algorithm clips a line from
 	// P0 = (x0, y0) to P1 = (x1, y1) against a rectangle with 
 	// diagonal from (xmin, ymin) to (xmax, ymax).
 	std::optional<ch::line_segment>  clip(double x0, double y0, double x1, double y1,
@@ -401,4 +407,43 @@ ch::rectangle ch::bounding_rectangle(const ch::polyline& poly) {
 		static_cast<double>(rect.x + rect.width),
 		static_cast<double>(rect.y + rect.height)
 	};
+}
+
+void ch::write_label_map_visualization(cv::Mat img, const std::string& output_file) {
+
+	using pixel = cv::Point3_<uint8_t>;
+	static auto random_color = []()->pixel {
+		return pixel(ch::uniform_rnd_int(0, 255), ch::uniform_rnd_int(0, 255), ch::uniform_rnd_int(0, 255));
+	};
+
+	cv::Mat mat(img.rows, img.cols, CV_8UC3);
+	std::unordered_map<int, pixel> tbl;
+	for (int i = 0; i < img.rows; i++) {
+		for (int j = 0; j < img.cols; j++) {
+			int label = img.at<int>(i, j);
+			pixel color;
+			auto iter = tbl.find(label);
+			if (iter != tbl.end()) {
+				color = iter->second;
+			} else {
+				color = random_color();
+				tbl[label] = color;
+			}
+			mat.at<pixel>(i, j) = color;
+		}
+	}
+	cv::imwrite(output_file, mat);
+}
+
+std::vector<uchar> ch::unique_gray_values(const cv::Mat& input) {
+	if (input.channels() != 1) {
+		throw std::runtime_error("called get_gray_levels on color image");
+	}
+	std::array<bool, 256> grays = {};
+	input.forEach<uchar>([&grays](uchar gray, const int* pos) { grays[gray] = true;  });
+	return rv::iota(0) |
+		rv::take(256) |
+		rv::filter([&grays](int g) {return grays[g]; }) |
+		r::to<std::vector<uchar>>() |
+		r::action::reverse;
 }
