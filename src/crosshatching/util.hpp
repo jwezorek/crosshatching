@@ -40,15 +40,17 @@ namespace ch {
     std::string to_string(double val, int precision);
     cv::Mat scale(cv::Mat mat, double scale);
     cv::Mat convert_to_3channel_grayscale(cv::Mat img);
+    cv::Mat convert_to_1channel_gray(const cv::Mat& color);
     cv::Mat coherence_filter(cv::Mat img, int sigma, int str_sigma, float blend, int iter);
     cv::Mat anisotropic_diffusion(cv::Mat img, double alpha, double k, int iters);
     std::tuple<cv::Mat,cv::Mat> meanshift_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize);
-    cv::Mat convert_to_gray(const cv::Mat& color);
     double degrees_to_radians(double degrees);
     ch::polyline simplify_rectilinear_polygon(const ch::polyline& poly);
     std::vector<uchar> unique_gray_values(const cv::Mat& input);
     std::optional<line_segment> linesegment_rectangle_intersection( const line_segment& line_seg, const rectangle& rect );
     rectangle bounding_rectangle(const polyline& poly);
+    cv::Rect union_rect_and_pt(const cv::Rect& r, cv::Point2i pt);
+    int max_val_in_mat(cv::Mat mat);
 
     void write_label_map_visualization(cv::Mat img, const std::string& output_file);
 }

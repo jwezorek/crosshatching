@@ -276,7 +276,7 @@ std::tuple<cv::Mat, cv::Mat> ch::meanshift_segmentation(const cv::Mat& input, in
 	return { output, labels };
 }
 
-cv::Mat ch::convert_to_gray(const cv::Mat& color) {
+cv::Mat ch::convert_to_1channel_gray(const cv::Mat& color) {
 	cv::Mat gray;
 	cv::cvtColor(color, gray, cv::COLOR_BGR2GRAY);
 	return gray;
@@ -446,4 +446,33 @@ std::vector<uchar> ch::unique_gray_values(const cv::Mat& input) {
 		rv::filter([&grays](int g) {return grays[g]; }) |
 		r::to<std::vector<uchar>>() |
 		r::action::reverse;
+}
+
+cv::Rect ch::union_rect_and_pt(const cv::Rect& r, cv::Point2i pt) {
+	int x1 = r.x;
+	int y1 = r.y;
+	int x2 = r.x + r.width - 1;
+	int y2 = r.y + r.height - 1;
+
+	x1 = std::min(x1, pt.x);
+	y1 = std::min(y1, pt.y);
+	x2 = std::max(x2, pt.x);
+	y2 = std::max(y2, pt.y);
+
+	return {
+		x1,
+		y1,
+		x2 - x1 + 1,
+		y2 - y1 + 1
+	};
+}
+
+int ch::max_val_in_mat(cv::Mat mat) {
+	double min_val;
+	double max_val;
+	cv::Point minLoc;
+	cv::Point maxLoc;
+
+	cv::minMaxLoc(mat, &min_val, &max_val, &minLoc, &maxLoc);
+	return static_cast<int>(max_val);
 }

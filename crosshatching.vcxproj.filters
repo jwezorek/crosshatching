@@ -55,6 +55,9 @@
     <ClCompile Include="src\crosshatching\brush_language.cpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClCompile>
+    <ClCompile Include="src\crosshatching\segmentation.cpp">
+      <Filter>Source Files\crosshatching</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="src\ui\crosshatching.qrc">
@@ -95,6 +98,9 @@
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
     <ClInclude Include="src\crosshatching\peglib.h">
+      <Filter>Source Files\crosshatching</Filter>
+    </ClInclude>
+    <ClInclude Include="src\crosshatching\segmentation.hpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
   </ItemGroup>

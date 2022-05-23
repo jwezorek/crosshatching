@@ -2,6 +2,7 @@
 #include "geometry.hpp"
 #include "clipper.hpp"
 #include "brush_language.hpp"
+#include "segmentation.hpp"
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
@@ -11,7 +12,6 @@
 #include <iostream>
 #include <unordered_set>
 #include <array>
-#include <boost/functional/hash.hpp>
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -33,264 +33,6 @@ namespace {
     struct ink_plane {
         ch::brush brush;
         std::vector<ink_plane_blob> blobs;
-    };
-
-    cv::Rect union_rect_and_pt(const cv::Rect& r, cv::Point2i pt) {
-        int x1 = r.x;
-        int y1 = r.y;
-        int x2 = r.x + r.width - 1;
-        int y2 = r.y + r.height - 1;
-
-        x1 = std::min(x1, pt.x);
-        y1 = std::min(y1, pt.y);
-        x2 = std::max(x2, pt.x);
-        y2 = std::max(y2, pt.y);
-
-        return {
-            x1, 
-            y1,
-            x2 - x1 + 1,
-            y2 - y1 + 1
-        };
-    }
-    
-    int max_val_in_mat(cv::Mat mat) {
-        double min_val;
-        double max_val;
-        cv::Point minLoc;
-        cv::Point maxLoc;
-
-        cv::minMaxLoc(mat, &min_val, &max_val, &minLoc, &maxLoc);
-        return static_cast<int>(max_val);
-    }
-
-    class edge_set {
-    private:
-
-        struct hasher {
-            size_t operator()(const std::tuple<int, int>& edge) const {
-                const auto& [i, j] = edge;
-                std::size_t seed = 0;
-                boost::hash_combine(seed, i);
-                boost::hash_combine(seed, j);
-                return seed;
-            }
-        };
-
-        std::unordered_set<std::tuple<int, int>, hasher> set_;
-
-    public:
-        void insert(int i, int j) {
-            set_.insert(std::tuple<int, int>(i, j));
-        }
-        bool contains(int i, int j) {
-            return set_.find(std::tuple<int, int>(i, j)) != set_.end();
-        }
-    };
-
-    class segmentation {
-    private:
-
-        struct connected_component {
-            int index;
-            uchar value;
-            cv::Rect bounds;
-            cv::Point2i point;
-            int area;
-            std::vector<connected_component*> neighbors;
-
-            connected_component(int i = -1, cv::Rect b = {}, int a = 0, uchar v = 255, ch::point p = { -1,-1 }) :
-                index(i), point(p), area(a), value(v)
-            {}
-        };
-
-        cv::Mat label_mat_;
-        std::vector<connected_component> connected_components_;
-
-        void get_neighbors(int x, int y, std::array<int, 4>& ary) {
-            int label = label_mat_.at<int>(y, x);
-            std::fill(ary.begin(), ary.end(), -1);
-            int i = 0;
-            int neigh;
-            if ((y > 0) && ((neigh = label_mat_.at<int>(y - 1, x)) != label)) {
-                ary[i++] = neigh;
-            }
-            if ((y < label_mat_.rows - 1) && ((neigh = label_mat_.at<int>(y + 1, x)) != label)) {
-                ary[i++] = neigh;
-            }
-            if ((x > 0) && ((neigh = label_mat_.at<int>(y, x - 1)) != label)) {
-                ary[i++] = neigh;
-            }
-            if ((x < label_mat_.cols - 1) && ((neigh = label_mat_.at<int>(y, x + 1)) != label)) {
-                ary[i++] = neigh;
-            }
-        }
-
-        void insert_edges(int label, int x, int y, edge_set& edges) {
-            std::array<int, 4> neighbors;
-            get_neighbors(x, y, neighbors);
-            for (auto neigh : neighbors) {
-                if (neigh == -1) {
-                    break;
-                }
-                if (edges.contains(label, neigh)) {
-                    continue;
-                }
-                edges.insert(label, neigh);
-                connected_components_[label].neighbors.push_back(&connected_components_[neigh]);
-            }
-        }
-
-        void init_new_connected_component(int label, uchar val, int x, int y, edge_set& edges) {
-            auto& c = connected_components_[label];
-            c.index = label;
-            c.value = val;
-            c.bounds = cv::Rect(x, y, 1, 1);
-            c.area = 1;
-            c.point = { x,y };
-            insert_edges(label, x, y, edges);
-        }
-
-        void update_connected_component(int label, int x, int y, edge_set& edges) {
-            auto& c = connected_components_[label];
-            c.index = label;
-            c.area++;
-            c.bounds = union_rect_and_pt(c.bounds, { x,y });
-            insert_edges(label, x, y, edges);
-        }
-
-        bool is_uninitialized(int index) {
-            return connected_components_[index].index == -1;
-        }
-
-        
-
-    public:
-        segmentation(cv::Mat img, cv::Mat label_image) : 
-                label_mat_(label_image) {
-            edge_set edges;
-            int n = max_val_in_mat(label_image) + 1;
-            connected_components_.resize(n);
-            for (int y = 0; y < img.rows; y++) {
-                for (int x = 0; x < img.cols; x++) {
-                    int label = label_image.at<int>(y, x);
-                    if (is_uninitialized(label)) {
-                        uchar value = img.at<uchar>(y, x);
-                        init_new_connected_component(label, value, x, y, edges);
-                    } else {
-                        update_connected_component(label, x, y, edges);
-                    }
-                }
-            }
-        }
-
-        segmentation(cv::Mat mask) {
-            cv::Mat stats;
-            cv::Mat centroids;
-            cv::connectedComponentsWithStats(mask, label_mat_, stats, centroids);
-
-            int n = stats.rows - 1;
-            connected_components_.resize(n);
-            for (int row = 1; row < n+1; ++row)  {
-                int index = row - 1;
-                auto& cc = connected_components_[index];
-                cc.index = index;
-                cc.bounds = cv::Rect(
-                    stats.at<int>(cv::Point(0, row)),
-                    stats.at<int>(cv::Point(1, row)),
-                    stats.at<int>(cv::Point(2, row)),
-                    stats.at<int>(cv::Point(3, row))
-                );
-                cc.area = stats.at<int>(cv::Point(4, row));
-            }
-
-            label_mat_.forEach<int>(
-                [this,&mask](int& lbl, const int* position) -> void {
-                    lbl--;
-                    if (lbl >= 0) {
-                        int x = position[1];
-                        int y = position[0];
-                        auto& cc = this->connected_components_[lbl];
-                        if (cc.point.x < 0) {
-                            cc.point = { x,y };
-                            cc.value = mask.at<uchar>(y, x);
-                        }
-                    }
-                }
-            );
-        }
-
-        uchar value(int index) const {
-            return connected_components_[index].value;
-        }
-
-        std::vector<int> neighbor_indices(int index) const {
-            const auto& neighbors = connected_components_[index].neighbors;
-            return neighbors |
-                rv::transform(
-                    [](const auto* cc)->int {
-                        return cc->index;
-                    }
-                ) |
-                r::to_vector;
-        }
-
-        cv::Size dimensions() const {
-            return { label_mat_.cols, label_mat_.rows };
-        }
-
-        int count() const {
-            return static_cast<int>(connected_components_.size());
-        }
-
-        template<typename T>
-        void paint_component(int index, cv::Mat dst, T v) const {
-            const auto& c = connected_components_.at(index);
-
-            cv::Mat roi = cv::Mat(label_mat_, c.bounds);
-
-            cv::Mat mask;
-            cv::inRange(roi, index, index, mask);
-
-            cv::Mat dst_roi(dst, c.bounds);
-            dst_roi.setTo(v, mask);
-        }
-
-        void paint_component(int index, cv::Mat dst) const {
-            const auto& c = connected_components_.at(index);
-            paint_component(index, dst, c.value);
-        }
-
-        cv::Point2i component_to_point(int index) const {
-            return connected_components_.at(index).point;
-        }
-
-        int point_to_component(const cv::Point2i& pt) const {
-            return label_mat_.at<int>(pt.y, pt.x);
-        }
-
-        struct cc_properties {
-            int index;
-            uchar color;
-            int area;
-        };
-
-        cc_properties properties(int index) const {
-            const auto& cc = connected_components_.at(index);
-            return {
-                cc.index,
-                cc.value,
-                cc.area
-            };
-        }
-
-        cv::Mat paint_components() const {
-            cv::Mat img( dimensions(), CV_8UC1, cv::Scalar(255));
-            for (int i = 0; i < count(); ++i) {
-                paint_component(i, img);
-            }
-            return img;
-        }
     };
 
     enum class direction {
@@ -499,7 +241,7 @@ namespace {
         return ch::simplify_rectilinear_polygon(poly);
     }
     
-    std::vector<polygon_with_holes>  contour_info_to_polygons(const find_contour_output& contours) {
+    std::vector<polygon_with_holes> contour_info_to_polygons(const find_contour_output& contours) {
         std::unordered_map<int, int> contour_index_to_poly_index;
         std::vector<polygon_with_holes> blobs;
         for (int i = 0; i < contours.hierarchy.size(); ++i) {
@@ -670,7 +412,7 @@ namespace {
         }
         return output;
     }
-    //TODO
+
     std::vector<ch::polyline> clip_swatch_to_poly( ch::crosshatching_swatch swatch, polygon_with_holes& poly, double scale = 100.0) {
         cl::PolyTree polytree;
         cl::Clipper clipper;
@@ -733,7 +475,7 @@ namespace {
              r::to_vector;
     }
 
-    std::unordered_map<int, std::vector<int>> build_local_id_to_gobal_id_tbl(const segmentation& global_seg, const segmentation& local_seg) {
+    std::unordered_map<int, std::vector<int>> build_local_id_to_gobal_id_tbl(const ch::segmentation& global_seg, const ch::segmentation& local_seg) {
         std::unordered_map<int, std::vector<int>> local_id_to_global_id;
         for (int global_index = 0; global_index < global_seg.count(); ++global_index) {
             auto pt_in_global_seg = global_seg.component_to_point(global_index);
@@ -751,7 +493,7 @@ namespace {
         return local_id_to_global_id;
     }
 
-    std::vector<int> get_blob_neighbors_global_indices(int local_blob, uchar from, uchar to, const std::unordered_map<int, std::vector<int>>& local_id_to_global_id, const segmentation& global_seg) {
+    std::vector<int> get_blob_neighbors_global_indices(int local_blob, uchar from, uchar to, const std::unordered_map<int, std::vector<int>>& local_id_to_global_id, const ch::segmentation& global_seg) {
         const auto& global_blob_components = local_id_to_global_id.at(local_blob);
         std::unordered_set<int> neighbors;
         for (auto gbc : global_blob_components) {
@@ -766,7 +508,7 @@ namespace {
         return neighbors | r::to_vector;
     }
 
-    uchar color_of_greatest_area_comp(const std::vector<segmentation::cc_properties>& props) {
+    uchar color_of_greatest_area_comp(const std::vector<ch::segmentation::cc_properties>& props) {
         uchar color_of_max;
         int max_area = -1;
         for (const auto& p : props) {
@@ -778,7 +520,7 @@ namespace {
         return color_of_max;
     }
 
-    uchar choose_color_for_inherited_blob(const segmentation& global_seg, const std::vector<int>& neighbors) {
+    uchar choose_color_for_inherited_blob(const ch::segmentation& global_seg, const std::vector<int>& neighbors) {
 
         //if there is only one neighbor, use its color...
         if (neighbors.size() == 1) {
@@ -799,6 +541,7 @@ namespace {
             color_to_area[props.color] += props.area;
         }
 
+        // choose the shade of gray with greatest area...
         uchar color_with_max_area = 0;
         int max_area = -1;
         for (auto [color, area] : color_to_area) {
@@ -811,7 +554,7 @@ namespace {
         return color_with_max_area;
     }
 
-    std::tuple<cv::Mat, cv::Mat> blobs_in_range_and_mask(const segmentation& seg, uchar from, uchar to) {
+    std::tuple<cv::Mat, cv::Mat> blobs_in_range_and_mask(const ch::segmentation& seg, uchar from, uchar to) {
         cv::Mat ink_plane_img(seg.dimensions(), CV_8UC1, cv::Scalar(255));
         cv::Mat mask(seg.dimensions(), CV_8UC1, cv::Scalar(0));
         for (int i = 0; i < seg.count(); ++i) {
@@ -825,18 +568,14 @@ namespace {
         return { ink_plane_img, mask };
     }
 
-    std::tuple<cv::Mat, cv::Mat> ink_plane_image_and_mask(const segmentation& seg, cv::Mat prev_level_mask, uchar from, uchar to) {
+    std::tuple<cv::Mat, cv::Mat> ink_plane_image_and_mask(const ch::segmentation& seg, cv::Mat prev_level_mask, uchar from, uchar to) {
 
         auto [ink_plane_img, mask] = blobs_in_range_and_mask(seg, from, to);
         if (prev_level_mask.empty()) {
             return { ink_plane_img, mask };
         }
 
-        if (to == 255) {
-            cv::imwrite("C:\\test\\prev_level_mask.png", prev_level_mask);
-        }
-
-        segmentation prev_lev_seg(prev_level_mask);
+        ch::segmentation prev_lev_seg(prev_level_mask);
 
         auto prev_lev_id_to_gobal_id = build_local_id_to_gobal_id_tbl(seg, prev_lev_seg);
 
@@ -853,7 +592,7 @@ namespace {
         return { ink_plane_img, mask };
     }
 
-    std::vector<cv::Mat> generate_ink_plane_images(const segmentation& global_segmentation, const std::vector<std::tuple<uchar, uchar>>& ranges_of_gray) {
+    std::vector<cv::Mat> generate_ink_plane_images(const ch::segmentation& global_segmentation, const std::vector<std::tuple<uchar, uchar>>& ranges_of_gray) {
         std::vector<cv::Mat> images;
         images.reserve(ranges_of_gray.size());
         cv::Mat prev_mask;
@@ -924,15 +663,9 @@ namespace {
 
     std::vector<ink_plane> extract_ink_planes_brush_thresh(const cv::Mat& gray_scale_img, const cv::Mat& label_img, const std::vector<ch::brush>& brushes, const std::vector<double>& thresholds) {
 
-        auto seg = segmentation(gray_scale_img, label_img);
+        auto seg = ch::segmentation(gray_scale_img, label_img);
         auto ranges = ink_plane_ranges(thresholds);
-
         auto ink_plane_images = generate_ink_plane_images(seg, ranges);
-
-        for (size_t i = 0; i < ink_plane_images.size(); ++i) {
-            std::string name = "C:\\test\\test-ip-" + std::to_string(i + 1) + ".png";
-            cv::imwrite(name, ink_plane_images[i]);
-        }
 
         return ink_plane_images_to_ink_planes(ink_plane_images, brushes);
     }
@@ -975,6 +708,7 @@ ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, do
 }
 
 ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, double scale, const std::vector<std::tuple<ch::brush, double>>& brushes) {
+    //TODO
     return {};
 }
 
@@ -1006,7 +740,7 @@ cv::Mat grayscale_to_label_image(cv::Mat input) {
     for (auto val : values) {
         cv::Mat mask;
         cv::inRange(input, val, val, mask);
-        segmentation seg(mask);
+        ch::segmentation seg(mask);
         for (int i = 0; i < seg.count(); ++i) {
             seg.paint_component(i, output, label++);
         }
@@ -1017,7 +751,7 @@ cv::Mat grayscale_to_label_image(cv::Mat input) {
 void ch::debug(cv::Mat im, cv::Mat la) {
 
     auto img = cv::imread("C:\\test\\ink_plane_test.png");
-    img = ch::convert_to_gray(img);
+    img = ch::convert_to_1channel_gray(img);
 
     auto labels = grayscale_to_label_image(img);
     ch::write_label_map_visualization(labels, "C:\\test\\test_labels.png");

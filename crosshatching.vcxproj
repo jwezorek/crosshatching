@@ -153,6 +153,7 @@
     <ClCompile Include="src\crosshatching\drawing.cpp" />
     <ClCompile Include="src\crosshatching\geometry.cpp" />
     <ClCompile Include="src\crosshatching\meanshift.cpp" />
+    <ClCompile Include="src\crosshatching\segmentation.cpp" />
     <ClCompile Include="src\crosshatching\util.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\ui\crosshatching.cpp" />
@@ -173,6 +174,7 @@
     <ClInclude Include="src\crosshatching\geometry.hpp" />
     <ClInclude Include="src\crosshatching\meanshift.hpp" />
     <ClInclude Include="src\crosshatching\peglib.h" />
+    <ClInclude Include="src\crosshatching\segmentation.hpp" />
     <ClInclude Include="src\crosshatching\util.hpp" />
     <QtMoc Include="src\ui\float_value_slider.h" />
     <QtMoc Include="src\ui\settingctrls.hpp" />
