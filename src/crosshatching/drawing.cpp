@@ -67,6 +67,10 @@ namespace {
         }
     };
 
+    class ink_layer_stack {
+
+    };
+
     std::vector<std::tuple<uchar, cv::Mat>> gray_masks(const cv::Mat& input) {
         auto levels = ch::unique_gray_values(input);
         return
@@ -713,24 +717,25 @@ namespace {
     */
 }
 
-std::tuple<std::vector<ch::brush>, std::vector<double>> split_brush_thresholds(const std::vector<std::tuple<ch::brush, double>>& brush_thresholds) {
+std::tuple<std::vector<ch::brush_fn>, std::vector<double>> split_brush_thresholds(const std::vector<std::tuple<ch::brush_fn, double>>& brush_thresholds) {
     return {
         brush_thresholds | rv::transform([](const auto& tup) {return std::get<0>(tup); }) | r::to_vector,
         brush_thresholds | rv::transform([](const auto& tup) {return std::get<1>(tup); }) | r::to_vector
     };
 }
 
-ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, double scale, const std::vector<std::tuple<ch::brush, double>>& brush_thresholds) {
+ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, double scale, const std::vector<std::tuple<ch::brush_fn, double>>& brush_intervals) {
 
-    auto [brushes, thresholds] = split_brush_thresholds(brush_thresholds);
+    auto [brushes, thresholds] = split_brush_thresholds(brush_intervals);
     auto blob_layers = layers_of_blobs(img, label_img, thresholds);
     //TODO
     return {};
 }
 
-ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, double scale, const std::vector<std::tuple<ch::brush, double>>& brushes) {
-    //TODO
-    return {};
+ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, double scale, const std::vector<std::tuple<ch::brush_fn, double>>& brushes) {
+    
+    auto labels = ch::grayscale_to_label_image(img);
+    return generate_crosshatched_drawing(img, labels, scale, brushes);
 }
 
 std::vector<ch::polyline> crosshatched_poly_with_holes(const polygon_with_holes& input, double color, ch::brush& brush) {
@@ -775,8 +780,6 @@ void ch::debug(cv::Mat im, cv::Mat la) {
         )
 	)";
     auto result_1 = ch::parse_brush_language(script_1);
-    ch::brush brush_1(std::get<ch::brush_fn>(result_1));
-    brush_1.build_n(10);
 
     std::string script_2 = R"(
         (pipe 
@@ -791,10 +794,11 @@ void ch::debug(cv::Mat im, cv::Mat la) {
         )
 	)";
     auto result_2 = ch::parse_brush_language(script_2);
-    ch::brush brush_2(std::get<ch::brush_fn>(result_2));
-    brush_2.build_n(10);
-
-    auto ch_drawing = generate_crosshatched_drawing(img, labels, 4.0, { {brush_1, 0.5},{brush_2,1.0} });
+    auto ch_drawing = generate_crosshatched_drawing(img, labels, 4.0, { 
+            {std::get<ch::brush_fn>(result_1), 0.5},
+            {std::get<ch::brush_fn>(result_2),1.0} 
+        }
+    );
     ch::to_svg("C:\\test\\test_drawing.svg", ch_drawing);
 }
 

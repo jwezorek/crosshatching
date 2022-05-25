@@ -14,8 +14,8 @@ namespace ch {
         double stroke_wd;
     };
 
-    drawing generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, double scale, const std::vector<std::tuple<ch::brush, double>>& brushes);
-    drawing generate_crosshatched_drawing(cv::Mat img, double scale, const std::vector<std::tuple<ch::brush, double>>& brushes);
+    drawing generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, double scale, const std::vector<std::tuple<ch::brush_fn, double>>& brushes);
+    drawing generate_crosshatched_drawing(cv::Mat img, double scale, const std::vector<std::tuple<ch::brush_fn, double>>& brushes);
     void to_svg(const std::string& filename, const drawing& d);
     void debug(cv::Mat img, cv::Mat labels);
 
