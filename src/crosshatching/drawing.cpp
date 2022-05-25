@@ -24,13 +24,12 @@ namespace {
         std::vector<ch::polyline> holes;
     };
 
-    struct ink_plane_blob {
+    struct blob {
         uchar value;
         polygon_with_holes poly;
-        const ink_plane_blob* parent;
 
-        ink_plane_blob(uchar v, const polygon_with_holes& p, const ink_plane_blob* ptr = nullptr) :
-            value(v), poly(p), parent(ptr)
+        blob(uchar v, const polygon_with_holes& p) :
+            value(v), poly(p)
         {}
 
         cv::Point2i point_in_blob() const {
@@ -38,37 +37,29 @@ namespace {
         }
     };
 
-    struct ink_plane {
-        ch::brush brush;
-        std::vector<ink_plane_blob> blobs;
 
-        bool empty() const {
-            return blobs.empty();
-        }
-    };
-
-    class ink_plane_map {
+    class blob_map {
     private:
 
         cv::Mat labels_;
-        std::unordered_map<int, int> label_to_ink_plane_id_;
+        std::unordered_map<int, int> label_to_blob_id_;
 
     public:
-        ink_plane_map(cv::Mat ink_plane_img, const std::vector<ink_plane_blob>& blobs) {
-            labels_ = ch::grayscale_to_label_image(ink_plane_img);
-            for (const auto& [ink_plane_id, blob] : rv::enumerate(blobs)) {
+        blob_map(cv::Mat ink_layer_img, const std::vector<blob>& blobs) {
+            labels_ = ch::grayscale_to_label_image(ink_layer_img);
+            for (const auto& [id, blob] : rv::enumerate(blobs)) {
                 auto label = labels_.at<int>( blob.point_in_blob() );
                 if (label < 0) {
-                    throw std::runtime_error("bad ink plane map access.");
+                    throw std::runtime_error("bad ink layer map access.");
                 }
-                label_to_ink_plane_id_[label] = ink_plane_id;
+                label_to_blob_id_[label] = id;
             }
         }
 
         std::optional<int> id_from_point(const cv::Point2i& pt) const {
             auto label = labels_.at<int>(pt);
-            auto iter = label_to_ink_plane_id_.find(label);
-            if (iter != label_to_ink_plane_id_.end()) {
+            auto iter = label_to_blob_id_.find(label);
+            if (iter != label_to_blob_id_.end()) {
                 return iter->second;
             } else {
                 return {};
@@ -334,6 +325,7 @@ namespace {
         return ss.str();
     }
 
+    /*
     std::string ink_plane_to_svg(const ink_plane& ip, double scale) {
         std::stringstream ss;
         for (const auto& blob : ip.blobs) {
@@ -341,6 +333,7 @@ namespace {
         }
         return ss.str();
     }
+    */
 
     polygon_with_holes scale(const polygon_with_holes& poly, double scale) {
         return {
@@ -349,19 +342,15 @@ namespace {
         };
     }
 
-    ink_plane_blob scale(const ink_plane_blob& blob, double s) {
+    blob scale(const blob& b, double s) {
         return {
-            blob.value,
-            scale(blob.poly, s),
-            blob.parent
+            b.value,
+            scale(b.poly, s)
         };
     }
 
-    ink_plane scale_ink_plane(const ink_plane& plane, double val) {
-        return {
-            plane.brush,
-            plane.blobs | rv::transform([val](const auto& blob) { return scale(blob, val); }) | r::to_vector
-        };
+    std::vector<blob> scale_blobs(const std::vector<blob>& blobs, double val) {
+        return blobs | rv::transform([val](const auto& blob) { return scale(blob, val); }) | r::to_vector;
     }
 
     polygon_with_holes transform(const polygon_with_holes& p, const ch::matrix& mat) {
@@ -487,7 +476,7 @@ namespace {
             r::to<ch::polyline>();
     }
 
-    std::vector<std::tuple<uchar, uchar>> ink_plane_ranges(const std::vector<double>& thresholds) {
+    std::vector<std::tuple<uchar, uchar>> layer_ranges(const std::vector<double>& thresholds) {
         auto start_of_ranges = thresholds |
             rv::transform(
                 [](double val)->uchar {
@@ -596,24 +585,24 @@ namespace {
     }
 
     std::tuple<cv::Mat, cv::Mat> blobs_in_range_and_mask(const ch::segmentation& seg, uchar from, uchar to) {
-        cv::Mat ink_plane_img(seg.dimensions(), CV_8UC1, cv::Scalar(255));
+        cv::Mat ink_layer_img(seg.dimensions(), CV_8UC1, cv::Scalar(255));
         cv::Mat mask(seg.dimensions(), CV_8UC1, cv::Scalar(0));
         for (int i = 0; i < seg.count(); ++i) {
             auto val = seg.value(i);
             if (val < from || val > to) {
                 continue;
             }
-            seg.paint_component(i, ink_plane_img);
+            seg.paint_component(i, ink_layer_img);
             seg.paint_component(i, mask, 255);
         }
-        return { ink_plane_img, mask };
+        return { ink_layer_img, mask };
     }
 
-    std::tuple<cv::Mat, cv::Mat> ink_plane_image_and_mask(const ch::segmentation& seg, cv::Mat prev_level_mask, uchar from, uchar to) {
+    std::tuple<cv::Mat, cv::Mat> ink_layer_image_and_mask(const ch::segmentation& seg, cv::Mat prev_level_mask, uchar from, uchar to) {
 
-        auto [ink_plane_img, mask] = blobs_in_range_and_mask(seg, from, to);
+        auto [ink_layer_img, mask] = blobs_in_range_and_mask(seg, from, to);
         if (prev_level_mask.empty()) {
-            return { ink_plane_img, mask };
+            return { ink_layer_img, mask };
         }
 
         ch::segmentation prev_lev_seg(prev_level_mask);
@@ -627,27 +616,27 @@ namespace {
                 continue;
             }
             uchar value = choose_color_for_inherited_blob(seg, neighbors);
-            prev_lev_seg.paint_component(i, ink_plane_img, value);
+            prev_lev_seg.paint_component(i, ink_layer_img, value);
         }
 
-        return { ink_plane_img, mask };
+        return { ink_layer_img, mask };
     }
 
-    std::vector<cv::Mat> generate_ink_plane_images(const ch::segmentation& global_segmentation, const std::vector<std::tuple<uchar, uchar>>& ranges_of_gray) {
+    std::vector<cv::Mat> generate_ink_layer_images(const ch::segmentation& global_segmentation, const std::vector<std::tuple<uchar, uchar>>& ranges_of_gray) {
         std::vector<cv::Mat> images;
         images.reserve(ranges_of_gray.size());
         cv::Mat prev_mask;
         for (const auto& [from_val, to_val] : ranges_of_gray | rv::reverse) {
-            cv::Mat ink_plane_img;
-            std::tie(ink_plane_img, prev_mask) = ink_plane_image_and_mask(global_segmentation, prev_mask, from_val, to_val);
-            images.push_back(ink_plane_img);
+            cv::Mat ink_layer_img;
+            std::tie(ink_layer_img, prev_mask) = ink_layer_image_and_mask(global_segmentation, prev_mask, from_val, to_val);
+            images.push_back(ink_layer_img);
         }
         return images | rv::reverse | r::to_vector;
     }
 
     using blobs_per_gray_t = std::tuple<uchar, std::vector<polygon_with_holes>>;
-    ink_plane blobs_per_gray_to_inkplane(const std::vector<blobs_per_gray_t>& blobs_per_gray, ch::brush br) {
-        std::vector<ink_plane_blob> ink_plane_blobs = rv::join(
+    std::vector<blob> blobs_per_gray_to_layer(const std::vector<blobs_per_gray_t>& blobs_per_gray) {
+        return rv::join(
             blobs_per_gray |
             rv::remove_if(
                 [](const blobs_per_gray_t& bpg)->bool {
@@ -659,7 +648,7 @@ namespace {
                     const auto& [gray, polygons] = bpg;
                     return polygons |
                         rv::transform(
-                            [gray](const polygon_with_holes& poly)->ink_plane_blob {
+                            [gray](const polygon_with_holes& poly)->blob {
                                 return {
                                     gray,
                                     poly
@@ -668,15 +657,10 @@ namespace {
                     );
                 }
             )
-                    ) | r::to_vector;
-        return {
-            br,
-            ink_plane_blobs
-        };
+          ) | r::to_vector;
     }
 
-    ink_plane ink_plane_img_to_ink_plane(const std::tuple<cv::Mat, ch::brush>& img_brush) {
-        const auto& [img, brush] = img_brush;
+    std::vector<blob> ink_layer_img_to_blobs(const cv::Mat& img) {
 
         auto contours = perform_find_contours(img);
         std::vector<blobs_per_gray_t> blobs_per_gray = contours |
@@ -689,45 +673,32 @@ namespace {
             ) |
             r::to_vector;
 
-         return blobs_per_gray_to_inkplane(blobs_per_gray, brush);
+         return blobs_per_gray_to_layer(blobs_per_gray);
     }
 
-    std::vector<ink_plane> ink_plane_images_to_ink_planes(const std::vector<cv::Mat>& ink_plane_imgs, const std::vector<ch::brush>& brushes) {
-        int n = static_cast<int>(ink_plane_imgs.size());
-        std::vector<ink_plane> ink_planes = rv::zip(ink_plane_imgs, brushes) |
-            rv::transform(ink_plane_img_to_ink_plane) |
-            r::to_vector;
-
-        return ink_planes;
+    std::vector<std::vector<blob>> ink_layer_images_to_blobs(const std::vector<cv::Mat>& ink_layer_imgs) {
+        return ink_layer_imgs | rv::transform(ink_layer_img_to_blobs) | r::to_vector;
     }
 
-    std::vector<ink_plane> extract_ink_planes_brush_thresh(const cv::Mat& gray_scale_img, const cv::Mat& label_img, const std::vector<ch::brush>& brushes, const std::vector<double>& thresholds) {
+    std::vector<std::vector<blob>> layers_of_blobs(const cv::Mat& gray_scale_img, const cv::Mat& label_img, const std::vector<double>& thresholds) {
 
         auto seg = ch::segmentation(gray_scale_img, label_img);
-        auto ranges = ink_plane_ranges(thresholds);
-        auto ink_plane_images = generate_ink_plane_images(seg, ranges);
+        auto ranges = layer_ranges(thresholds);
+        auto ink_layer_images = generate_ink_layer_images(seg, ranges);
 
-        return ink_plane_images_to_ink_planes(ink_plane_images, brushes);
+        return ink_layer_images_to_blobs(ink_layer_images);
     }
 
-    std::vector<ink_plane> extract_ink_planes(const cv::Mat& gray_scale_img, const cv::Mat& label_img, const std::vector<std::tuple<ch::brush, double>>& brushes_and_thresholds) {
-        auto [brushes, thresholds] = std::tuple{
-                brushes_and_thresholds | rv::transform([](const auto& tup) {return std::get<0>(tup); }) | r::to_vector,
-                brushes_and_thresholds | rv::transform([](const auto& tup) {return std::get<1>(tup); }) | r::to_vector,
-        };
-        return extract_ink_planes_brush_thresh(gray_scale_img, label_img, brushes, thresholds);
-    }
-
-    std::vector<ink_plane> scale(const std::vector<ink_plane>& planes, double scale) {
-        return planes |
+    std::vector<std::vector<blob>> scale(const std::vector<std::vector<blob>>& layers, double scale) {
+        return layers |
             rv::transform(
-                [scale](const ink_plane& plane)->ink_plane {
-                    return scale_ink_plane(plane, scale);
+                [scale](const std::vector<blob>& layer)->std::vector<blob> {
+                    return scale_blobs(layer, scale);
                 }
             ) |
             r::to_vector;
     }
-
+    /*
     void write_to_svg(const std::string& filename, const std::vector<ink_plane>& planes, int wd, int hgt, double scale) {
         std::ofstream outfile(filename);
 
@@ -739,10 +710,20 @@ namespace {
         outfile << "</svg>" << std::endl;
         outfile.close();
     }
+    */
 }
 
-ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, double scale, const std::vector<std::tuple<ch::brush, double>>& brushes) {
-    auto ink_planes = extract_ink_planes(img, label_img, brushes);
+std::tuple<std::vector<ch::brush>, std::vector<double>> split_brush_thresholds(const std::vector<std::tuple<ch::brush, double>>& brush_thresholds) {
+    return {
+        brush_thresholds | rv::transform([](const auto& tup) {return std::get<0>(tup); }) | r::to_vector,
+        brush_thresholds | rv::transform([](const auto& tup) {return std::get<1>(tup); }) | r::to_vector
+    };
+}
+
+ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, double scale, const std::vector<std::tuple<ch::brush, double>>& brush_thresholds) {
+
+    auto [brushes, thresholds] = split_brush_thresholds(brush_thresholds);
+    auto blob_layers = layers_of_blobs(img, label_img, thresholds);
     //TODO
     return {};
 }
