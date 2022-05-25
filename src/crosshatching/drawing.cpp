@@ -31,44 +31,6 @@ namespace {
         blob(uchar v, const polygon_with_holes& p) :
             value(v), poly(p)
         {}
-
-        cv::Point2i point_in_blob() const {
-            return poly.border.front();
-        }
-    };
-
-
-    class blob_map {
-    private:
-
-        cv::Mat labels_;
-        std::unordered_map<int, int> label_to_blob_id_;
-
-    public:
-        blob_map(cv::Mat ink_layer_img, const std::vector<blob>& blobs) {
-            labels_ = ch::grayscale_to_label_image(ink_layer_img);
-            for (const auto& [id, blob] : rv::enumerate(blobs)) {
-                auto label = labels_.at<int>( blob.point_in_blob() );
-                if (label < 0) {
-                    throw std::runtime_error("bad ink layer map access.");
-                }
-                label_to_blob_id_[label] = id;
-            }
-        }
-
-        std::optional<int> id_from_point(const cv::Point2i& pt) const {
-            auto label = labels_.at<int>(pt);
-            auto iter = label_to_blob_id_.find(label);
-            if (iter != label_to_blob_id_.end()) {
-                return iter->second;
-            } else {
-                return {};
-            }
-        }
-    };
-
-    class ink_layer_stack {
-
     };
 
     std::vector<std::tuple<uchar, cv::Mat>> gray_masks(const cv::Mat& input) {
@@ -684,13 +646,11 @@ namespace {
         return ink_layer_imgs | rv::transform(ink_layer_img_to_blobs) | r::to_vector;
     }
 
-    std::vector<std::vector<blob>> layers_of_blobs(const cv::Mat& gray_scale_img, const cv::Mat& label_img, const std::vector<double>& thresholds) {
+    std::vector<cv::Mat> ink_layer_images(const cv::Mat& gray_scale_img, const cv::Mat& label_img, const std::vector<double>& thresholds) {
 
         auto seg = ch::segmentation(gray_scale_img, label_img);
         auto ranges = layer_ranges(thresholds);
-        auto ink_layer_images = generate_ink_layer_images(seg, ranges);
-
-        return ink_layer_images_to_blobs(ink_layer_images);
+        return generate_ink_layer_images(seg, ranges);
     }
 
     std::vector<std::vector<blob>> scale(const std::vector<std::vector<blob>>& layers, double scale) {
@@ -702,6 +662,129 @@ namespace {
             ) |
             r::to_vector;
     }
+
+
+    class ink_layer_stack {
+
+        struct ink_layer_blob {
+            uchar value;
+            polygon_with_holes poly;
+            int layer_id;
+            int blob_id;
+            ink_layer_blob* parent;
+
+            cv::Point2i point_in_blob() const {
+                return poly.border.front();
+            }
+        };
+
+        struct ink_layer {
+            ch::brush_fn brush;
+            std::vector<ink_layer_blob> blobs;
+        };
+
+        class blob_map {
+        private:
+
+            cv::Mat labels_;
+            std::unordered_map<int, int> label_to_blob_id_;
+
+        public:
+            blob_map(cv::Mat ink_layer_img, const std::vector<ink_layer_blob>& blobs) {
+                labels_ = ch::grayscale_to_label_image(ink_layer_img);
+                for (const auto& [id, blob] : rv::enumerate(blobs)) {
+                    auto label = labels_.at<int>(blob.point_in_blob());
+                    if (label < 0) {
+                        throw std::runtime_error("bad ink layer map access.");
+                    }
+                    label_to_blob_id_[label] = id;
+                }
+            }
+
+            std::optional<int> id_from_point(const cv::Point2i& pt) const {
+                auto label = labels_.at<int>(pt);
+                auto iter = label_to_blob_id_.find(label);
+                if (iter != label_to_blob_id_.end()) {
+                    return iter->second;
+                } else {
+                    return {};
+                }
+            }
+        };
+
+        std::vector<ink_layer> layers_;
+
+        static ink_layer_blob to_ink_layer_blob(const blob& b, int layer, int index) {
+            return {
+                b.value,
+                b.poly,
+                layer,
+                index,
+                nullptr
+            };
+        }
+
+        static ink_layer to_ink_layer(const std::vector<blob>& blobs, int layer_index, ch::brush_fn brush) {
+            return {
+                brush,
+                rv::enumerate(blobs) |
+                    rv::transform([&](const auto& tup) {
+                        const auto& [index, b] = tup;
+                        return to_ink_layer_blob(b, layer_index, index);
+                    }) |
+                    r::to_vector
+            };
+        }
+
+        std::tuple<int, int> find_blob_parent(const ink_layer_blob& blob, const std::vector<blob_map>& blob_maps) {
+            for (int parent_layer_id = blob.layer_id - 1; parent_layer_id >= 0; --parent_layer_id) {
+                auto parent_blob_id = blob_maps.at(parent_layer_id).id_from_point(blob.point_in_blob());
+                if (parent_blob_id) {
+                    return { parent_layer_id, parent_blob_id.value() };
+                }
+            }
+            return { -1,-1 };
+        }
+
+        void populate_blob_parents(const std::vector<cv::Mat>& layer_images) {
+            auto blob_maps = rv::zip(layer_images, layers_) |
+                rv::transform(
+                    [](const auto& tup) {
+                        const auto& [mat, layer] = tup;
+                        return blob_map(mat, layer.blobs);
+                    }
+            ) | r::to_vector;
+
+            for (int layer_index = 0; layer_index < static_cast<int>(layers_.size()); ++layer_index) {
+                auto& layer = layers_[layer_index];
+                if (layer_index == 1) {
+                    int aaa;
+                    aaa = 5;
+                }
+                for (auto& blob : layer.blobs) {
+                    auto [parent_layer, parent_blob] = find_blob_parent(blob, blob_maps);
+                    blob.parent = (parent_blob != -1) ?
+                        &(layers_[parent_layer].blobs[parent_blob]) :
+                        nullptr;
+                }
+            }
+        }
+
+    public:
+
+        ink_layer_stack(const std::vector<cv::Mat>& layers, std::vector<ch::brush_fn> brushes) {
+            auto blobs = ink_layer_images_to_blobs(layers);
+            layers_ = rv::enumerate(blobs) |
+                rv::transform(
+                    [&brushes](const auto& tup) {
+                        const auto& [layer_index, blobs_per_layer] = tup;
+                        return to_ink_layer(blobs_per_layer, layer_index, brushes.at(layer_index));
+                    }
+                ) |
+                r::to_vector;
+            populate_blob_parents(layers);
+        }
+    };
     /*
     void write_to_svg(const std::string& filename, const std::vector<ink_plane>& planes, int wd, int hgt, double scale) {
         std::ofstream outfile(filename);
@@ -727,8 +810,8 @@ std::tuple<std::vector<ch::brush_fn>, std::vector<double>> split_brush_threshold
 ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, double scale, const std::vector<std::tuple<ch::brush_fn, double>>& brush_intervals) {
 
     auto [brushes, thresholds] = split_brush_thresholds(brush_intervals);
-    auto blob_layers = layers_of_blobs(img, label_img, thresholds);
-    //TODO
+    auto layers = ink_layer_images(img, label_img, thresholds);
+    ink_layer_stack stack(layers, brushes);
     return {};
 }
 
