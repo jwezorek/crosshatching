@@ -57,4 +57,6 @@ namespace ch {
         cv::Mat paint_components() const;
     };
 
+    cv::Mat grayscale_to_label_image(cv::Mat input);
+
 }

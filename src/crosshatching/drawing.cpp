@@ -26,20 +26,57 @@ namespace {
 
     struct ink_plane_blob {
         uchar value;
-        uchar bkgd_value;
         polygon_with_holes poly;
+        const ink_plane_blob* parent;
+
+        ink_plane_blob(uchar v, const polygon_with_holes& p, const ink_plane_blob* ptr = nullptr) :
+            value(v), poly(p), parent(ptr)
+        {}
+
+        cv::Point2i point_in_blob() const {
+            return poly.border.front();
+        }
     };
 
     struct ink_plane {
         ch::brush brush;
         std::vector<ink_plane_blob> blobs;
+
+        bool empty() const {
+            return blobs.empty();
+        }
     };
 
-    enum class direction {
-        N, NE, E, SE, S, SW, W, NW
+    class ink_plane_map {
+    private:
+
+        cv::Mat labels_;
+        std::unordered_map<int, int> label_to_ink_plane_id_;
+
+    public:
+        ink_plane_map(cv::Mat ink_plane_img, const std::vector<ink_plane_blob>& blobs) {
+            labels_ = ch::grayscale_to_label_image(ink_plane_img);
+            for (const auto& [ink_plane_id, blob] : rv::enumerate(blobs)) {
+                auto label = labels_.at<int>( blob.point_in_blob() );
+                if (label < 0) {
+                    throw std::runtime_error("bad ink plane map access.");
+                }
+                label_to_ink_plane_id_[label] = ink_plane_id;
+            }
+        }
+
+        std::optional<int> id_from_point(const cv::Point2i& pt) const {
+            auto label = labels_.at<int>(pt);
+            auto iter = label_to_ink_plane_id_.find(label);
+            if (iter != label_to_ink_plane_id_.end()) {
+                return iter->second;
+            } else {
+                return {};
+            }
+        }
     };
 
-    std::vector<std::tuple<uchar, cv::Mat>> gray_planes(const cv::Mat& input) {
+    std::vector<std::tuple<uchar, cv::Mat>> gray_masks(const cv::Mat& input) {
         auto levels = ch::unique_gray_values(input);
         return
             levels |
@@ -61,7 +98,7 @@ namespace {
     };
 
     std::vector<std::tuple<uchar, find_contour_output>> perform_find_contours(const cv::Mat& input) {
-        auto planes = gray_planes(input);
+        auto planes = gray_masks(input);
         return planes |
             rv::transform(
                 [](const auto& pair)->std::tuple<uchar, find_contour_output> {
@@ -74,6 +111,10 @@ namespace {
             ) |
             r::to<std::vector<std::tuple<uchar, find_contour_output>>>();
     }
+
+    enum class direction {
+        N, NE, E, SE, S, SW, W, NW
+    };
 
     struct pixel_crawler {
         cv::Point loc;
@@ -240,7 +281,7 @@ namespace {
         poly.shrink_to_fit();
         return ch::simplify_rectilinear_polygon(poly);
     }
-    
+
     std::vector<polygon_with_holes> contour_info_to_polygons(const find_contour_output& contours) {
         std::unordered_map<int, int> contour_index_to_poly_index;
         std::vector<polygon_with_holes> blobs;
@@ -296,7 +337,7 @@ namespace {
     std::string ink_plane_to_svg(const ink_plane& ip, double scale) {
         std::stringstream ss;
         for (const auto& blob : ip.blobs) {
-            ss << poly_with_holes_to_svg( static_cast<uchar>((1.0 - blob.value)*255.0), blob.poly, scale) << "\n";
+            ss << poly_with_holes_to_svg(static_cast<uchar>((1.0 - blob.value) * 255.0), blob.poly, scale) << "\n";
         }
         return ss.str();
     }
@@ -311,8 +352,8 @@ namespace {
     ink_plane_blob scale(const ink_plane_blob& blob, double s) {
         return {
             blob.value,
-            blob.bkgd_value,
-            scale(blob.poly, s)
+            scale(blob.poly, s),
+            blob.parent
         };
     }
 
@@ -352,7 +393,7 @@ namespace {
     }
 
     cl::Paths polylines_to_clipper_paths(const std::vector<ch::polyline>& polys, double scale) {
-        return polys | 
+        return polys |
             rv::transform(
                 [scale](const auto& poly)->cl::Path {
                     return polyline_to_clipper_path(poly, scale);
@@ -370,7 +411,7 @@ namespace {
 
     ch::polyline clipper_path_to_polyline(const cl::Path& path, double scale) {
         return path |
-            rv::transform( 
+            rv::transform(
                 [scale](const cl::IntPoint& pt)->ch::point {
                     return {
                         from_cint(pt.X, scale),
@@ -403,7 +444,7 @@ namespace {
             for (auto rng : poly | rv::sliding(2)) {
                 auto p1 = rng[0];
                 auto p2 = rng[1];
-                auto clipped = ch::linesegment_rectangle_intersection(  { p1,p2 }, bbox );
+                auto clipped = ch::linesegment_rectangle_intersection({ p1,p2 }, bbox);
                 if (clipped) {
                     auto [clipped_p1, clipped_p2] = *clipped;
                     output.push_back({ clipped_p1, clipped_p2 });
@@ -413,12 +454,12 @@ namespace {
         return output;
     }
 
-    std::vector<ch::polyline> clip_swatch_to_poly( ch::crosshatching_swatch swatch, polygon_with_holes& poly, double scale = 100.0) {
+    std::vector<ch::polyline> clip_swatch_to_poly(ch::crosshatching_swatch swatch, polygon_with_holes& poly, double scale = 100.0) {
         cl::PolyTree polytree;
         cl::Clipper clipper;
         auto bbox = ch::bounding_rectangle(poly.border);
         auto cross_hatching_segments = clip_crosshatching_to_bbox(swatch.content, bbox);
-        auto subject = polylines_to_clipper_paths( cross_hatching_segments, scale );
+        auto subject = polylines_to_clipper_paths(cross_hatching_segments, scale);
         auto clip = poly_with_holes_to_clipper_paths(poly, scale);
 
         clipper.AddPaths(subject, cl::ptSubject, false);
@@ -465,14 +506,14 @@ namespace {
                         }
                     )
                 ) |
-            r::to_vector;
-         return rv::zip(start_of_ranges, end_of_ranges) |
-                 rv::transform(
-                     [](std::pair<uchar, uchar> p)->std::tuple<uchar, uchar> {
-                         return { p.first, p.second };
-                     }
-             ) |
-             r::to_vector;
+                r::to_vector;
+                    return rv::zip(start_of_ranges, end_of_ranges) |
+                        rv::transform(
+                            [](std::pair<uchar, uchar> p)->std::tuple<uchar, uchar> {
+                                return { p.first, p.second };
+                            }
+                        ) |
+                r::to_vector;
     }
 
     std::unordered_map<int, std::vector<int>> build_local_id_to_gobal_id_tbl(const ch::segmentation& global_seg, const ch::segmentation& local_seg) {
@@ -605,39 +646,37 @@ namespace {
     }
 
     using blobs_per_gray_t = std::tuple<uchar, std::vector<polygon_with_holes>>;
-    ink_plane blobs_per_gray_to_inkplane(const std::vector<blobs_per_gray_t>& blobs_per_gray, ch::brush br, cv::Mat prev_image) {
+    ink_plane blobs_per_gray_to_inkplane(const std::vector<blobs_per_gray_t>& blobs_per_gray, ch::brush br) {
         std::vector<ink_plane_blob> ink_plane_blobs = rv::join(
-                blobs_per_gray |
-                rv::remove_if(
-                    [](const blobs_per_gray_t& bpg)->bool {
-                        return std::get<0>(bpg) == 255;
-                    }
-                ) |
-                rv::transform(
-                    [prev_image](const blobs_per_gray_t& bpg) {
-                        const auto& [gray, polygons] = bpg;
-                        return polygons |
-                            rv::transform(
-                                [gray, prev_image](const polygon_with_holes& poly)->ink_plane_blob {
-                                    uchar bkgd_color = (!prev_image.empty()) ? prev_image.at<uchar>(poly.border.front()) : 255;
-                                    return {
-                                        gray,
-                                        bkgd_color,
-                                        poly
-                                    };
-                                }
-                            );
-                    }
-                )
-            ) | r::to_vector;
+            blobs_per_gray |
+            rv::remove_if(
+                [](const blobs_per_gray_t& bpg)->bool {
+                    return std::get<0>(bpg) == 255;
+                }
+            ) |
+            rv::transform(
+                [](const blobs_per_gray_t& bpg) {
+                    const auto& [gray, polygons] = bpg;
+                    return polygons |
+                        rv::transform(
+                            [gray](const polygon_with_holes& poly)->ink_plane_blob {
+                                return {
+                                    gray,
+                                    poly
+                                };
+                            }
+                    );
+                }
+            )
+                    ) | r::to_vector;
         return {
             br,
             ink_plane_blobs
         };
     }
 
-    ink_plane ink_plane_img_to_ink_plane(const std::tuple<cv::Mat , ch::brush, cv::Mat>& img_brush_prev) {
-        const auto& [img, brush, prev_img] = img_brush_prev;
+    ink_plane ink_plane_img_to_ink_plane(const std::tuple<cv::Mat, ch::brush>& img_brush) {
+        const auto& [img, brush] = img_brush;
 
         auto contours = perform_find_contours(img);
         std::vector<blobs_per_gray_t> blobs_per_gray = contours |
@@ -650,15 +689,16 @@ namespace {
             ) |
             r::to_vector;
 
-            return blobs_per_gray_to_inkplane(blobs_per_gray, brush, prev_img);
+         return blobs_per_gray_to_inkplane(blobs_per_gray, brush);
     }
 
     std::vector<ink_plane> ink_plane_images_to_ink_planes(const std::vector<cv::Mat>& ink_plane_imgs, const std::vector<ch::brush>& brushes) {
         int n = static_cast<int>(ink_plane_imgs.size());
-        auto prev_images = rv::concat(rv::single(cv::Mat()), ink_plane_imgs | rv::take(n - 1));
-        return rv::zip(ink_plane_imgs, brushes, prev_images) |
+        std::vector<ink_plane> ink_planes = rv::zip(ink_plane_imgs, brushes) |
             rv::transform(ink_plane_img_to_ink_plane) |
             r::to_vector;
+
+        return ink_planes;
     }
 
     std::vector<ink_plane> extract_ink_planes_brush_thresh(const cv::Mat& gray_scale_img, const cv::Mat& label_img, const std::vector<ch::brush>& brushes, const std::vector<double>& thresholds) {
@@ -669,36 +709,36 @@ namespace {
 
         return ink_plane_images_to_ink_planes(ink_plane_images, brushes);
     }
-}
 
-std::vector<ink_plane> extract_ink_planes(const cv::Mat& gray_scale_img, const cv::Mat& label_img, const std::vector<std::tuple<ch::brush, double>>& brushes_and_thresholds) {
-    auto [brushes, thresholds] = std::tuple{
-            brushes_and_thresholds | rv::transform([](const auto& tup) {return std::get<0>(tup); }) | r::to_vector,
-            brushes_and_thresholds | rv::transform([](const auto& tup) {return std::get<1>(tup); }) | r::to_vector,
-    };
-    return extract_ink_planes_brush_thresh(gray_scale_img, label_img, brushes, thresholds);
-}
+    std::vector<ink_plane> extract_ink_planes(const cv::Mat& gray_scale_img, const cv::Mat& label_img, const std::vector<std::tuple<ch::brush, double>>& brushes_and_thresholds) {
+        auto [brushes, thresholds] = std::tuple{
+                brushes_and_thresholds | rv::transform([](const auto& tup) {return std::get<0>(tup); }) | r::to_vector,
+                brushes_and_thresholds | rv::transform([](const auto& tup) {return std::get<1>(tup); }) | r::to_vector,
+        };
+        return extract_ink_planes_brush_thresh(gray_scale_img, label_img, brushes, thresholds);
+    }
 
-std::vector<ink_plane> scale(const std::vector<ink_plane>& planes, double scale) {
-    return planes |
-        rv::transform(
-            [scale](const ink_plane& plane)->ink_plane {
-                return scale_ink_plane(plane, scale);
-            }
-        ) |
-        r::to_vector;
-}
+    std::vector<ink_plane> scale(const std::vector<ink_plane>& planes, double scale) {
+        return planes |
+            rv::transform(
+                [scale](const ink_plane& plane)->ink_plane {
+                    return scale_ink_plane(plane, scale);
+                }
+            ) |
+            r::to_vector;
+    }
 
-void write_to_svg(const std::string& filename, const std::vector<ink_plane>& planes, int wd, int hgt, double scale) {
-    std::ofstream outfile(filename);
+    void write_to_svg(const std::string& filename, const std::vector<ink_plane>& planes, int wd, int hgt, double scale) {
+        std::ofstream outfile(filename);
 
-    outfile << ch::svg_header(static_cast<int>(scale * wd), static_cast<int>(scale * hgt));
+        outfile << ch::svg_header(static_cast<int>(scale * wd), static_cast<int>(scale * hgt));
 
-    for (const auto& plane : planes)
-        outfile << ink_plane_to_svg(plane, scale);
+        for (const auto& plane : planes)
+            outfile << ink_plane_to_svg(plane, scale);
 
-    outfile << "</svg>" << std::endl;
-    outfile.close();
+        outfile << "</svg>" << std::endl;
+        outfile.close();
+    }
 }
 
 ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, double scale, const std::vector<std::tuple<ch::brush, double>>& brushes) {
@@ -731,21 +771,6 @@ void ch::to_svg(const std::string& filename, const drawing& d) {
 
     outfile << "</svg>" << std::endl;
     outfile.close();
-}
-
-cv::Mat grayscale_to_label_image(cv::Mat input) {
-    auto values = ch::unique_gray_values(input);
-    cv::Mat output(input.size(), CV_32SC1, cv::Scalar(-1));
-    int label = 0;
-    for (auto val : values) {
-        cv::Mat mask;
-        cv::inRange(input, val, val, mask);
-        ch::segmentation seg(mask);
-        for (int i = 0; i < seg.count(); ++i) {
-            seg.paint_component(i, output, label++);
-        }
-    }
-    return output;
 }
 
 void ch::debug(cv::Mat im, cv::Mat la) {

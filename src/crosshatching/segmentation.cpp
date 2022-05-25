@@ -221,3 +221,20 @@ cv::Mat ch::segmentation::paint_components() const {
 }
 
 ch::segmentation::~segmentation() = default;
+
+/*--------------------------------------------------------------------------------------------------------------*/
+
+cv::Mat ch::grayscale_to_label_image(cv::Mat input) {
+    auto values = ch::unique_gray_values(input);
+    cv::Mat output(input.size(), CV_32SC1, cv::Scalar(-1));
+    int label = 0;
+    for (auto val : values) {
+        cv::Mat mask;
+        cv::inRange(input, val, val, mask);
+        ch::segmentation seg(mask);
+        for (int i = 0; i < seg.count(); ++i) {
+            seg.paint_component(i, output, label++);
+        }
+    }
+    return output;
+}
