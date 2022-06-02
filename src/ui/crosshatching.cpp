@@ -136,7 +136,7 @@ void ui::crosshatching::generate() {
 	//br.build_n(10);
 
 	cv::Mat mat = current_image_;
-	auto drawing = ch::generate_crosshatched_drawing(mat, 5.0, { {std::get<ch::brush_fn>(result), 1.0} });
+	auto drawing = ch::generate_crosshatched_drawing(mat, { {std::get<ch::brush_fn>(result), 1.0} }, ch::crosshatching_params(5.0));
 	ch::to_svg("C:\\test\\testo.svg", drawing);
 
 	std::chrono::duration<double> elapsed = std::chrono::system_clock::now() - start_time;

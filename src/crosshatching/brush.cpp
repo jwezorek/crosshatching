@@ -646,7 +646,7 @@ double ch::brush::max_gray_level() const {
     return std::prev(gray_to_param_.end())->first;
 }
 
-std::vector<cv::Mat> ch::brush::render_swatches(double gray_value) {
+ch::bkgd_swatches ch::brush::render_swatches(double gray_value) {
     auto bkgds = bkgds_;
     if (bkgds.empty()) {
         bkgds.resize(k_num_samples);

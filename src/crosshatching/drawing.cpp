@@ -12,12 +12,15 @@
 #include <iostream>
 #include <unordered_set>
 #include <array>
+#include "qdebug.h"
 
 namespace r = ranges;
 namespace rv = ranges::views;
 namespace cl = ClipperLib;
 
 namespace {
+
+    constexpr int k_typical_number_of_strokes = 10000;
 
     struct polygon_with_holes {
         ch::polyline border;
@@ -291,32 +294,11 @@ namespace {
         return ss.str();
     }
 
-    /*
-    std::string ink_plane_to_svg(const ink_plane& ip, double scale) {
-        std::stringstream ss;
-        for (const auto& blob : ip.blobs) {
-            ss << poly_with_holes_to_svg(static_cast<uchar>((1.0 - blob.value) * 255.0), blob.poly, scale) << "\n";
-        }
-        return ss.str();
-    }
-    */
-
-    polygon_with_holes scale(const polygon_with_holes& poly, double scale) {
+    polygon_with_holes scale_poly(const polygon_with_holes& poly, double scale) {
         return {
             ch::scale(poly.border, scale),
             poly.holes | rv::transform([scale](const auto& p) {return ch::scale(p, scale); }) | r::to_vector
         };
-    }
-
-    blob scale(const blob& b, double s) {
-        return {
-            b.value,
-            scale(b.poly, s)
-        };
-    }
-
-    std::vector<blob> scale_blobs(const std::vector<blob>& blobs, double val) {
-        return blobs | rv::transform([val](const auto& blob) { return scale(blob, val); }) | r::to_vector;
     }
 
     polygon_with_holes transform(const polygon_with_holes& p, const ch::matrix& mat) {
@@ -653,18 +635,12 @@ namespace {
         return generate_ink_layer_images(seg, ranges);
     }
 
-    std::vector<std::vector<blob>> scale(const std::vector<std::vector<blob>>& layers, double scale) {
-        return layers |
-            rv::transform(
-                [scale](const std::vector<blob>& layer)->std::vector<blob> {
-                    return scale_blobs(layer, scale);
-                }
-            ) |
-            r::to_vector;
-    }
-
-
     class ink_layer_stack {
+
+    public:  
+        using brush_token = uint64_t;
+
+    private:
 
         struct ink_layer_blob {
             uchar value;
@@ -675,6 +651,26 @@ namespace {
 
             cv::Point2i point_in_blob() const {
                 return poly.border.front();
+            }
+
+            brush_token tokenize() const {
+                std::vector<uchar> values(layer_id + 2, 255);
+                const auto* blob_ptr = this;
+                while (blob_ptr) {
+                    values[blob_ptr->layer_id] = blob_ptr->value;
+                    blob_ptr = blob_ptr->parent;
+                }
+                return make_brush_token(values);
+            }
+
+            brush_token parent_token() const {
+                return (parent) ?
+                    parent->tokenize() :
+                    255;
+            }
+
+            void scale(double scale_factor) {
+                poly = scale_poly(poly, scale_factor);
             }
         };
 
@@ -757,10 +753,6 @@ namespace {
 
             for (int layer_index = 0; layer_index < static_cast<int>(layers_.size()); ++layer_index) {
                 auto& layer = layers_[layer_index];
-                if (layer_index == 1) {
-                    int aaa;
-                    aaa = 5;
-                }
                 for (auto& blob : layer.blobs) {
                     auto [parent_layer, parent_blob] = find_blob_parent(blob, blob_maps);
                     blob.parent = (parent_blob != -1) ?
@@ -770,9 +762,21 @@ namespace {
             }
         }
 
+        static brush_token make_brush_token(const std::vector<uchar>& values) {
+            if (values.size() > 8) {
+                throw std::runtime_error("too many ink layers");
+            }
+            brush_token tok = 0;
+            for (int i = 0; i < values.size(); ++i) {
+                tok |= values[i] << 8 * i;
+            }
+
+            return tok;
+        }
+
     public:
 
-        ink_layer_stack(const std::vector<cv::Mat>& layers, std::vector<ch::brush_fn> brushes) {
+        ink_layer_stack(const std::vector<cv::Mat>& layers, std::vector<ch::brush_fn> brushes, double scale_factor) {
             auto blobs = ink_layer_images_to_blobs(layers);
             layers_ = rv::enumerate(blobs) |
                 rv::transform(
@@ -783,51 +787,128 @@ namespace {
                 ) |
                 r::to_vector;
             populate_blob_parents(layers);
+            scale(scale_factor);
         }
+
+        using blob_range = r::any_view<std::tuple<ch::brush_fn, ink_layer_blob>>;
+
+        r::any_view<blob_range> blobs() const {
+            return  layers_ |
+                rv::transform(
+                    [](const auto& layer) {
+                        const auto& brush = layer.brush;
+                        return layer.blobs |
+                            rv::transform(
+                                [&brush](const ink_layer_blob& blob)->std::tuple<ch::brush_fn, ink_layer_blob> {
+                                    return { brush, blob };
+                                }
+                        );
+                    }
+                );
+        }
+
+        void scale(double scale_factor) {
+            for (auto& layer : layers_) {
+                for (auto& blob : layer.blobs) {
+                    blob.scale(scale_factor);
+                }
+            }
+        }
+       
     };
-    /*
-    void write_to_svg(const std::string& filename, const std::vector<ink_plane>& planes, int wd, int hgt, double scale) {
-        std::ofstream outfile(filename);
 
-        outfile << ch::svg_header(static_cast<int>(scale * wd), static_cast<int>(scale * hgt));
-
-        for (const auto& plane : planes)
-            outfile << ink_plane_to_svg(plane, scale);
-
-        outfile << "</svg>" << std::endl;
-        outfile.close();
+    std::tuple<std::vector<ch::brush_fn>, std::vector<double>> split_brush_thresholds(const std::vector<std::tuple<ch::brush_fn, double>>& brush_thresholds) {
+        return {
+            brush_thresholds | rv::transform([](const auto& tup) {return std::get<0>(tup); }) | r::to_vector,
+            brush_thresholds | rv::transform([](const auto& tup) {return std::get<1>(tup); }) | r::to_vector
+        };
     }
-    */
+
+    std::vector<ch::polyline> crosshatched_poly_with_holes(const polygon_with_holes& input, double color, ch::brush& brush) {
+        auto [x1, y1, x2, y2] = ch::bounding_rectangle(input.border);
+        cv::Point2d center = { (x1 + x2) / 2.0,(y1 + y2) / 2.0 };
+        auto poly = ::transform(input, ch::translation_matrix(-center));
+        auto swatch = brush.get_hatching(color, { x2 - x1,y2 - y1 });
+        auto strokes = clip_swatch_to_poly(swatch, poly);
+        return ch::transform(strokes, ch::translation_matrix(center));
+    }
+
+    using swatch_table = std::unordered_map<ink_layer_stack::brush_token, ch::bkgd_swatches>;
+
+    ch::dimensions scaled_dimensions(cv::Mat mat, double scale) {
+        return {
+            mat.cols * scale,
+            mat.rows * scale
+        };
+    }
+
+    swatch_table create_swatch_table() {
+        swatch_table tbl;
+        tbl[255] = {};
+        return tbl;
+    }
+
+    double gray_byte_to_value(uchar gray) {
+        return 1.0 - static_cast<double>(gray) / 255.0;
+    }
+
+    std::tuple<std::vector<ch::polyline>, swatch_table> paint_ink_layer(ink_layer_stack::blob_range layer, const swatch_table& tbl, const ch::crosshatching_params& params) {
+        std::vector<ch::polyline> output;
+        output.reserve(k_typical_number_of_strokes);
+        std::unordered_map<ink_layer_stack::brush_token, ch::brush> brush_table;
+        swatch_table output_table = create_swatch_table();
+        for (const auto& [brush_func, blob] : layer) {
+            auto parent_tok = blob.parent_token();
+            auto iter = brush_table.find(parent_tok);
+            ch::brush current_brush;
+            if (iter != brush_table.end()) {
+                current_brush = iter->second;
+            } else {
+                current_brush = ch::brush(brush_func, params.stroke_width, params.epsilon,
+                    { params.swatch_sz }, tbl.at(parent_tok));
+                current_brush.build_n(10);
+                brush_table[parent_tok] = current_brush;
+            }
+
+            auto value = gray_byte_to_value(blob.value);
+            auto strokes = crosshatched_poly_with_holes(blob.poly, value, current_brush);
+            std::copy(strokes.begin(), strokes.end(), std::back_inserter(output));
+
+            auto tok = blob.tokenize();
+            if (output_table.find(tok) == output_table.end()) {
+                output_table[tok] = current_brush.render_swatches(value);
+            }
+        }
+        output.shrink_to_fit();
+
+        return { std::move(output), std::move(output_table) };
+    }
 }
 
-std::tuple<std::vector<ch::brush_fn>, std::vector<double>> split_brush_thresholds(const std::vector<std::tuple<ch::brush_fn, double>>& brush_thresholds) {
-    return {
-        brush_thresholds | rv::transform([](const auto& tup) {return std::get<0>(tup); }) | r::to_vector,
-        brush_thresholds | rv::transform([](const auto& tup) {return std::get<1>(tup); }) | r::to_vector
-    };
-}
-
-ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, double scale, const std::vector<std::tuple<ch::brush_fn, double>>& brush_intervals) {
+ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, const std::vector<std::tuple<ch::brush_fn, double>>& brush_intervals, const ch::crosshatching_params& params) {
 
     auto [brushes, thresholds] = split_brush_thresholds(brush_intervals);
     auto layers = ink_layer_images(img, label_img, thresholds);
-    ink_layer_stack stack(layers, brushes);
-    return {};
+    ink_layer_stack stack(layers, brushes, params.scale);
+
+    std::vector<std::vector<ch::polyline>> layer_strokes(layers.size());
+    swatch_table tok_to_bkgd = create_swatch_table();
+
+    for (auto [index,layer] : rv::enumerate(stack.blobs())) {
+        std::tie(layer_strokes[index], tok_to_bkgd) = paint_ink_layer(layer, tok_to_bkgd, params);
+    }
+
+    return ch::drawing {
+        layer_strokes | rv::join | r::to_vector,
+        scaled_dimensions(img, params.scale),
+        static_cast<double>(params.stroke_width)
+    };
 }
 
-ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, double scale, const std::vector<std::tuple<ch::brush_fn, double>>& brushes) {
+ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, const std::vector<std::tuple<ch::brush_fn, double>>& brushes, const ch::crosshatching_params& params) {
     
     auto labels = ch::grayscale_to_label_image(img);
-    return generate_crosshatched_drawing(img, labels, scale, brushes);
-}
-
-std::vector<ch::polyline> crosshatched_poly_with_holes(const polygon_with_holes& input, double color, ch::brush& brush) {
-    auto [x1, y1, x2, y2] = ch::bounding_rectangle(input.border);
-    cv::Point2d center = { (x1 + x2) / 2.0,(y1 + y2) / 2.0 };
-    auto poly = ::transform(input, ch::translation_matrix(-center));
-    auto swatch = brush.get_hatching(color, { x2 - x1,y2 - y1 });
-    auto strokes = clip_swatch_to_poly(swatch, poly);
-    return ch::transform(strokes, ch::translation_matrix(center));
+    return generate_crosshatched_drawing(img, labels, brushes, params);
 }
 
 void ch::to_svg(const std::string& filename, const drawing& d) {
@@ -877,35 +958,15 @@ void ch::debug(cv::Mat im, cv::Mat la) {
         )
 	)";
     auto result_2 = ch::parse_brush_language(script_2);
-    auto ch_drawing = generate_crosshatched_drawing(img, labels, 4.0, { 
+    auto ch_drawing = generate_crosshatched_drawing(img, labels, { 
             {std::get<ch::brush_fn>(result_1), 0.5},
-            {std::get<ch::brush_fn>(result_2),1.0} 
-        }
+            {std::get<ch::brush_fn>(result_2),1.0},
+        },
+        ch::crosshatching_params(10.0)
     );
     ch::to_svg("C:\\test\\test_drawing.svg", ch_drawing);
 }
 
-/*
-void ch::debug(cv::Mat im, cv::Mat la) {
-
-    auto img = cv::imread("C:\\test\\ink_plane_test.png");
-    img = ch::convert_to_gray(img);
-
-    auto labels = grayscale_to_label_image(img);
-    ch::write_label_map_visualization(labels, "C:\\test\\test_labels.png");
-
-    segmentation seg(img, labels);
-    //std::vector<std::tuple<uchar, uchar>> levels = { {0,0}, {1,156}, {157, 254} };
-    std::vector<std::tuple<uchar, uchar>> levels = { {0,156}, {157, 254} };
-    auto ink_planes = generate_ink_plane_images(seg, levels);
-    int i = 0;
-    for (const auto& ip : ink_planes) {
-        std::string filename = "C:\\test\\ink_plane_" + std::to_string(++i) + ".png";
-        cv::imwrite(filename, ip);
-    }
-
-}
-*/
 
 
 

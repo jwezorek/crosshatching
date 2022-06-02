@@ -73,6 +73,8 @@ namespace ch {
     param_adapter_fn make_ramp_fn(param_adapter_fn k, bool right, bool up);
     //param_adapter_fn make_one_parameter_param_adapter(param_adapter_fn f, param_adapter_fn arg);
 
+    using bkgd_swatches = std::vector<cv::Mat>;
+
     class brush {
     private:
         using gray_map_iter = std::map<double, double>::iterator;
@@ -82,7 +84,7 @@ namespace ch {
         int line_thickness_;
         dimensions swatch_sz_;
         double eps_;
-        std::vector<cv::Mat> bkgds_;
+        bkgd_swatches bkgds_;
 
         bool is_uinitiailized() const;
         double get_or_sample_param(double param);
@@ -92,14 +94,14 @@ namespace ch {
     public:
         brush() {};
         brush(brush_fn fn, int line_thickness = 1, double epsilon = k_epsilon, 
-            dimensions swatch_sz = { k_swatch_sz }, const std::vector<cv::Mat>& bkgds = {});
+            dimensions swatch_sz = { k_swatch_sz }, const bkgd_swatches& bkgds = {});
 
         void build();
         void build_n(int n);
         double stroke_width() const;
         double gray_value_to_param(double gray_val);
         crosshatching_swatch get_hatching(double gray_val, dimensions sz);
-        std::vector<cv::Mat> render_swatches(double gray_level);
+        bkgd_swatches render_swatches(double gray_level);
         double min_gray_level() const;
         double max_gray_level() const;
         static int num_samples();
