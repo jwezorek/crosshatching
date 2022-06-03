@@ -887,6 +887,14 @@ namespace {
 
 ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, const std::vector<std::tuple<ch::brush_fn, double>>& brush_intervals, const ch::crosshatching_params& params) {
 
+    if (img.channels() != 1) {
+        img = ch::convert_to_1channel_gray(img);
+    }
+
+    if (label_img.channels() != 1) {
+        throw std::runtime_error("bad label image");
+    }
+
     auto [brushes, thresholds] = split_brush_thresholds(brush_intervals);
     auto layers = ink_layer_images(img, label_img, thresholds);
     ink_layer_stack stack(layers, brushes, params.scale);
@@ -923,24 +931,39 @@ void ch::to_svg(const std::string& filename, const drawing& d) {
     outfile.close();
 }
 
-void ch::debug(cv::Mat im, cv::Mat la) {
-
+void ch::debug(cv::Mat img, cv::Mat labels) {
+    /*
     auto img = cv::imread("C:\\test\\ink_plane_test.png");
     img = ch::convert_to_1channel_gray(img);
 
     auto labels = grayscale_to_label_image(img);
     ch::write_label_map_visualization(labels, "C:\\test\\test_labels.png");
+    */
 
     std::string script_1 = R"(
-        (pipe 
-            (lin_brush
-                (norm_rnd (lerp 0 800) (lerp 50 100))
-                (norm_rnd (lerp 200 0) (lerp 20 0.05))
-                (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
+        (pipe
+            (merge
+                (pipe 
+                    (lin_brush
+                        (norm_rnd (lerp 0 800) (lerp 50 100))
+                        (norm_rnd (lerp 200 0) (lerp 20 0.05))
+                        (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
+                    )
+                	(rot 45)
+                    (dis (ramp 0.20 false true))
+                )
+                (pipe 
+                    (ramp 0.50 true true)
+                    (lin_brush
+                        (norm_rnd (lerp 0 800) (lerp 50 100))
+                        (norm_rnd (lerp 200 0) (lerp 20 0.05))
+                        (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
+                    )
+                    (rot 315)
+                    (dis (ramp 0.20 false true))
+                )
             )
-        	(rot 45)
             (jiggle (norm_rnd 0.0 0.02))
-            (dis (ramp 0.20 false true))
         )
 	)";
     auto result_1 = ch::parse_brush_language(script_1);
@@ -952,17 +975,17 @@ void ch::debug(cv::Mat im, cv::Mat la) {
                 (norm_rnd (lerp 200 0) (lerp 20 0.05))
                 (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
             )
-        	(rot 315)
-            (jiggle (norm_rnd 0.0 0.02))
+        	(rot 0)
             (dis (ramp 0.20 false true))
+            (jiggle (norm_rnd 0.0 0.005))
         )
 	)";
     auto result_2 = ch::parse_brush_language(script_2);
     auto ch_drawing = generate_crosshatched_drawing(img, labels, { 
-            {std::get<ch::brush_fn>(result_1), 0.5},
-            {std::get<ch::brush_fn>(result_2),1.0},
+            {std::get<ch::brush_fn>(result_2), 0.35},
+            {std::get<ch::brush_fn>(result_1), 1.0},
         },
-        ch::crosshatching_params(10.0)
+        ch::crosshatching_params(4.0)
     );
     ch::to_svg("C:\\test\\test_drawing.svg", ch_drawing);
 }
