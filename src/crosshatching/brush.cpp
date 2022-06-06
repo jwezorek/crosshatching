@@ -10,6 +10,7 @@
 #include <sstream>
 #include <fstream>
 #include <queue>
+#include <chrono>
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -239,7 +240,7 @@ ch::crosshatching_range ch::one_horz_stroke(double x1, double x2, double y, doub
 
 ch::crosshatching_swatch ch::linear_crosshatching(rnd_fn run_length, rnd_fn space_length, rnd_fn vert_space,
     unit_of_hatching_fn h_fn, ch::dimensions viewable_swatch_sz, double stroke_wd) {
-    auto dim = (std::sqrt(2.0) * (viewable_swatch_sz.wd + viewable_swatch_sz.hgt)) / 2.0;
+    auto dim = std::sqrt(2.0) * (std::max(viewable_swatch_sz.wd , viewable_swatch_sz.hgt));
     auto swatch_sz = dimensions(dim);
     return {
         rv::join(
@@ -470,17 +471,17 @@ struct range_queue_item {
     double gray_level_right;
 };
 
+static int NUM_SAMPLES = 0;
+static double SAMPLE_TIME = 0;
+
 double sample(ch::dimensions sz, ch::brush_fn fn, double t, int n, int thickness, const std::vector<cv::Mat>& bkgds) {
-    ;
+    NUM_SAMPLES++;
+    auto start = std::chrono::high_resolution_clock::now();
 
     auto compute_gray_level = [sz](int th, ch::brush_fn f, double t, cv::Mat bkgd) -> double {
         return ch::measure_gray_level(f(th, sz, t), bkgd);
     };
-    /*
-    std::generate(samples.begin(), samples.end(),
-        [=, &bkgds]() { return std::async(std::launch::async, compute_gray_level, thickness, fn, t); }
-    );
-    */
+
     std::vector<std::future<double>> samples = rv::iota(0, n) | 
         rv::transform(
             [=, &bkgds](int i)->std::future<double> {
@@ -494,7 +495,21 @@ double sample(ch::dimensions sz, ch::brush_fn fn, double t, int n, int thickness
             return s + fut.get();
         }
     );
-    return sum / n;
+    auto gray = sum / n;
+    auto end = std::chrono::high_resolution_clock::now();
+
+    std::chrono::duration<double, std::milli> elapsed = end - start;
+    SAMPLE_TIME += elapsed.count();
+
+    return gray;
+}
+
+double ch::debug_sample_time() {
+    return SAMPLE_TIME;
+}
+
+int ch::debug_num_samples() {
+    return NUM_SAMPLES;
 }
 
 bool compare_items(const range_queue_item& v1, const range_queue_item& v2) {
@@ -549,7 +564,9 @@ double ch::brush::build_between(double gray, gray_map_iter left, gray_map_iter r
     }
 }
 
-void ch::brush::build() {
+void ch::brush::build() { 
+    throw std::runtime_error("dont use this build");
+
     if (!is_uinitiailized()) {
         throw std::runtime_error("brush is already built");
     }
@@ -579,8 +596,10 @@ void ch::brush::build() {
     }
 }
 
+static int BUILD_N_CALLs = 0;
 void ch::brush::build_n(int n)
 {
+    BUILD_N_CALLs++;
     if (!is_uinitiailized()) {
         throw std::runtime_error("brush is already built");
     }
@@ -588,6 +607,10 @@ void ch::brush::build_n(int n)
     for (int i = 0; i < n; ++i) {
         get_or_sample_param(delta * i);
     }
+}
+
+int ch::debug_num_brushes_built() {
+    return BUILD_N_CALLs;
 }
 
 double ch::brush::stroke_width() const
@@ -666,11 +689,6 @@ int ch::brush::num_samples() {
     return k_num_samples;
 }
 
-
-//double epsilon_;
-//double line_thickness_;
-//dimensions swatch_sz_;
-//std::map<double, std::function<ch::crosshatching_swatch()>> brushes_;
 
 ch::hierarchical_brush::hierarchical_brush(
     const std::vector<brush_fn>& brush_fns, const std::vector<double>& gray_intervals,

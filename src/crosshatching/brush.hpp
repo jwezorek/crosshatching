@@ -130,4 +130,7 @@ namespace ch {
         double stroke_width() const;
     };
 
+    double debug_sample_time();
+    int debug_num_samples();
+    int debug_num_brushes_built();
 }

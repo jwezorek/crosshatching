@@ -12,7 +12,9 @@
 #include <iostream>
 #include <unordered_set>
 #include <array>
+#include <chrono>
 #include "qdebug.h"
+#include <QMessageBox>
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -866,7 +868,7 @@ namespace {
             } else {
                 current_brush = ch::brush(brush_func, params.stroke_width, params.epsilon,
                     { params.swatch_sz }, tbl.at(parent_tok));
-                current_brush.build_n(10);
+                current_brush.build_n(20);
                 brush_table[parent_tok] = current_brush;
             }
 
@@ -887,16 +889,23 @@ namespace {
 
 ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, const std::vector<std::tuple<ch::brush_fn, double>>& brush_intervals, const ch::crosshatching_params& params) {
 
+    if (label_img.type() != CV_32SC1) {
+        throw std::runtime_error("bad label image");
+    }
+
     if (img.channels() != 1) {
         img = ch::convert_to_1channel_gray(img);
     }
 
-    if (label_img.channels() != 1) {
-        throw std::runtime_error("bad label image");
-    }
-
     auto [brushes, thresholds] = split_brush_thresholds(brush_intervals);
     auto layers = ink_layer_images(img, label_img, thresholds);
+    /*
+    int i = 0;
+    for (const auto& layer : layers) {
+        std::string fname = "C:\\test\\ink_layer_" + std::to_string(++i) + ".png";
+        cv::imwrite(fname, layer);
+    }
+    */
     ink_layer_stack stack(layers, brushes, params.scale);
 
     std::vector<std::vector<ch::polyline>> layer_strokes(layers.size());
@@ -981,12 +990,25 @@ void ch::debug(cv::Mat img, cv::Mat labels) {
         )
 	)";
     auto result_2 = ch::parse_brush_language(script_2);
-    auto ch_drawing = generate_crosshatched_drawing(img, labels, { 
-            {std::get<ch::brush_fn>(result_2), 0.35},
-            {std::get<ch::brush_fn>(result_1), 1.0},
+
+    auto start = std::chrono::high_resolution_clock::now();
+    auto ch_drawing = generate_crosshatched_drawing(img, labels, {
+            {std::get<ch::brush_fn>(result_2), 0.25},
+            {std::get<ch::brush_fn>(result_1), 1.0}
         },
-        ch::crosshatching_params(4.0)
+        ch::crosshatching_params(6.0)
     );
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> elapsed = end - start;
+
+    QMessageBox mb;
+    std::string str = "total time = " + std::to_string(elapsed.count()) +
+        "\nsample time = " + std::to_string(ch::debug_sample_time()) +
+        "\nnum samples = " + std::to_string(ch::debug_num_samples()) +
+        "\nnum brushes built = " + std::to_string(ch::debug_num_brushes_built());
+    mb.setText(str.c_str());
+    mb.exec();
+
     ch::to_svg("C:\\test\\test_drawing.svg", ch_drawing);
 }
 
