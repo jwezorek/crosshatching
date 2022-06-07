@@ -201,7 +201,18 @@ void ui::crosshatching::handle_source_image_change(cv::Mat& img) {
 }
 
 QWidget* ui::crosshatching::createCrosshatchCtrls() {
-	return new QWidget();
+	QSplitter* vert_splitter = new QSplitter();
+	vert_splitter-> setMaximumWidth(k_controls_width);
+	vert_splitter->setOrientation(Qt::Orientation::Vertical);
+	vert_splitter->addWidget(new QTreeWidget());
+	vert_splitter->addWidget(new QTreeWidget());
+
+	QSplitter* splitter = new QSplitter();
+	splitter->addWidget(vert_splitter);
+	splitter->addWidget(new QWidget());
+	splitter->setSizes(QList<int>({ INT_MAX, INT_MAX }));
+
+	return splitter;
 }
 
 QWidget* ui::crosshatching::createImageProcPipelineCtrls()
