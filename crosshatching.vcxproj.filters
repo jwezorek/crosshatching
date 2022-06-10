@@ -58,6 +58,9 @@
     <ClCompile Include="src\crosshatching\segmentation.cpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClCompile>
+    <ClCompile Include="src\ui\treepanel.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="src\ui\crosshatching.qrc">
@@ -72,6 +75,9 @@
       <Filter>Source Files\ui</Filter>
     </QtMoc>
     <QtMoc Include="src\ui\float_value_slider.h">
+      <Filter>Source Files\ui</Filter>
+    </QtMoc>
+    <QtMoc Include="src\ui\treepanel.h">
       <Filter>Source Files\ui</Filter>
     </QtMoc>
   </ItemGroup>

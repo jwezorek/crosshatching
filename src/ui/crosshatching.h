@@ -1,6 +1,7 @@
 #pragma once
 
 #include "settingctrls.hpp"
+#include "treepanel.h"
 #include <QtWidgets>
 #include <QtWidgets/QMainWindow>
 #include <opencv2/core.hpp>
@@ -52,6 +53,9 @@ namespace ui {
         cv::Mat src_image_;
         cv::Mat current_image_;
         ui::view_state view_state_;
+
+        tree_panel* brushes_;
+        tree_panel* layers_;
     };
 
 };

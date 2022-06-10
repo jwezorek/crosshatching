@@ -1,5 +1,6 @@
 #include "crosshatching.h"
 #include "settingctrls.hpp"
+#include "treepanel.h"
 #include "../crosshatching/drawing.hpp"
 #include "../crosshatching/util.hpp"
 #include "../crosshatching/brush_language.hpp"
@@ -69,6 +70,32 @@ namespace {
 
 		return file_menu;
 	}
+
+	void add_brush_node(QTreeWidget* tree, QTreeWidgetItem* selection) {
+		if (selection) {
+			QMessageBox mb;
+			mb.setText( selection->text(0) + " add");
+			mb.exec();
+		}
+	}
+
+	void delete_brush_node(QTreeWidget* tree, QTreeWidgetItem* selection) {
+		if (selection) {
+			QMessageBox mb;
+			mb.setText(selection->text(0) + " delete");
+			mb.exec();
+		}
+
+	}
+
+	void add_layer_node(QTreeWidget* tree, QTreeWidgetItem* selection) {
+
+	}
+
+	void delete_layer_node(QTreeWidget* tree, QTreeWidgetItem* selection) {
+
+	}
+
 }
 
 ui::crosshatching::crosshatching(QWidget *parent)
@@ -204,13 +231,23 @@ QWidget* ui::crosshatching::createCrosshatchCtrls() {
 	QSplitter* vert_splitter = new QSplitter();
 	vert_splitter-> setMaximumWidth(k_controls_width);
 	vert_splitter->setOrientation(Qt::Orientation::Vertical);
-	vert_splitter->addWidget(new QTreeWidget());
-	vert_splitter->addWidget(new QTreeWidget());
+	vert_splitter->addWidget(brushes_ = new tree_panel(add_brush_node, delete_brush_node));
+	vert_splitter->addWidget(layers_ = new tree_panel(add_layer_node, delete_layer_node));
 
 	QSplitter* splitter = new QSplitter();
 	splitter->addWidget(vert_splitter);
 	splitter->addWidget(new QWidget());
 	splitter->setSizes(QList<int>({ INT_MAX, INT_MAX }));
+
+	QList<QTreeWidgetItem*> items;
+	for (int i = 0; i < 10; ++i)
+		items.append(new QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString("item: %1").arg(i))));
+	brushes_->tree()->insertTopLevelItems(0, items);
+
+	QList<QTreeWidgetItem*> items2;
+	for (int i = 0; i < 10; ++i)
+		items2.append(new QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString("item: %1").arg(i))));
+	layers_->tree()->insertTopLevelItems(0, items2);
 
 	return splitter;
 }

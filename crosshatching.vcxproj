@@ -159,6 +159,7 @@
     <ClCompile Include="src\ui\crosshatching.cpp" />
     <ClCompile Include="src\ui\float_value_slider.cpp" />
     <ClCompile Include="src\ui\settingctrls.cpp" />
+    <ClCompile Include="src\ui\treepanel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="src\ui\crosshatching.qrc" />
@@ -176,6 +177,7 @@
     <ClInclude Include="src\crosshatching\peglib.h" />
     <ClInclude Include="src\crosshatching\segmentation.hpp" />
     <ClInclude Include="src\crosshatching\util.hpp" />
+    <QtMoc Include="src\ui\treepanel.h" />
     <QtMoc Include="src\ui\float_value_slider.h" />
     <QtMoc Include="src\ui\settingctrls.hpp" />
   </ItemGroup>
