@@ -1,6 +1,7 @@
 #include "crosshatching.h"
 #include "settingctrls.hpp"
 #include "treepanel.h"
+#include "dialogs.h"
 #include "../crosshatching/drawing.hpp"
 #include "../crosshatching/util.hpp"
 #include "../crosshatching/brush_language.hpp"
@@ -14,6 +15,7 @@
 #include <array>
 #include <chrono>
 #include <fstream>
+#include <memory>
 
 namespace {
 
@@ -72,10 +74,9 @@ namespace {
 	}
 
 	void add_brush_node(QTreeWidget* tree, QTreeWidgetItem* selection) {
-		if (selection) {
-			QMessageBox mb;
-			mb.setText( selection->text(0) + " add");
-			mb.exec();
+		if (!selection) {
+			std::unique_ptr<brush_dialog> dlg = std::make_unique<brush_dialog>();
+			dlg->exec();
 		}
 	}
 
