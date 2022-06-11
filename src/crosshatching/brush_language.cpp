@@ -200,6 +200,11 @@ std::optional<ch::symbol> ch::brush_expr::sym_type() const {
     return {};
 }
 
+std::string ch::brush_expr::to_short_string() const
+{
+    return sym_to_string(op_);
+}
+
 std::string ch::brush_expr::to_string() const {
     std::stringstream ss;
     
@@ -219,6 +224,14 @@ std::optional<double> ch::brush_expr::to_number() const {
     return {};
 }
 
+const std::vector<ch::brush_expr_ptr>* ch::brush_expr::children() const  {
+    return &children_;
+}
+
+bool ch::brush_expr::is_expression() const {
+    return true;
+}
+
 /*----------------------------------------------------------------------------------------------------*/
 
 ch::symbol_expr::symbol_expr(ch::symbol sym) :
@@ -231,6 +244,11 @@ ch::brush_pipeline_item ch::symbol_expr::eval() const {
 
 std::optional<ch::symbol> ch::symbol_expr::sym_type() const {
     return sym_;
+}
+
+std::string ch::symbol_expr::to_short_string() const
+{
+    return to_string();
 }
 
 std::string ch::symbol_expr::to_string() const {
@@ -255,6 +273,11 @@ std::optional<ch::symbol> ch::num_expr::sym_type() const {
     return {};
 }
 
+std::string ch::num_expr::to_short_string() const
+{
+    return to_string();
+}
+
 std::string ch::num_expr::to_string() const  {
     return std::to_string(val_);
 }
@@ -265,7 +288,16 @@ std::optional<double> ch::num_expr::to_number() const {
 
 /*----------------------------------------------------------------------------------------------------*/
 
-std::variant<ch::brush_fn, std::string> ch::parse_brush_language(const std::string& input) {
+std::variant<ch::brush_fn, std::string> ch::brush_language_to_func(const std::string& input) {
+    auto result = brush_language_to_expr(input);
+    if (std::holds_alternative<std::string>(result)) {
+        return { std::get<std::string>(result) };
+    }
+    auto item = std::get<ch::brush_expr_ptr>(result)->eval();
+    return std::get<ch::brush_fn>(item);
+}
+
+std::variant<ch::brush_expr_ptr, std::string> ch::brush_language_to_expr(const std::string& input) {
     try {
         if (!parser_initialized) {
             init_parser();
@@ -275,8 +307,7 @@ std::variant<ch::brush_fn, std::string> ch::parse_brush_language(const std::stri
         if (!success) {
             return std::string("error parsing brush");
         }
-        auto item = expr->eval();
-        return std::get<ch::brush_fn>(item);
+        return expr;
     } catch (std::runtime_error e) {
         return std::string(e.what());
     } catch (...) {

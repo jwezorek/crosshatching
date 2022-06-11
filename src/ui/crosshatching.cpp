@@ -73,20 +73,78 @@ namespace {
 		return file_menu;
 	}
 
-	void add_brush_node(QTreeWidget* tree, QTreeWidgetItem* selection) {
-		if (!selection) {
-			auto [name, brush] = ui::brush_dialog::create_brush();
-		}
-	}
+	class brush_panel : public ui::tree_panel {
+	private:
 
-	void delete_brush_node(QTreeWidget* tree, QTreeWidgetItem* selection) {
-		if (selection) {
-			QMessageBox mb;
-			mb.setText(selection->text(0) + " delete");
-			mb.exec();
+		class brush_item : public QTreeWidgetItem {
+		public:
+			brush_item(const std::string& name, ch::brush_expr_ptr expr) : 
+				QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString(name.c_str()))),
+				brush_expr(expr)
+			{}
+
+			brush_item(ch::brush_expr_ptr expr) :
+				QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString(expr->to_short_string().c_str()))),
+				brush_expr(expr)
+			{}
+
+			ch::brush_expr_ptr brush_expr;
+		};
+
+		static void insert_brush_item(brush_item* parent, brush_item* item) {
+			parent->addChild(item);
+			if (item->brush_expr->is_expression()) {
+				auto expr = item->brush_expr;
+				auto children = expr->children();
+				if (!children) {
+					return;
+				}
+				for (auto child : *children) {
+					insert_brush_item(item, new brush_item(child));
+				}
+			}
 		}
 
-	}
+		static void insert_toplevel_item(QTreeWidget* tree, const std::string& name, ch::brush_expr_ptr expr) {
+			auto toplevel_item = new brush_item(name, expr);
+			tree->addTopLevelItem(toplevel_item);
+			auto children = expr->children();
+
+			if (!children) {
+				return;
+			}
+
+			for (auto child : *children) {
+				insert_brush_item(toplevel_item, new brush_item(child));
+			}
+		}
+
+		
+
+		static void add_brush_node(QTreeWidget* tree, QTreeWidgetItem* selection) {
+			if (!selection) {
+				auto [name, brush] = ui::brush_dialog::create_brush();
+				insert_toplevel_item(tree, name, brush);
+			}
+		}
+
+		static void delete_brush_node(QTreeWidget* tree, QTreeWidgetItem* selection) {
+			if (selection) {
+				QMessageBox mb;
+				mb.setText(selection->text(0) + " delete");
+				mb.exec();
+			}
+		}
+
+	public:
+
+		brush_panel() : tree_panel("brushes", add_brush_node, delete_brush_node) {
+
+		}
+
+	};
+
+	
 
 	void add_layer_node(QTreeWidget* tree, QTreeWidgetItem* selection) {
 
@@ -152,7 +210,7 @@ void ui::crosshatching::generate() {
             (jiggle (norm_rnd 0.0 0.02))
         )
 	)";
-    auto result = ch::parse_brush_language(script);
+    auto result = ch::brush_language_to_func(script);
 	if (std::holds_alternative<std::string>(result)) {
 		QMessageBox msg_box;
 		msg_box.setText(std::get<std::string>(result).c_str());
@@ -231,18 +289,13 @@ QWidget* ui::crosshatching::createCrosshatchCtrls() {
 	QSplitter* vert_splitter = new QSplitter();
 	vert_splitter-> setMaximumWidth(k_controls_width);
 	vert_splitter->setOrientation(Qt::Orientation::Vertical);
-	vert_splitter->addWidget(brushes_ = new tree_panel(add_brush_node, delete_brush_node));
-	vert_splitter->addWidget(layers_ = new tree_panel(add_layer_node, delete_layer_node));
+	vert_splitter->addWidget(brushes_ = new brush_panel());
+	vert_splitter->addWidget(layers_ = new tree_panel("layers", add_layer_node, delete_layer_node));
 
 	QSplitter* splitter = new QSplitter();
 	splitter->addWidget(vert_splitter);
 	splitter->addWidget(new QWidget());
 	splitter->setSizes(QList<int>({ INT_MAX, INT_MAX }));
-
-	QList<QTreeWidgetItem*> items;
-	for (int i = 0; i < 10; ++i)
-		items.append(new QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString("item: %1").arg(i))));
-	brushes_->tree()->insertTopLevelItems(0, items);
 
 	QList<QTreeWidgetItem*> items2;
 	for (int i = 0; i < 10; ++i)

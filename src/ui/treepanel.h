@@ -15,7 +15,7 @@ namespace ui {
         Q_OBJECT
 
     public:
-        tree_panel( tree_panel_callback add_cb, tree_panel_callback delete_cb);
+        tree_panel( const std::string& title, tree_panel_callback add_cb, tree_panel_callback delete_cb );
 
         const QTreeWidget* tree() const;
         QTreeWidget* tree();

@@ -23,13 +23,30 @@ ui::brush_dialog::brush_dialog(QWidget* parent) :
     layout->addWidget(spacer(10));
     layout->addWidget( btns_ = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel) );
 
-    QPushButton* view_btn = new QPushButton("View");
-    btns_->addButton(view_btn, QDialogButtonBox::ActionRole);
+    view_btn_ = new QPushButton("View");
+    btns_->addButton(view_btn_, QDialogButtonBox::ActionRole);
 
     connect(btns_, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(btns_, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    connect(parse_btn, &QPushButton::clicked, this, &brush_dialog::parse_brush_code);
 
     btns_->button(QDialogButtonBox::Ok)->setEnabled(false);
+    view_btn_->setEnabled(false);
+}
+
+void ui::brush_dialog::parse_brush_code() {
+    auto result = ch::brush_language_to_expr(code_box_->toPlainText().toStdString());
+    if (std::holds_alternative<std::string>(result)) {
+        QMessageBox mb;
+        mb.setText(std::get<std::string>(result).c_str());
+        mb.exec();
+        btns_->button(QDialogButtonBox::Ok)->setEnabled(false);
+        view_btn_->setEnabled(false);
+    } else {
+        brush_ = std::get<ch::brush_expr_ptr>(result);
+        btns_->button(QDialogButtonBox::Ok)->setEnabled(true);
+        view_btn_->setEnabled(true);
+    }
 }
 
 std::string ui::brush_dialog::brush_name() const {

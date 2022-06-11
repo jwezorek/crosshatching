@@ -16,7 +16,7 @@ namespace {
     }
 }
 
-ui::tree_panel::tree_panel(tree_panel_callback add_fn, tree_panel_callback delete_fn) :
+ui::tree_panel::tree_panel(const std::string& title, tree_panel_callback add_fn, tree_panel_callback delete_fn) :
         QWidget(0),
         add_fn_(add_fn),
         delete_fn_(delete_fn) {
@@ -47,7 +47,7 @@ ui::tree_panel::tree_panel(tree_panel_callback add_fn, tree_panel_callback delet
             delete_fn_(tree_,selected_item(tree_));
         }
     );
-
+    tree_->setHeaderLabel(title.c_str());
 }
 
 const QTreeWidget* ui::tree_panel::tree() const {

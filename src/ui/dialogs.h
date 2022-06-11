@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QLineEdit>
 #include <QTextEdit>
+#include <QPushButton>
 #include <QDialogButtonBox>
 #include <tuple>
 #include <string>
@@ -24,9 +25,13 @@ namespace ui {
         static ch::brush_expr_ptr edit_brush(const std::string& name, const std::string& code);
 
     private:
+
+        void parse_brush_code();
+
         QLineEdit* name_box_;
         QTextEdit* code_box_;
         QDialogButtonBox* btns_;
+        QPushButton* view_btn_;
         ch::brush_expr_ptr brush_;
     };
 

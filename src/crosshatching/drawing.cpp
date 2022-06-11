@@ -975,7 +975,7 @@ void ch::debug(cv::Mat img, cv::Mat labels) {
             (jiggle (norm_rnd 0.0 0.02))
         )
 	)";
-    auto result_1 = ch::parse_brush_language(script_1);
+    auto result_1 = ch::brush_language_to_func(script_1);
 
     std::string script_2 = R"(
         (pipe 
@@ -989,7 +989,7 @@ void ch::debug(cv::Mat img, cv::Mat labels) {
             (jiggle (norm_rnd 0.0 0.005))
         )
 	)";
-    auto result_2 = ch::parse_brush_language(script_2);
+    auto result_2 = ch::brush_language_to_func(script_2);
 
     auto start = std::chrono::high_resolution_clock::now();
     auto ch_drawing = generate_crosshatched_drawing(img, labels, {
