@@ -75,8 +75,7 @@ namespace {
 
 	void add_brush_node(QTreeWidget* tree, QTreeWidgetItem* selection) {
 		if (!selection) {
-			std::unique_ptr<brush_dialog> dlg = std::make_unique<brush_dialog>();
-			dlg->exec();
+			auto [name, brush] = ui::brush_dialog::create_brush();
 		}
 	}
 
