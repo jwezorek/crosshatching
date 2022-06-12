@@ -685,6 +685,12 @@ ch::bkgd_swatches ch::brush::render_swatches(double gray_value) {
         r::to_vector;
 }
 
+cv::Mat  ch::brush::swatch(double gray_value) {
+    cv::Mat bkgd = bkgds_.empty() ? cv::Mat() : bkgds_.at(0);
+    auto swatch = this->get_hatching(gray_value, swatch_sz_);
+    return paint_cross_hatching(swatch, bkgd);
+}
+
 int ch::brush::num_samples() {
     return k_num_samples;
 }

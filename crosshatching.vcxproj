@@ -156,6 +156,7 @@
     <ClCompile Include="src\crosshatching\segmentation.cpp" />
     <ClCompile Include="src\crosshatching\util.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\ui\brush_viewer.cpp" />
     <ClCompile Include="src\ui\crosshatching.cpp" />
     <ClCompile Include="src\ui\dialogs.cpp" />
     <ClCompile Include="src\ui\float_value_slider.cpp" />
@@ -178,6 +179,7 @@
     <ClInclude Include="src\crosshatching\peglib.h" />
     <ClInclude Include="src\crosshatching\segmentation.hpp" />
     <ClInclude Include="src\crosshatching\util.hpp" />
+    <QtMoc Include="src\ui\brush_viewer.h" />
     <QtMoc Include="src\ui\dialogs.h" />
     <QtMoc Include="src\ui\treepanel.h" />
     <QtMoc Include="src\ui\float_value_slider.h" />

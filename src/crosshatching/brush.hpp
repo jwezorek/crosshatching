@@ -102,6 +102,7 @@ namespace ch {
         double gray_value_to_param(double gray_val);
         crosshatching_swatch get_hatching(double gray_val, dimensions sz);
         bkgd_swatches render_swatches(double gray_level);
+        cv::Mat swatch(double gray_level);
         double min_gray_level() const;
         double max_gray_level() const;
         static int num_samples();

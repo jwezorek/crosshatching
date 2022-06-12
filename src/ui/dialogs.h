@@ -27,6 +27,7 @@ namespace ui {
     private:
 
         void parse_brush_code();
+        void launch_brush_viewer();
 
         QLineEdit* name_box_;
         QTextEdit* code_box_;

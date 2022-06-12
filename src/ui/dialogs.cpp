@@ -1,4 +1,5 @@
 #include "dialogs.h"
+#include "brush_viewer.h"
 #include <QtWidgets>
 
 namespace {
@@ -7,11 +8,27 @@ namespace {
         spacer->setFixedSize(QSize(n, n));
         return spacer;
     }
+
+    QMainWindow* get_mainwindow() {
+        foreach(QWidget * w, qApp->topLevelWidgets())
+            if (QMainWindow* mainWin = qobject_cast<QMainWindow*>(w))
+                return mainWin;
+        return nullptr;
+    }
+
+    void initialize_dlg(QDialog* dlg, const std::string& title) {
+        dlg->setWindowTitle(title.c_str());
+        auto main_wnd = get_mainwindow();
+        QSize main_wnd_sz = main_wnd->size();
+        dlg->resize(0.7 * main_wnd_sz);
+    }
 }
 
 ui::brush_dialog::brush_dialog(QWidget* parent) :
         QDialog(parent) {
-    this->setWindowTitle("New brush...");
+
+    initialize_dlg( this, "New brush...");
+
     auto layout = new QVBoxLayout(this);
     layout->addWidget( new QLabel("name") );
     layout->addWidget( name_box_ = new QLineEdit() );
@@ -29,6 +46,7 @@ ui::brush_dialog::brush_dialog(QWidget* parent) :
     connect(btns_, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(btns_, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(parse_btn, &QPushButton::clicked, this, &brush_dialog::parse_brush_code);
+    connect(view_btn_, &QPushButton::clicked, this, &brush_dialog::launch_brush_viewer);
 
     btns_->button(QDialogButtonBox::Ok)->setEnabled(false);
     view_btn_->setEnabled(false);
@@ -47,6 +65,12 @@ void ui::brush_dialog::parse_brush_code() {
         btns_->button(QDialogButtonBox::Ok)->setEnabled(true);
         view_btn_->setEnabled(true);
     }
+}
+
+void ui::brush_dialog::launch_brush_viewer() {
+    auto func = std::get<ch::brush_fn>(brush_->eval());
+    auto viewer = new brush_viewer(name_box_->text().toStdString(), func, nullptr);
+    viewer->exec();
 }
 
 std::string ui::brush_dialog::brush_name() const {

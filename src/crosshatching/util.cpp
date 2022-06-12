@@ -189,7 +189,11 @@ cv::Mat ch::scale(cv::Mat mat, double scale) {
 
 cv::Mat ch::convert_to_3channel_grayscale(cv::Mat img) {
 	cv::Mat gray;
-	cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
+	if (img.channels() == 3) {
+		cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
+	} else {
+		gray = img;
+	}
 	cv::Mat output;
 	cv::cvtColor(gray, output, cv::COLOR_GRAY2BGR);
 	return output;
