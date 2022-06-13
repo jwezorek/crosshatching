@@ -291,17 +291,23 @@ QWidget* ui::crosshatching::createCrosshatchCtrls() {
 	vert_splitter-> setMaximumWidth(k_controls_width);
 	vert_splitter->setOrientation(Qt::Orientation::Vertical);
 	vert_splitter->addWidget(brushes_ = new brush_panel());
-	vert_splitter->addWidget(layers_ = new tree_panel("layers", add_layer_node, delete_layer_node));
+	vert_splitter->addWidget(layers_ = new list_panel("layers", 3, [](QTableWidget*) {}, [](QTableWidget*) {}));
 
 	QSplitter* splitter = new QSplitter();
 	splitter->addWidget(vert_splitter);
 	splitter->addWidget(new QWidget());
 	splitter->setSizes(QList<int>({ INT_MAX, INT_MAX }));
 
-	QList<QTreeWidgetItem*> items2;
-	for (int i = 0; i < 10; ++i)
-		items2.append(new QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString("item: %1").arg(i))));
-	layers_->tree()->insertTopLevelItems(0, items2);
+	for (int i = 0; i < 3; ++i) {
+		layers_->list()->insertRow(layers_->list()->rowCount());
+	}
+
+	//layers_->horizontalHeader()->setStretchLastSection(true);
+	layers_->list()->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+	layers_->list()->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
+	layers_->list()->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed);
+	layers_->list()->setColumnWidth(1, 55);
+	layers_->list()->setColumnWidth(2, 55);
 
 	return splitter;
 }

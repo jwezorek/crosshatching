@@ -55,7 +55,7 @@ namespace ui {
         ui::view_state view_state_;
 
         tree_panel* brushes_;
-        tree_panel* layers_;
+        list_panel* layers_;
     };
 
 };

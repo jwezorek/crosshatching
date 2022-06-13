@@ -1,6 +1,7 @@
 #include "treepanel.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QtWidgets>
 
 namespace {
 
@@ -72,3 +73,60 @@ const QPushButton* ui::tree_panel::delete_btn() const {
 QPushButton* ui::tree_panel::delete_btn() {
     return const_cast<QPushButton*>(const_cast<const tree_panel*>(this)->delete_btn());
 } 
+
+/*-------------------------------------------------------------------------------------------------------------*/
+
+
+ui::list_panel::list_panel(const std::string& title, int columns, list_panel_callback add_cb, list_panel_callback delete_cb) :
+        QWidget(0),
+        add_fn_(add_cb),
+        delete_fn_(delete_cb) {
+
+    QVBoxLayout* vlayout = new QVBoxLayout(this);
+    vlayout->addWidget(new QLabel(title.c_str()));
+    vlayout->addWidget(list_ = new QTableWidget());
+
+    QWidget* button_bar = new QWidget();
+    button_bar->setFixedHeight(k_btn_bar_hgt);
+    QHBoxLayout* hlayout = new QHBoxLayout(button_bar);
+    hlayout->setSpacing(0);
+    hlayout->addWidget(add_btn_ = new QPushButton("+"));
+    add_btn_->setFixedSize(QSize(k_btn_sz, k_btn_sz));
+    hlayout->addWidget(delete_btn_ = new QPushButton("-"));
+    delete_btn_->setFixedSize(QSize(k_btn_sz, k_btn_sz));
+    hlayout->addStretch();
+    vlayout->addWidget(button_bar);
+
+    list_->setColumnCount(columns);
+    list_->verticalHeader()->setVisible(false);
+}
+
+const QTableWidget* ui::list_panel::list() const
+{
+    return list_;
+}
+
+QTableWidget* ui::list_panel::list()
+{
+    return list_;
+}
+
+const QPushButton* ui::list_panel::add_btn() const
+{
+    return nullptr;
+}
+
+QPushButton* ui::list_panel::add_btn()
+{
+    return nullptr;
+}
+
+const QPushButton* ui::list_panel::delete_btn() const
+{
+    return nullptr;
+}
+
+QPushButton* ui::list_panel::delete_btn()
+{
+    return nullptr;
+}
