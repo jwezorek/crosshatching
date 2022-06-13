@@ -119,12 +119,13 @@ namespace {
 			}
 		}
 
-		
-
 		static void add_brush_node(QTreeWidget* tree, QTreeWidgetItem* selection) {
 			if (!selection) {
-				auto [name, brush] = ui::brush_dialog::create_brush();
-				insert_toplevel_item(tree, name, brush);
+				auto result = ui::brush_dialog::create_brush();
+				if (result) {
+					const auto& [name, brush] = *result;
+					insert_toplevel_item(tree, name, brush);
+				}
 			}
 		}
 

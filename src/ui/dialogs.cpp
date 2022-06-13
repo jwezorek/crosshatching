@@ -81,13 +81,13 @@ ch::brush_expr_ptr ui::brush_dialog::brush_expr() const {
     return brush_;
 }
 
-std::tuple<std::string, ch::brush_expr_ptr> ui::brush_dialog::create_brush()
+std::optional<std::tuple<std::string, ch::brush_expr_ptr>> ui::brush_dialog::create_brush()
 {
     std::unique_ptr<ui::brush_dialog> dlg = std::make_unique<ui::brush_dialog>();
     if (dlg->exec() == QDialog::Accepted) {
-        return { dlg->brush_name(), dlg->brush_expr() };
+        return { { dlg->brush_name(), dlg->brush_expr() } };
     } else {
-        return { {},nullptr };
+        return {};
     }
 }
 

@@ -114,7 +114,7 @@ namespace {
 
     ch::polyline jiggle(const ch::polyline& poly, const ch::rnd_fn& jig) {
         auto p = ch::mean_point(poly);
-        auto theta = jig();
+        auto theta = ch::degrees_to_radians( jig() );
         ch::matrix rotate = ch::translation_matrix(p.x, p.y) * ch::rotation_matrix(theta) * ch::translation_matrix(-p.x, -p.y);
         return ch::transform(poly, rotate);
     }

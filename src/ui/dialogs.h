@@ -21,7 +21,7 @@ namespace ui {
         std::string brush_name() const;
         ch::brush_expr_ptr brush_expr() const;
 
-        static std::tuple<std::string, ch::brush_expr_ptr> create_brush();
+        static std::optional<std::tuple<std::string, ch::brush_expr_ptr>> create_brush();
         static ch::brush_expr_ptr edit_brush(const std::string& name, const std::string& code);
 
     private:
