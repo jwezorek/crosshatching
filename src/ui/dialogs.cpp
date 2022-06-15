@@ -95,3 +95,40 @@ std::optional<std::tuple<std::string, ch::brush_expr_ptr>> ui::brush_dialog::cre
 ch::brush_expr_ptr ui::brush_dialog::edit_brush(const std::string& name, const std::string& code) {
     return {};
 }
+
+ui::add_layer_dialog::add_layer_dialog(const std::vector<std::string>& brushes) : 
+        QDialog(nullptr) {
+    setWindowTitle("Add layer...");
+    auto layout = new QVBoxLayout(this);
+    layout->addWidget(new QLabel("Brush"));
+    layout->addWidget(brush_box_ = new QComboBox());
+    layout->addWidget(new QLabel("End of layer value"));
+    layout->addWidget(value_edit_ = new QLineEdit());
+    value_edit_->setValidator(new QDoubleValidator(0, 100, 2, this));
+
+    for (const auto& str : brushes) {
+        brush_box_->addItem(str.c_str());
+    }
+    QDialogButtonBox* btns;
+    layout->addWidget(btns = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel));
+    connect(btns, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(btns, &QDialogButtonBox::rejected, this, &QDialog::reject);
+}
+
+std::string ui::add_layer_dialog::brush_name() const {
+    return brush_box_->currentText().toStdString();
+}
+
+double ui::add_layer_dialog::value() const {
+    return value_edit_->text().toDouble();
+}
+
+std::optional<std::tuple<std::string, double>> ui::add_layer_dialog::create_layer_item(const std::vector<std::string>& brushes, bool is_initial_layer)
+{
+    std::unique_ptr<ui::add_layer_dialog> dlg = std::make_unique<ui::add_layer_dialog>(brushes);
+    if (dlg->exec() == QDialog::Accepted) {
+        return { { dlg->brush_name(), dlg->value() } };
+    } else {
+        return {};
+    }
+}

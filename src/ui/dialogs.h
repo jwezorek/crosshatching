@@ -6,6 +6,7 @@
 #include <QTextEdit>
 #include <QPushButton>
 #include <QDialogButtonBox>
+#include <QComboBox>
 #include <tuple>
 #include <string>
 
@@ -36,4 +37,18 @@ namespace ui {
         ch::brush_expr_ptr brush_;
     };
 
+    class add_layer_dialog : public QDialog {
+
+        Q_OBJECT
+
+    public:
+        add_layer_dialog(const std::vector<std::string>& brushes);
+        std::string brush_name() const;
+        double value() const;
+
+        static std::optional<std::tuple<std::string, double>> create_layer_item(const std::vector<std::string>& brushes, bool is_initial_layer);
+    private:
+        QComboBox* brush_box_;
+        QLineEdit* value_edit_;
+    };
 }

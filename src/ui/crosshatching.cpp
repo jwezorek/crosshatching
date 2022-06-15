@@ -16,6 +16,7 @@
 #include <chrono>
 #include <fstream>
 #include <memory>
+#include <map>
 
 namespace {
 
@@ -73,12 +74,90 @@ namespace {
 		return file_menu;
 	}
 
-	class brush_panel : public ui::tree_panel {
+	class layer_panel : public ui::list_panel {
+
+	public:
+		layer_panel() :
+			ui::list_panel("layers", 3, [&]() { this->add_layer(); }, [&]() { this->delete_layer(); }) {
+
+			//layers_->horizontalHeader()->setStretchLastSection(true);
+			list()->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+			list()->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
+			list()->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed);
+			list()->setColumnWidth(1, 75);
+			list()->setColumnWidth(2, 75);
+
+			setEnabled(false);
+		}
+
+		void set_brush_names(const std::vector<std::string>& brush_names) {
+			brush_names_ = brush_names;
+			setEnabled(!brush_names_.empty());
+		}
+
 	private:
+
+		std::vector<std::string> brush_names_;
+		std::map<double, std::string> layers_;
+
+		void add_layer() {
+			auto result = ui::add_layer_dialog::create_layer_item(brush_names_, this->list()->rowCount() == 0);
+			if (result) {
+				auto [brush, end_of_range] = *result;
+				insert_layer(brush, end_of_range);
+			}
+		}
+
+		static void delete_layer() {
+
+		}
+
+		void insert_layer(const std::string& brush, double end_of_range) {
+			layers_[end_of_range] = brush;
+			sync_layers_to_ui();
+		}
+
+		void sync_layers_to_ui() {
+			list()->setRowCount(layers_.size());
+			int row = 0;
+			std::string prev = "0.0";
+			for (const auto& [val, name] : layers_) {
+				list()->setItem(row, 0, new QTableWidgetItem( name.c_str() ));
+				list()->setItem(row, 1, new QTableWidgetItem( prev.c_str() ));
+				std::string curr = std::to_string(val);
+				list()->setItem(row, 2, new QTableWidgetItem( curr.c_str() ));
+				prev = curr;
+				++row;
+			}
+		}
+	};
+
+	class brush_panel : public ui::tree_panel {
+
+	public:
+
+		brush_panel( layer_panel& layers ) : 
+				tree_panel("brushes", [&]() {this->add_brush_node(); }, [&]() {this->delete_brush_node(); }),
+				layer_panel_(layers) {
+
+		}
+
+		std::vector<std::string> brush_names() const {
+			std::vector<std::string> brushes(tree()->topLevelItemCount());
+			for (int i = 0; i < tree()->topLevelItemCount(); ++i) {
+				QTreeWidgetItem* item = tree()->topLevelItem(i);
+				brushes[i] = item->text(0).toStdString();
+			}
+			return brushes;
+		}
+
+	private:
+
+		layer_panel& layer_panel_;
 
 		class brush_item : public QTreeWidgetItem {
 		public:
-			brush_item(const std::string& name, ch::brush_expr_ptr expr) : 
+			brush_item(const std::string& name, ch::brush_expr_ptr expr) :
 				QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString(name.c_str()))),
 				brush_expr(expr)
 			{}
@@ -119,41 +198,31 @@ namespace {
 			}
 		}
 
-		static void add_brush_node(QTreeWidget* tree, QTreeWidgetItem* selection) {
-			if (!selection) {
+	   void add_brush_node() {
+			if (tree()->selectedItems().empty()) {
 				auto result = ui::brush_dialog::create_brush();
 				if (result) {
 					const auto& [name, brush] = *result;
-					insert_toplevel_item(tree, name, brush);
+					insert_toplevel_item(tree(), name, brush);
+					sync_layer_panel();
 				}
+			} else {
+				// TODO: add child item
 			}
 		}
 
-		static void delete_brush_node(QTreeWidget* tree, QTreeWidgetItem* selection) {
-			if (selection) {
+		void delete_brush_node() {
+			if (!tree()->selectedItems().empty()) {
 				QMessageBox mb;
-				mb.setText(selection->text(0) + " delete");
+				mb.setText( tree()->selectedItems().first()->text(0) + " delete");
 				mb.exec();
 			}
 		}
 
-	public:
-
-		brush_panel() : tree_panel("brushes", add_brush_node, delete_brush_node) {
-
+		void sync_layer_panel() {
+			layer_panel_.set_brush_names(brush_names());
 		}
-
 	};
-
-	
-
-	void add_layer_node(QTreeWidget* tree, QTreeWidgetItem* selection) {
-
-	}
-
-	void delete_layer_node(QTreeWidget* tree, QTreeWidgetItem* selection) {
-
-	}
 
 }
 
@@ -288,26 +357,16 @@ void ui::crosshatching::handle_source_image_change(cv::Mat& img) {
 
 QWidget* ui::crosshatching::createCrosshatchCtrls() {
 	QSplitter* vert_splitter = new QSplitter();
-	vert_splitter-> setMaximumWidth(k_controls_width);
 	vert_splitter->setOrientation(Qt::Orientation::Vertical);
-	vert_splitter->addWidget(brushes_ = new brush_panel());
-	vert_splitter->addWidget(layers_ = new list_panel("layers", 3, [](QTableWidget*) {}, [](QTableWidget*) {}));
+	layers_ = new layer_panel();
+	vert_splitter->addWidget(brushes_ = new brush_panel(*static_cast<layer_panel*>(layers_)));
+	vert_splitter->addWidget(layers_);
 
+	vert_splitter->setMaximumWidth(100);
 	QSplitter* splitter = new QSplitter();
 	splitter->addWidget(vert_splitter);
 	splitter->addWidget(new QWidget());
-	splitter->setSizes(QList<int>({ INT_MAX, INT_MAX }));
-
-	for (int i = 0; i < 3; ++i) {
-		layers_->list()->insertRow(layers_->list()->rowCount());
-	}
-
-	//layers_->horizontalHeader()->setStretchLastSection(true);
-	layers_->list()->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-	layers_->list()->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
-	layers_->list()->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed);
-	layers_->list()->setColumnWidth(1, 55);
-	layers_->list()->setColumnWidth(2, 55);
+	splitter->setSizes(QList<int>({ 120,500 }));
 
 	return splitter;
 }

@@ -9,14 +9,14 @@
 
 namespace ui {
 
-    using tree_panel_callback = std::function<void(QTreeWidget*, QTreeWidgetItem*)>;
+    using callback_fn = std::function<void()>;
 
     class tree_panel : public QWidget
     {
         Q_OBJECT
 
     public:
-        tree_panel( const std::string& title, tree_panel_callback add_cb, tree_panel_callback delete_cb );
+        tree_panel( const std::string& title, callback_fn add_cb, callback_fn delete_cb );
 
         const QTreeWidget* tree() const;
         QTreeWidget* tree();
@@ -31,17 +31,16 @@ namespace ui {
         QTreeWidget* tree_;
         QPushButton* add_btn_;
         QPushButton* delete_btn_;
-        tree_panel_callback add_fn_;
-        tree_panel_callback delete_fn_;
+        callback_fn add_fn_;
+        callback_fn delete_fn_;
     };
 
-    using list_panel_callback = std::function<void(QTableWidget*)>;
     class list_panel : public QWidget
     {
         Q_OBJECT
 
     public:
-        list_panel(const std::string& title, int columns, list_panel_callback add_cb, list_panel_callback delete_cb);
+        list_panel(const std::string& title, int columns, callback_fn add_cb, callback_fn delete_cb);
 
         const QTableWidget* list() const;
         QTableWidget* list();
@@ -56,8 +55,8 @@ namespace ui {
         QTableWidget* list_;
         QPushButton* add_btn_;
         QPushButton* delete_btn_;
-        list_panel_callback add_fn_;
-        list_panel_callback delete_fn_;
+        callback_fn add_fn_;
+        callback_fn delete_fn_;
     };
 
 }

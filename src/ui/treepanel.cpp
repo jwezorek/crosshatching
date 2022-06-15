@@ -17,7 +17,7 @@ namespace {
     }
 }
 
-ui::tree_panel::tree_panel(const std::string& title, tree_panel_callback add_fn, tree_panel_callback delete_fn) :
+ui::tree_panel::tree_panel(const std::string& title, callback_fn add_fn, callback_fn delete_fn) :
         QWidget(0),
         add_fn_(add_fn),
         delete_fn_(delete_fn) {
@@ -39,13 +39,13 @@ ui::tree_panel::tree_panel(const std::string& title, tree_panel_callback add_fn,
 
     connect(add_btn_, &QPushButton::clicked, 
         [=]() {
-            add_fn_(tree_,selected_item(tree_));
+            add_fn_();
         }
     );
 
     connect(delete_btn_, &QPushButton::clicked,
         [=]() {
-            delete_fn_(tree_,selected_item(tree_));
+            delete_fn_();
         }
     );
     tree_->setHeaderLabel(title.c_str());
@@ -77,7 +77,7 @@ QPushButton* ui::tree_panel::delete_btn() {
 /*-------------------------------------------------------------------------------------------------------------*/
 
 
-ui::list_panel::list_panel(const std::string& title, int columns, list_panel_callback add_cb, list_panel_callback delete_cb) :
+ui::list_panel::list_panel(const std::string& title, int columns, callback_fn add_cb, callback_fn delete_cb) :
         QWidget(0),
         add_fn_(add_cb),
         delete_fn_(delete_cb) {
@@ -99,6 +99,18 @@ ui::list_panel::list_panel(const std::string& title, int columns, list_panel_cal
 
     list_->setColumnCount(columns);
     list_->verticalHeader()->setVisible(false);
+
+    connect(add_btn_, &QPushButton::clicked,
+        [=]() {
+            add_fn_();
+        }
+    );
+
+    connect(delete_btn_, &QPushButton::clicked,
+        [=]() {
+            delete_fn_();
+        }
+    );
 }
 
 const QTableWidget* ui::list_panel::list() const
