@@ -10,6 +10,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
+#include <range/v3/all.hpp>
 #include <numbers>
 #include <stdexcept>
 #include <array>
@@ -17,6 +18,10 @@
 #include <fstream>
 #include <memory>
 #include <map>
+#include <array>
+
+namespace r = ranges;
+namespace rv = ranges::views;
 
 namespace {
 
@@ -86,7 +91,9 @@ namespace {
 			list()->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed);
 			list()->setColumnWidth(1, 75);
 			list()->setColumnWidth(2, 75);
-
+			//list()->setSelectionMode(QAbstractItemView::NoSelection);
+			list()->setSelectionBehavior(QAbstractItemView::SelectRows);
+			list()->connect(list(), &QTableWidget::cellDoubleClicked, this, &layer_panel::cell_double_clicked);
 			setEnabled(false);
 		}
 
@@ -100,9 +107,26 @@ namespace {
 		std::vector<std::string> brush_names_;
 		std::map<double, std::string> layers_;
 
+
+		std::tuple<std::string, double> row(int n) const {
+			auto brush = list()->item(n, 0)->text().toStdString();
+			auto val = list()->item(n, 2)->text().toDouble();
+			return { brush,val };
+		}
+
 		void add_layer() {
-			auto result = ui::add_layer_dialog::create_layer_item(brush_names_, this->list()->rowCount() == 0);
+			auto result = ui::layer_dialog::create_layer_item(brush_names_, list()->rowCount() == 0);
 			if (result) {
+				auto [brush, end_of_range] = *result;
+				insert_layer(brush, end_of_range);
+			}
+		}
+
+		void cell_double_clicked(int r, int col) {
+			auto [brush, val] = row(r);
+			auto result = ui::layer_dialog::edit_layer_item(brush_names_, brush, val);
+			if (result) {
+				layers_.erase(val);
 				auto [brush, end_of_range] = *result;
 				insert_layer(brush, end_of_range);
 			}
@@ -117,15 +141,25 @@ namespace {
 			sync_layers_to_ui();
 		}
 
+		void setRowText(int row, const std::string& brush, const std::string& from, const std::string& to) {
+			std::array<QTableWidgetItem*, 3> items = {
+				new QTableWidgetItem(brush.c_str()),
+				new QTableWidgetItem(from.c_str()),
+				new QTableWidgetItem(to.c_str())
+			};
+			for (auto [col, item] : rv::enumerate(items)) {
+				item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+				list()->setItem(row, col, item );
+			}
+		}
+
 		void sync_layers_to_ui() {
 			list()->setRowCount(layers_.size());
 			int row = 0;
 			std::string prev = "0.0";
 			for (const auto& [val, name] : layers_) {
-				list()->setItem(row, 0, new QTableWidgetItem( name.c_str() ));
-				list()->setItem(row, 1, new QTableWidgetItem( prev.c_str() ));
 				std::string curr = std::to_string(val);
-				list()->setItem(row, 2, new QTableWidgetItem( curr.c_str() ));
+				setRowText(row, name, prev, curr);
 				prev = curr;
 				++row;
 			}

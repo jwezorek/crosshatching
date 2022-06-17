@@ -47,9 +47,9 @@ ui::brush_dialog::brush_dialog(QWidget* parent) :
     connect(btns_, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(parse_btn, &QPushButton::clicked, this, &brush_dialog::parse_brush_code);
     connect(view_btn_, &QPushButton::clicked, this, &brush_dialog::launch_brush_viewer);
+    connect(name_box_, &QLineEdit::textChanged, this, &brush_dialog::update_btn_enabled_state);
 
-    btns_->button(QDialogButtonBox::Ok)->setEnabled(false);
-    view_btn_->setEnabled(false);
+    update_btn_enabled_state();
 }
 
 void ui::brush_dialog::parse_brush_code() {
@@ -58,19 +58,23 @@ void ui::brush_dialog::parse_brush_code() {
         QMessageBox mb;
         mb.setText(std::get<std::string>(result).c_str());
         mb.exec();
-        btns_->button(QDialogButtonBox::Ok)->setEnabled(false);
-        view_btn_->setEnabled(false);
     } else {
         brush_ = std::get<ch::brush_expr_ptr>(result);
-        btns_->button(QDialogButtonBox::Ok)->setEnabled(true);
-        view_btn_->setEnabled(true);
     }
+    update_btn_enabled_state();
 }
 
 void ui::brush_dialog::launch_brush_viewer() {
     auto func = std::get<ch::brush_fn>(brush_->eval());
     auto viewer = new brush_viewer(name_box_->text().toStdString(), func, nullptr);
     viewer->exec();
+}
+
+void ui::brush_dialog::update_btn_enabled_state() {
+    bool has_valid_brush = brush_ != nullptr;
+    bool has_valid_name = !name_box_->text().isEmpty(); // TODO: need to test for name collisions.
+    view_btn_->setEnabled(has_valid_brush);
+    btns_->button(QDialogButtonBox::Ok)->setEnabled(has_valid_brush && has_valid_name);
 }
 
 std::string ui::brush_dialog::brush_name() const {
@@ -96,39 +100,84 @@ ch::brush_expr_ptr ui::brush_dialog::edit_brush(const std::string& name, const s
     return {};
 }
 
-ui::add_layer_dialog::add_layer_dialog(const std::vector<std::string>& brushes) : 
+ui::layer_dialog::layer_dialog(const std::vector<std::string>& brushes, const ui::layer_param& current_layer_params) :
         QDialog(nullptr) {
-    setWindowTitle("Add layer...");
+    
     auto layout = new QVBoxLayout(this);
     layout->addWidget(new QLabel("Brush"));
     layout->addWidget(brush_box_ = new QComboBox());
     layout->addWidget(new QLabel("End of layer value"));
     layout->addWidget(value_edit_ = new QLineEdit());
-    value_edit_->setValidator(new QDoubleValidator(0, 100, 2, this));
+
+    auto validator = new QDoubleValidator(0, 1.0, 2, this);
+    validator->setNotation(QDoubleValidator::StandardNotation);
+    value_edit_->setValidator(validator);
 
     for (const auto& str : brushes) {
         brush_box_->addItem(str.c_str());
     }
-    QDialogButtonBox* btns;
-    layout->addWidget(btns = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel));
-    connect(btns, &QDialogButtonBox::accepted, this, &QDialog::accept);
-    connect(btns, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    layout->addWidget(btns_ = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel));
+    connect(btns_, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(btns_, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    connect(value_edit_, &QLineEdit::textChanged, this, &layer_dialog::update_btn_enabled_state);
+
+    if (std::holds_alternative<bool>(current_layer_params)) {
+        init_create_layer_dialog(std::get<bool>(current_layer_params));
+    } else {
+        const auto& [brush, val] = std::get<std::tuple<std::string, double>>(current_layer_params);
+        init_edit_layer_dialog(brush, val);
+    }
 }
 
-std::string ui::add_layer_dialog::brush_name() const {
+std::string ui::layer_dialog::brush_name() const {
     return brush_box_->currentText().toStdString();
 }
 
-double ui::add_layer_dialog::value() const {
+double ui::layer_dialog::value() const {
     return value_edit_->text().toDouble();
 }
 
-std::optional<std::tuple<std::string, double>> ui::add_layer_dialog::create_layer_item(const std::vector<std::string>& brushes, bool is_initial_layer)
+std::optional<std::tuple<std::string, double>> ui::layer_dialog::create_layer_item(const std::vector<std::string>& brushes, bool is_initial)
 {
-    std::unique_ptr<ui::add_layer_dialog> dlg = std::make_unique<ui::add_layer_dialog>(brushes);
+    std::unique_ptr<ui::layer_dialog> dlg = std::make_unique<ui::layer_dialog>(brushes, layer_param{ is_initial });
     if (dlg->exec() == QDialog::Accepted) {
         return { { dlg->brush_name(), dlg->value() } };
     } else {
         return {};
     }
+}
+
+std::optional<std::tuple<std::string, double>> ui::layer_dialog::edit_layer_item(
+        const std::vector<std::string>& brushes, const std::string& curr_brush, double curr_end_val) {
+
+    std::unique_ptr<ui::layer_dialog> dlg = std::make_unique<ui::layer_dialog>(brushes, std::tuple(curr_brush, curr_end_val));
+    if (dlg->exec() == QDialog::Accepted) {
+        return { { dlg->brush_name(), dlg->value() } };
+    } else {
+        return {};
+    }
+}
+
+void ui::layer_dialog::init_create_layer_dialog(bool initial) {
+    setWindowTitle("Create crosshatching layer...");
+    if (initial) {
+        value_edit_->setText("1.0");
+        value_edit_->setEnabled(false);
+    }
+}
+
+void ui::layer_dialog::init_edit_layer_dialog(const std::string& brush, double val) {
+    setWindowTitle("Edit crosshatching layer...");
+    int curr_item = brush_box_->findText(brush.c_str());
+    if (curr_item == -1) {
+        curr_item = 0; // TODO: this is actually a bug if it happens
+    }
+    brush_box_->setCurrentIndex(curr_item);
+    value_edit_->setText( std::to_string(val).c_str() );
+}
+
+void ui::layer_dialog::update_btn_enabled_state() {
+    auto val = value();
+    bool valid_value = val >= 0.0 && val <= 1.0;
+    btns_->button(QDialogButtonBox::Ok)->setEnabled(valid_value);
 }

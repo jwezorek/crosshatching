@@ -8,6 +8,7 @@
 #include <QDialogButtonBox>
 #include <QComboBox>
 #include <tuple>
+#include <variant>
 #include <string>
 
 namespace ui {
@@ -29,6 +30,7 @@ namespace ui {
 
         void parse_brush_code();
         void launch_brush_viewer();
+        void update_btn_enabled_state();
 
         QLineEdit* name_box_;
         QTextEdit* code_box_;
@@ -37,18 +39,26 @@ namespace ui {
         ch::brush_expr_ptr brush_;
     };
 
-    class add_layer_dialog : public QDialog {
+    using layer_param = std::variant<bool, std::tuple<std::string, double>>;
+    class layer_dialog : public QDialog {
 
         Q_OBJECT
 
     public:
-        add_layer_dialog(const std::vector<std::string>& brushes);
+        layer_dialog(const std::vector<std::string>& brushes, const layer_param& current_layer_params);
         std::string brush_name() const;
         double value() const;
 
-        static std::optional<std::tuple<std::string, double>> create_layer_item(const std::vector<std::string>& brushes, bool is_initial_layer);
+        static std::optional<std::tuple<std::string, double>> create_layer_item(const std::vector<std::string>& brushes, bool is_initial);
+        static std::optional<std::tuple<std::string, double>> edit_layer_item(const std::vector<std::string>& brushes, const std::string& curr_brush, double curr_end_val);
     private:
+
+        void init_create_layer_dialog(bool initial);
+        void init_edit_layer_dialog(const std::string& brush, double val);
+        void update_btn_enabled_state();
+
         QComboBox* brush_box_;
         QLineEdit* value_edit_;
+        QDialogButtonBox* btns_;
     };
 }
