@@ -132,8 +132,13 @@ namespace {
 			}
 		}
 
-		static void delete_layer() {
-
+	    void delete_layer() {
+			auto current_row = list()->currentRow();
+			if (current_row >= 0) {
+				auto [brush, val] = row(current_row);
+				layers_.erase(val);
+				sync_layers_to_ui();
+			}
 		}
 
 		void insert_layer(const std::string& brush, double end_of_range) {
