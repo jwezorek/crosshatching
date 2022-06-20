@@ -24,8 +24,10 @@ namespace ui {
         crosshatching(QWidget* parent = Q_NULLPTR);
 
         void open();
+        void save_processed_image();
         void generate();
-        void debug();
+        void test();
+        void edit_settings();
 
     signals:
         void change_source_image(cv::Mat& img);

@@ -1,12 +1,15 @@
 #pragma once
 
 #include "../crosshatching/brush_language.hpp"
+#include <opencv2/core.hpp>
 #include <QDialog>
 #include <QLineEdit>
 #include <QTextEdit>
 #include <QPushButton>
 #include <QDialogButtonBox>
 #include <QComboBox>
+#include <QLabel>
+#include <QMenu>
 #include <tuple>
 #include <variant>
 #include <string>
@@ -60,5 +63,41 @@ namespace ui {
         QComboBox* brush_box_;
         QLineEdit* value_edit_;
         QDialogButtonBox* btns_;
+    };
+
+    class rect_in_image_selector : public QLabel
+    {
+        Q_OBJECT
+
+    public:
+        rect_in_image_selector(QWidget* parent = 0);
+
+    protected:
+
+        void paintEvent(QPaintEvent* e);
+        void mousePressEvent(QMouseEvent* e);
+        void mouseMoveEvent(QMouseEvent* e);
+        void mouseReleaseEvent(QMouseEvent* e);
+
+    private:
+
+        bool selectionStarted;
+        QRect selectionRect;
+
+    };
+
+    class test_swatch_picker : public QDialog {
+
+        Q_OBJECT
+
+    public:
+        test_swatch_picker(cv::Mat img);
+        cv::Mat test_swatch() const;
+
+        static cv::Mat get_test_swatch(cv::Mat src);
+
+    private:
+        cv::Mat src_img_;
+        cv::Mat test_swatch_;
     };
 }

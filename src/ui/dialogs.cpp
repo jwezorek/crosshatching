@@ -181,3 +181,61 @@ void ui::layer_dialog::update_btn_enabled_state() {
     bool valid_value = val >= 0.0 && val <= 1.0;
     btns_->button(QDialogButtonBox::Ok)->setEnabled(valid_value);
 }
+
+ui::rect_in_image_selector::rect_in_image_selector(QWidget* parent) :
+        QLabel(parent) {
+    selectionStarted = false;
+}
+
+void ui::rect_in_image_selector::paintEvent(QPaintEvent* e)
+{
+    QLabel::paintEvent(e);
+
+    QPainter painter(this);
+    QBrush brush(QColor(0, 0, 0, 180));
+    QPen pen(brush, 1, Qt::DashLine);
+    painter.setPen(pen);
+    painter.setBrush(QBrush(QColor(255, 255, 255, 120)));
+
+    painter.drawRect(selectionRect);
+}
+
+void  ui::rect_in_image_selector::mousePressEvent(QMouseEvent* e) {
+    selectionStarted = true;
+    selectionRect.setTopLeft(e->pos());
+    selectionRect.setBottomRight(e->pos());
+}
+
+void ui::rect_in_image_selector::mouseMoveEvent(QMouseEvent* e)
+{
+    if (selectionStarted)
+    {
+        selectionRect.setBottomRight(e->pos());
+        repaint();
+    }
+}
+
+void ui::rect_in_image_selector::mouseReleaseEvent(QMouseEvent* e)
+{
+    selectionStarted = false;
+}
+
+ui::test_swatch_picker::test_swatch_picker(cv::Mat img) :
+        src_img_(img) {
+    rect_in_image_selector* ss = new rect_in_image_selector(this);
+    ss->setPixmap(QPixmap::fromImage(QImage(img.data, img.cols, img.rows, img.step, QImage::Format_BGR888)));
+    ss->show();
+}
+
+cv::Mat  ui::test_swatch_picker::test_swatch() const {
+    return test_swatch_;
+}
+
+cv::Mat ui::test_swatch_picker::get_test_swatch(cv::Mat src_img) {
+    auto dlg = std::make_unique<ui::test_swatch_picker>(src_img);
+    if (dlg->exec() == QDialog::Accepted) {
+        return dlg->test_swatch();
+    } else {
+        return {};
+    }
+}

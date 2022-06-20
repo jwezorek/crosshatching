@@ -64,17 +64,38 @@ namespace {
 		auto tr = [parent](const char* str) {return parent->tr(str); };
 		QMenu* file_menu = new QMenu(tr("&File"));
 
-		QAction* actionOpen = new QAction(tr("&Open"), parent);
-		parent->connect(actionOpen, &QAction::triggered, parent, &ui::crosshatching::open);
+		QAction* action_open = new QAction(tr("&Open ..."), parent);
+		parent->connect(action_open, &QAction::triggered, parent, &ui::crosshatching::open);
+		file_menu->addAction(action_open);
+
+		QAction* action_save = new QAction(tr("Save processed image ..."), parent);
+		parent->connect(action_save, &QAction::triggered, parent, &ui::crosshatching::save_processed_image);
+		file_menu->addAction(action_save);
+
+		file_menu->addSeparator();
+
+		QAction* exit = new QAction(tr("&Exit"), parent);
+		parent->connect(exit, &QAction::triggered, []() {QApplication::quit(); });
+		file_menu->addAction(exit);
+
+		return file_menu;
+	}
+
+	QMenu* create_crosshatching_menu(ui::crosshatching* parent) {
+		auto tr = [parent](const char* str) {return parent->tr(str); };
+		QMenu* file_menu = new QMenu(tr("&Crosshatching"));
+
+		QAction* actionOpen = new QAction(tr("&Settings"), parent);
+		parent->connect(actionOpen, &QAction::triggered, parent, &ui::crosshatching::edit_settings);
 		file_menu->addAction(actionOpen);
+
+		QAction* action_test = new QAction(tr("&Test"), parent);
+		parent->connect(action_test, &QAction::triggered, parent, &ui::crosshatching::test);
+		file_menu->addAction(action_test);
 
 		QAction* action_generate = new QAction(tr("&Generate"), parent);
 		parent->connect(action_generate, &QAction::triggered, parent, &ui::crosshatching::generate);
 		file_menu->addAction(action_generate);
-
-		QAction* action_debug = new QAction(tr("&Debug"), parent);
-		parent->connect(action_debug, &QAction::triggered, parent, &ui::crosshatching::debug);
-		file_menu->addAction(action_debug);
 
 		return file_menu;
 	}
@@ -291,7 +312,12 @@ void ui::crosshatching::open()
 	change_source_image(src_image_);
 }
 
-void ui::crosshatching::generate() {
+void ui::crosshatching::test() {
+	auto swatch = ui::test_swatch_picker::get_test_swatch(current_image_);
+}
+
+/*
+void ui::crosshatching::test() {
 	auto start_time = std::chrono::system_clock::now();
 	std::string script = R"(
         (pipe
@@ -338,47 +364,24 @@ void ui::crosshatching::generate() {
 	msg_box.setText(std::to_string(elapsed.count()).c_str());
 	msg_box.exec();
 }
-
-void ui::crosshatching::debug() {
-	ch::debug(current_image_, segmentation());
-}
-
-/*
-void ui::crosshatching::generate() {
-	auto make_pipeline_fn = [](double gray, double theta, double start) {
-		return ch::make_run_pipeline_fn(
-			ch::brush_pipeline{
-				ch::make_ramp_fn(start, true,true),
-				ch::make_linear_hatching_brush_fn(
-					ch::make_lerped_normal_dist_fn( gray * 790, 50, 800, 100),
-					ch::make_lerped_normal_dist_fn( (1-gray)*200, 20, 0, 0.05),
-					ch::make_lerped_normal_dist_fn(7, 0.5, 0.5, 0.05),
-					ch::make_default_hatching_unit()
-				),
-				ch::make_random_brush_adaptor(ch::jiggle, ch::normal_rnd_fn(0.0, 0.02)),
-				ch::make_one_param_brush_adaptor(ch::rotate, ch::make_constant_fn(theta)),
-				ch::make_ramp_fn(0.20, false, true),
-				ch::disintegrate
-			}
-		);
-	};
-
-	cv::Mat mat = current_image_;
-	//mat = ch::do_segmentation(mat, 8, 3, 12);
-	std::vector<ch::hierarchical_brush_component> brushes = {
-		[make_pipeline_fn](double gray) { return make_pipeline_fn(gray, 0, 0); },
-		[make_pipeline_fn](double gray) { return make_pipeline_fn(gray, std::numbers::pi / 4.0, 0); },
-		[make_pipeline_fn](double gray) { return make_pipeline_fn(gray, -std::numbers::pi / 4.0, 0); }
-	};
-	auto drawing = ch::generate_hierarchical_drawing(mat, 5.0, brushes, { 0.3333, 0.6666 });
-	ch::to_svg("C:\\test\\output.svg", drawing);
-}
 */
+
+void ui::crosshatching::generate() {
+}
+
+void ui::crosshatching::save_processed_image() {
+
+}
+
+void ui::crosshatching::edit_settings() {
+
+}
 
 void ui::crosshatching::createMainMenu()
 {
 	menuBar()->addMenu( create_file_menu(this) );
 	menuBar()->addMenu( create_view_menu(this) );
+	menuBar()->addMenu( create_crosshatching_menu(this));
 	connect(this, &crosshatching::change_source_image, this, &crosshatching::handle_source_image_change);
 }
 
@@ -387,11 +390,10 @@ void ui::crosshatching::handle_source_image_change(cv::Mat& img) {
 		pipeline_stage->initialize();
 	}
 	auto view_menu = menuBar()->actions()[k_view_menu_index];
-	if (img.empty()) {
-		view_menu->setEnabled(false);
-		return;
-	} 
-	view_menu->setEnabled(true);
+	auto crosshatch_menu = menuBar()->actions()[k_view_menu_index+1];
+	auto enable_image_dependent_menus = !img.empty();
+	view_menu->setEnabled(enable_image_dependent_menus);
+	crosshatch_menu->setEnabled(enable_image_dependent_menus);
 }
 
 QWidget* ui::crosshatching::createCrosshatchCtrls() {
