@@ -65,27 +65,6 @@ namespace ui {
         QDialogButtonBox* btns_;
     };
 
-    class rect_in_image_selector : public QLabel
-    {
-        Q_OBJECT
-
-    public:
-        rect_in_image_selector(QWidget* parent = 0);
-
-    protected:
-
-        void paintEvent(QPaintEvent* e);
-        void mousePressEvent(QMouseEvent* e);
-        void mouseMoveEvent(QMouseEvent* e);
-        void mouseReleaseEvent(QMouseEvent* e);
-
-    private:
-
-        bool selectionStarted;
-        QRect selectionRect;
-
-    };
-
     class test_swatch_picker : public QDialog {
 
         Q_OBJECT
@@ -97,6 +76,10 @@ namespace ui {
         static cv::Mat get_test_swatch(cv::Mat src);
 
     private:
+        void update_btn_enabled_state();
+
+        QLabel* selector_;
+        QDialogButtonBox* btns_;
         cv::Mat src_img_;
         cv::Mat test_swatch_;
     };

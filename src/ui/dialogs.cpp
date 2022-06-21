@@ -22,6 +22,76 @@ namespace {
         QSize main_wnd_sz = main_wnd->size();
         dlg->resize(0.7 * main_wnd_sz);
     }
+
+    constexpr int k_test_swatch_sz = 100;
+
+    class rect_in_image_selector : public QLabel {
+
+    public:
+        rect_in_image_selector(std::function<void()> state_change_callback) :
+                QLabel(nullptr),
+                selected_rect_(0,0,0,0),
+                state_change_cb_(state_change_callback) {
+            selection_in_progress_ = false;
+        }
+
+        QRect rect_from_point(const QPoint& pt) {
+            int half_sz = k_test_swatch_sz / 2;
+            return QRect(pt.x() - half_sz, pt.y() - half_sz, k_test_swatch_sz, k_test_swatch_sz);
+        }
+
+        QRect keep_in_bounds(const QRect& r) {
+            int widget_wd = this->width();
+            int widget_hgt = this->height();
+            auto [x,y] = r.topLeft();
+
+            x = x < 0 ? 0 : x;
+            y = y < 0 ? 0 : y;
+            x = x + r.width() > widget_wd ? widget_wd - r.width() : x;
+            y = y + r.height() > widget_hgt ? widget_hgt - r.height() : y;
+
+            return QRect(x, y, r.width(), r.height());
+        }
+
+        bool has_selection() const {
+            return selected_rect_.width() * selected_rect_.height() > 0;
+        }
+
+    private:
+
+        void paintEvent(QPaintEvent* e) override
+        {
+            QLabel::paintEvent(e);
+
+            QPainter painter(this);
+            painter.setPen(QPen(QBrush(QColor(0, 0, 0, 180)), 1, Qt::DashLine));
+            painter.setBrush(QBrush(QColor(255, 255, 255, 120)));
+
+            painter.drawRect(selected_rect_);
+        }
+
+        void mousePressEvent(QMouseEvent* e) override {
+            selection_in_progress_ = true;
+            selected_rect_ = keep_in_bounds(rect_from_point(e->pos()));
+            state_change_cb_();
+        }
+
+        void mouseMoveEvent(QMouseEvent* e) override {
+            if (selection_in_progress_) {
+                selected_rect_ = keep_in_bounds(rect_from_point(e->pos()));
+                repaint();
+                state_change_cb_();
+            }
+        }
+
+        void mouseReleaseEvent(QMouseEvent* e) override {
+            selection_in_progress_ = false;
+        }
+
+        bool selection_in_progress_;
+        QRect selected_rect_;
+        std::function<void()> state_change_cb_;
+    };
 }
 
 ui::brush_dialog::brush_dialog(QWidget* parent) :
@@ -182,53 +252,27 @@ void ui::layer_dialog::update_btn_enabled_state() {
     btns_->button(QDialogButtonBox::Ok)->setEnabled(valid_value);
 }
 
-ui::rect_in_image_selector::rect_in_image_selector(QWidget* parent) :
-        QLabel(parent) {
-    selectionStarted = false;
-}
-
-void ui::rect_in_image_selector::paintEvent(QPaintEvent* e)
-{
-    QLabel::paintEvent(e);
-
-    QPainter painter(this);
-    QBrush brush(QColor(0, 0, 0, 180));
-    QPen pen(brush, 1, Qt::DashLine);
-    painter.setPen(pen);
-    painter.setBrush(QBrush(QColor(255, 255, 255, 120)));
-
-    painter.drawRect(selectionRect);
-}
-
-void  ui::rect_in_image_selector::mousePressEvent(QMouseEvent* e) {
-    selectionStarted = true;
-    selectionRect.setTopLeft(e->pos());
-    selectionRect.setBottomRight(e->pos());
-}
-
-void ui::rect_in_image_selector::mouseMoveEvent(QMouseEvent* e)
-{
-    if (selectionStarted)
-    {
-        selectionRect.setBottomRight(e->pos());
-        repaint();
-    }
-}
-
-void ui::rect_in_image_selector::mouseReleaseEvent(QMouseEvent* e)
-{
-    selectionStarted = false;
-}
+/*------------------------------------------------------------------------------------------------------------------------*/
 
 ui::test_swatch_picker::test_swatch_picker(cv::Mat img) :
         src_img_(img) {
-    rect_in_image_selector* ss = new rect_in_image_selector(this);
-    ss->setPixmap(QPixmap::fromImage(QImage(img.data, img.cols, img.rows, img.step, QImage::Format_BGR888)));
-    ss->show();
+    auto layout = new QVBoxLayout(this);
+    layout->addWidget(selector_ = new rect_in_image_selector([this]() {this->update_btn_enabled_state(); }));
+    layout->addWidget(btns_ = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel));
+    connect(btns_, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(btns_, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    selector_->setPixmap(QPixmap::fromImage(QImage(img.data, img.cols, img.rows, img.step, QImage::Format_BGR888)));
+    update_btn_enabled_state();
 }
 
 cv::Mat  ui::test_swatch_picker::test_swatch() const {
     return test_swatch_;
+}
+
+void ui::test_swatch_picker::update_btn_enabled_state() {
+    btns_->button(QDialogButtonBox::Ok)->setEnabled(
+        static_cast<rect_in_image_selector*>(selector_)->has_selection()
+    );
 }
 
 cv::Mat ui::test_swatch_picker::get_test_swatch(cv::Mat src_img) {
