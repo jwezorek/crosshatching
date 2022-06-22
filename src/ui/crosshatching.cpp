@@ -470,14 +470,17 @@ cv::Mat ui::crosshatching::input_to_nth_stage(int index) const {
 	if (index == 0) {
 		return img_proc_ctrls_.src;
 	} 
+
 	cv::Mat input;
-	int j = index - 1;
+	int j = index;
 	do {
-		input = img_proc_ctrls_.pipeline.at(j--)->output();
-	} while (input.empty() && j > 1);
+		input = img_proc_ctrls_.pipeline.at(--j)->output();
+	} while (input.empty() && j > 0);
+
 	if (input.empty()) {
 		input = img_proc_ctrls_.src;
 	}
+
 	return input;
 }
 
