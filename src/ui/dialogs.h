@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../crosshatching/brush_language.hpp"
+#include "cv_image_box.h"
 #include <opencv2/core.hpp>
 #include <QDialog>
 #include <QLineEdit>
@@ -78,9 +79,8 @@ namespace ui {
     private:
         void update_btn_enabled_state();
 
-        QLabel* selector_;
+        cv_image_box* selector_;
         QDialogButtonBox* btns_;
         cv::Mat src_img_;
-        cv::Mat test_swatch_;
     };
 }

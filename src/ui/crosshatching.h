@@ -2,6 +2,7 @@
 
 #include "settingctrls.hpp"
 #include "treepanel.h"
+#include "cv_image_box.h"
 #include <QtWidgets>
 #include <QtWidgets/QMainWindow>
 #include <opencv2/core.hpp>
@@ -16,6 +17,22 @@ namespace ui {
         {}
     };
 
+    struct image_processing_ctrls {
+        std::vector<image_processing_pipeline_item*> pipeline;
+        cv_image_box* image_box;
+        cv::Mat src;
+        cv::Mat current;
+        view_state view_state;
+    };
+
+    struct crosshatching_ctrls {
+        tree_panel* brushes;
+        list_panel* layers;
+        cv_image_box* img_swatch;
+        cv_image_box* drawing_swatch;
+        cv::Mat swatch;
+    };
+
     class crosshatching : public QMainWindow
     {
         Q_OBJECT
@@ -27,6 +44,7 @@ namespace ui {
         void save_processed_image();
         void generate();
         void test();
+        void redo_test_swatch();
         void edit_settings();
 
     signals:
@@ -49,15 +67,8 @@ namespace ui {
         std::tuple<int, int> source_image_sz() const;
         ui::view_state view_state() const;
 
-        std::vector<image_processing_pipeline_item*> imgproc_pipeline_;
-
-        QLabel* image_box_;
-        cv::Mat src_image_;
-        cv::Mat current_image_;
-        ui::view_state view_state_;
-
-        tree_panel* brushes_;
-        list_panel* layers_;
+        image_processing_ctrls img_proc_ctrls_;
+        crosshatching_ctrls crosshatching_;
     };
 
 };

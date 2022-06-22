@@ -83,21 +83,29 @@ namespace {
 
 	QMenu* create_crosshatching_menu(ui::crosshatching* parent) {
 		auto tr = [parent](const char* str) {return parent->tr(str); };
-		QMenu* file_menu = new QMenu(tr("&Crosshatching"));
+		QMenu* ch_menu = new QMenu(tr("&Crosshatching"));
 
 		QAction* actionOpen = new QAction(tr("&Settings"), parent);
 		parent->connect(actionOpen, &QAction::triggered, parent, &ui::crosshatching::edit_settings);
-		file_menu->addAction(actionOpen);
+		ch_menu->addAction(actionOpen);
+
+		ch_menu->addSeparator();
 
 		QAction* action_test = new QAction(tr("&Test"), parent);
 		parent->connect(action_test, &QAction::triggered, parent, &ui::crosshatching::test);
-		file_menu->addAction(action_test);
+		ch_menu->addAction(action_test);
+
+		QAction* redo_test_swatch = new QAction(tr("Change test swatch"), parent);
+		parent->connect(redo_test_swatch, &QAction::triggered, parent, &ui::crosshatching::redo_test_swatch);
+		ch_menu->addAction(redo_test_swatch);
+
+		ch_menu->addSeparator();
 
 		QAction* action_generate = new QAction(tr("&Generate"), parent);
 		parent->connect(action_generate, &QAction::triggered, parent, &ui::crosshatching::generate);
-		file_menu->addAction(action_generate);
+		ch_menu->addAction(action_generate);
 
-		return file_menu;
+		return ch_menu;
 	}
 
 	class layer_panel : public ui::list_panel {
@@ -298,7 +306,7 @@ ui::crosshatching::crosshatching(QWidget *parent)
 	tab_ctrl->addTab( createCrosshatchCtrls(), "crosshatch");
 
     setCentralWidget(tab_ctrl);
-	handle_source_image_change(src_image_);
+	handle_source_image_change( img_proc_ctrls_.src );
 }
 
 void ui::crosshatching::open()
@@ -307,13 +315,21 @@ void ui::crosshatching::open()
 		tr("Open image"), "/home", tr("PNG (*.png);; Bitmap (*.bmp);; JPeg (*.jpeg *.jpg)"));
 	auto str = image_filename.toStdString();
 
-	src_image_ = cv::imread(str.c_str());
-	display(src_image_);
-	change_source_image(src_image_);
+	img_proc_ctrls_.src = cv::imread(str.c_str());
+	display( img_proc_ctrls_.src );
+	change_source_image( img_proc_ctrls_.src );
 }
 
 void ui::crosshatching::test() {
-	auto swatch = ui::test_swatch_picker::get_test_swatch(current_image_);
+	if (crosshatching_.swatch.empty()) {
+		redo_test_swatch();
+	}
+}
+
+void ui::crosshatching::redo_test_swatch() {
+
+	crosshatching_.swatch = ui::test_swatch_picker::get_test_swatch(img_proc_ctrls_.current);
+	crosshatching_.img_swatch->set_image(crosshatching_.swatch, 2.0);
 }
 
 /*
@@ -386,7 +402,7 @@ void ui::crosshatching::createMainMenu()
 }
 
 void ui::crosshatching::handle_source_image_change(cv::Mat& img) {
-	for (auto* pipeline_stage : imgproc_pipeline_) {
+	for (auto* pipeline_stage : img_proc_ctrls_.pipeline) {
 		pipeline_stage->initialize();
 	}
 	auto view_menu = menuBar()->actions()[k_view_menu_index];
@@ -399,14 +415,22 @@ void ui::crosshatching::handle_source_image_change(cv::Mat& img) {
 QWidget* ui::crosshatching::createCrosshatchCtrls() {
 	QSplitter* vert_splitter = new QSplitter();
 	vert_splitter->setOrientation(Qt::Orientation::Vertical);
-	layers_ = new layer_panel();
-	vert_splitter->addWidget(brushes_ = new brush_panel(*static_cast<layer_panel*>(layers_)));
-	vert_splitter->addWidget(layers_);
+	crosshatching_.layers = new layer_panel();
+	vert_splitter->addWidget(crosshatching_.brushes = new brush_panel(*static_cast<layer_panel*>( crosshatching_.layers )));
+	vert_splitter->addWidget(crosshatching_.layers);
 
 	vert_splitter->setMaximumWidth(100);
 	QSplitter* splitter = new QSplitter();
 	splitter->addWidget(vert_splitter);
-	splitter->addWidget(new QWidget());
+
+	auto picture_panel = new QWidget();
+	auto layout = new QHBoxLayout(picture_panel);
+	layout->addWidget( crosshatching_.img_swatch = new ui::cv_image_box() );
+	layout->addWidget( crosshatching_.drawing_swatch = new ui::cv_image_box());
+	crosshatching_.img_swatch->setFixedSize(QSize(400, 400));
+	crosshatching_.drawing_swatch->setFixedSize(QSize(400, 400));
+
+	splitter->addWidget(picture_panel);
 	splitter->setSizes(QList<int>({ 120,500 }));
 
 	return splitter;
@@ -417,21 +441,21 @@ QWidget* ui::crosshatching::createImageProcPipelineCtrls()
 	QTabWidget* tab_ctrl = new QTabWidget();
 	tab_ctrl->setMaximumWidth(k_controls_width);
 
-	imgproc_pipeline_ = std::vector<ui::image_processing_pipeline_item*>{
+	img_proc_ctrls_.pipeline = std::vector<ui::image_processing_pipeline_item*>{
 		new ui::scale_and_contrast(),
 		new ui::anisotropic_diffusion_filter(),
 		new ui::shock_filter(),
 		new ui::mean_shift_segmentation()
 	};
 
-	for (auto* stage: imgproc_pipeline_) {
+	for (auto* stage: img_proc_ctrls_.pipeline) {
 		stage->populate();
 		tab_ctrl->addTab(stage, (std::string("stage ") + std::to_string(stage->index() + 1)).c_str());
 		connect(stage, &ui::image_processing_pipeline_item::changed, this, &crosshatching::handle_pipeline_change);
 	}
 
 	QScrollArea* scroller = new QScrollArea();
-	scroller->setWidget(image_box_ = new QLabel());
+	scroller->setWidget(img_proc_ctrls_.image_box = new cv_image_box());
 	scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
 	QSplitter* splitter = new QSplitter();
@@ -444,32 +468,32 @@ QWidget* ui::crosshatching::createImageProcPipelineCtrls()
 
 cv::Mat ui::crosshatching::input_to_nth_stage(int index) const {
 	if (index == 0) {
-		return src_image_;
+		return img_proc_ctrls_.src;
 	} 
 	cv::Mat input;
 	int j = index - 1;
 	do {
-		input = imgproc_pipeline_.at(j--)->output();
+		input = img_proc_ctrls_.pipeline.at(j--)->output();
 	} while (input.empty() && j > 1);
 	if (input.empty()) {
-		input = src_image_;
+		input = img_proc_ctrls_.src;
 	}
 	return input;
 }
 
 cv::Mat ui::crosshatching::segmentation() const {
-	return static_cast<ui::mean_shift_segmentation*>(imgproc_pipeline_.back())->labels();
+	return static_cast<ui::mean_shift_segmentation*>(img_proc_ctrls_.pipeline.back())->labels();
 }
 
 void ui::crosshatching::handle_pipeline_change(int index) {
-	std::for_each(imgproc_pipeline_.begin() + index, imgproc_pipeline_.end(),
+	std::for_each(img_proc_ctrls_.pipeline.begin() + index, img_proc_ctrls_.pipeline.end(),
 		[](ui::image_processing_pipeline_item* stage) {
 			stage->clear_output();
 		}
 	);
 
 	cv::Mat mat = input_to_nth_stage(index);
-	std::for_each(imgproc_pipeline_.begin() + index, imgproc_pipeline_.end(),
+	std::for_each(img_proc_ctrls_.pipeline.begin() + index, img_proc_ctrls_.pipeline.end(),
 		[&mat](ui::image_processing_pipeline_item* stage) {
 			if (stage->is_on()) {
 				mat = stage->process_image(mat);
@@ -482,35 +506,35 @@ void ui::crosshatching::handle_pipeline_change(int index) {
 
 void ui::crosshatching::display(cv::Mat img) {
 	if (!img.empty()) {
-		current_image_ = img;
+		img_proc_ctrls_.current = img;
 	}
 
-	cv::Mat mat = current_image_;
-	if (view_state_.black_and_white) {
+	cv::Mat mat = img_proc_ctrls_.current;
+	if (img_proc_ctrls_.view_state.black_and_white) {
 		mat = ch::convert_to_3channel_grayscale(mat);
 	}
-	if (view_state_.scale != 1.0) {
-		mat = ch::scale(mat, view_state_.scale);
+	if (img_proc_ctrls_.view_state.scale != 1.0) {
+		mat = ch::scale(mat, img_proc_ctrls_.view_state.scale);
 	}
 	int wd = mat.cols;
 	int hgt = mat.rows;
 	int stride = mat.step;
-	image_box_->setFixedHeight(hgt);
-	image_box_->setFixedWidth(wd);
-	image_box_->setPixmap(QPixmap::fromImage(QImage(mat.data, wd, hgt, stride, QImage::Format_BGR888)));
+	img_proc_ctrls_.image_box->setFixedHeight(hgt);
+	img_proc_ctrls_.image_box->setFixedWidth(wd);
+	img_proc_ctrls_.image_box->set_image(mat);
 }
 
 std::tuple<int, int> ui::crosshatching::source_image_sz() const {
-	return { src_image_.cols, src_image_.rows };
+	return { img_proc_ctrls_.src.cols, img_proc_ctrls_.src.rows };
 }
 
 void ui::crosshatching::handle_view_scale_change(double scale) {
-	view_state_.scale = scale;
+	img_proc_ctrls_.view_state.scale = scale;
 	display();
 }
 
 void ui::crosshatching::handle_view_bw_change(bool bw) {
-	view_state_.black_and_white = bw;
+	img_proc_ctrls_.view_state.black_and_white = bw;
 	display();
 }
 

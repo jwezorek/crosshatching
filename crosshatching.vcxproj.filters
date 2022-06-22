@@ -67,6 +67,9 @@
     <ClCompile Include="src\ui\brush_viewer.cpp">
       <Filter>Source Files\ui</Filter>
     </ClCompile>
+    <ClCompile Include="src\ui\cv_image_box.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="src\ui\crosshatching.qrc">
@@ -90,6 +93,9 @@
       <Filter>Source Files\ui</Filter>
     </QtMoc>
     <QtMoc Include="src\ui\brush_viewer.h">
+      <Filter>Source Files\ui</Filter>
+    </QtMoc>
+    <QtMoc Include="src\ui\cv_image_box.h">
       <Filter>Source Files\ui</Filter>
     </QtMoc>
   </ItemGroup>

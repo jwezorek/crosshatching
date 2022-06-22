@@ -23,13 +23,17 @@ namespace {
         dlg->resize(0.7 * main_wnd_sz);
     }
 
-    constexpr int k_test_swatch_sz = 100;
+    cv::Rect qt_rect_to_cv_rect(const QRect& r) {
+        return cv::Rect(r.x(), r.y(), r.width(), r.height());
+    }
 
-    class rect_in_image_selector : public QLabel {
+    constexpr int k_test_swatch_sz = 200;
+
+    class rect_in_image_selector : public ui::cv_image_box {
 
     public:
-        rect_in_image_selector(std::function<void()> state_change_callback) :
-                QLabel(nullptr),
+        rect_in_image_selector(cv::Mat img, std::function<void()> state_change_callback) :
+                cv_image_box(img),
                 selected_rect_(0,0,0,0),
                 state_change_cb_(state_change_callback) {
             selection_in_progress_ = false;
@@ -55,6 +59,10 @@ namespace {
 
         bool has_selection() const {
             return selected_rect_.width() * selected_rect_.height() > 0;
+        }
+
+        QRect selection() const {
+            return selected_rect_;
         }
 
     private:
@@ -257,16 +265,20 @@ void ui::layer_dialog::update_btn_enabled_state() {
 ui::test_swatch_picker::test_swatch_picker(cv::Mat img) :
         src_img_(img) {
     auto layout = new QVBoxLayout(this);
-    layout->addWidget(selector_ = new rect_in_image_selector([this]() {this->update_btn_enabled_state(); }));
+    layout->addWidget(selector_ = new rect_in_image_selector(img, [this]() {this->update_btn_enabled_state(); }));
     layout->addWidget(btns_ = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel));
     connect(btns_, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(btns_, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    selector_->setPixmap(QPixmap::fromImage(QImage(img.data, img.cols, img.rows, img.step, QImage::Format_BGR888)));
     update_btn_enabled_state();
 }
 
 cv::Mat  ui::test_swatch_picker::test_swatch() const {
-    return test_swatch_;
+    auto ctrl = static_cast<rect_in_image_selector*>( selector_);
+    if (ctrl->has_selection()) {
+        return cv::Mat( src_img_, qt_rect_to_cv_rect(ctrl->selection()) ).clone();
+    } else {
+        return {};
+    }
 }
 
 void ui::test_swatch_picker::update_btn_enabled_state() {
