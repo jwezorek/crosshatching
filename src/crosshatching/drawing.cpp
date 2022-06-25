@@ -920,15 +920,18 @@ namespace {
         return 1.0 - static_cast<double>(gray) / 255.0;
     }
 
-    void log_pcnt_complete_by_quantile(progress_state& prog, size_t running_count, size_t total_count, int quantile) {
-        double prev_pcnt_complete = static_cast<double>(running_count-1) / static_cast<double>(total_count);
-        double pcnt_complete = static_cast<double>(running_count) / static_cast<double>(total_count);
-        double quantile_unit = 1.0 / quantile;
-        int quantile_complete = static_cast<int>(pcnt_complete / quantile_unit);
-        int prev_quantile_complete = static_cast<int>(prev_pcnt_complete / quantile_unit);
-        if (quantile_complete > prev_quantile_complete) {
-            prog.log(std::string("        ") + std::to_string(static_cast<int>(pcnt_complete * 100.0)) + "% complete...");
+    bool completed_new_quantile(size_t running_count, size_t total_count, int quantile) {
+        if (running_count == 0) {
+            return true;
         }
+        auto curr_quantile = (running_count * quantile) / total_count;
+        auto prev_quantile = ((running_count-1) * quantile) / total_count;
+
+        return curr_quantile > prev_quantile;
+    }
+
+    int pcnt_complete(size_t running_count, size_t total_count) {
+        return static_cast<int>( (100.0 * running_count) / total_count );
     }
 
     std::tuple<std::vector<ch::polyline>, swatch_table> paint_ink_layer(ink_layer_stack::blob_range layer, const swatch_table& tbl, 
@@ -963,7 +966,9 @@ namespace {
                 output_table[tok] = current_brush.render_swatches(value);
             }
             prog.tick();
-            log_pcnt_complete_by_quantile(prog, ++count, n, 10);
+            if (completed_new_quantile(++count, n, 10)) {
+                prog.log(std::string("        ") + std::to_string(pcnt_complete(count, n)) + "% complete...");
+            }
         }
         output.shrink_to_fit();
 
