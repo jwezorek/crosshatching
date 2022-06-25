@@ -19,6 +19,7 @@ namespace ui {
     };
 
     struct image_processing_ctrls {
+        std::string src_filename;
         std::vector<image_processing_pipeline_item*> pipeline;
         cv_image_box* image_box;
         cv::Mat src;
@@ -67,6 +68,7 @@ namespace ui {
         ch::crosshatching_job drawing_job() const;
         std::vector<std::tuple<ch::brush_fn, double>> layers() const;
         ch::crosshatching_params drawing_params() const;
+        std::string image_src_filename() const;
         cv::Mat processed_image() const;
 
         std::tuple<int, int> source_image_sz() const;

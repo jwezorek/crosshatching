@@ -9,7 +9,7 @@ drawing_worker::drawing_worker(const ch::crosshatching_job& job) :
 
 void drawing_worker::process()
 {
-    ch::prog_callbacks cbs{
+    ch::callbacks cbs{
         [this](double pcnt) { this->update_progress(pcnt); },
         [this](const std::string& msg) { this->set_status_line(msg); },
         [this](const std::string& msg) { this->log(msg); }

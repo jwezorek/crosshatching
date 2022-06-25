@@ -20,9 +20,11 @@
 #include <map>
 #include <array>
 #include <unordered_map>
+#include <filesystem>
 
 namespace r = ranges;
 namespace rv = ranges::views;
+namespace fs = std::filesystem;
 
 namespace {
 
@@ -124,6 +126,8 @@ namespace {
 			//list()->setSelectionMode(QAbstractItemView::NoSelection);
 			list()->setSelectionBehavior(QAbstractItemView::SelectRows);
 			list()->connect(list(), &QTableWidget::cellDoubleClicked, this, &layer_panel::cell_double_clicked);
+			list()->setHorizontalHeaderLabels(QStringList{ "brush", "from value", "to value" });
+
 			setEnabled(false);
 		}
 
@@ -218,7 +222,6 @@ namespace {
 		brush_panel( layer_panel& layers ) : 
 				tree_panel("brushes", [&]() {this->add_brush_node(); }, [&]() {this->delete_brush_node(); }),
 				layer_panel_(layers) {
-
 		}
 
 		std::vector<std::string> brush_names() const {
@@ -340,6 +343,7 @@ void ui::crosshatching::open()
 	img_proc_ctrls_.src = cv::imread(str.c_str());
 	display( img_proc_ctrls_.src );
 	change_source_image( img_proc_ctrls_.src );
+	img_proc_ctrls_.src_filename = fs::path(str).filename().string();
 }
 
 void ui::crosshatching::test() {
@@ -514,11 +518,16 @@ cv::Mat ui::crosshatching::segmentation() const {
 
 ch::crosshatching_job ui::crosshatching::drawing_job() const {
 	return {
+		image_src_filename(),
 		processed_image(),
 		segmentation(),
 		layers(),
 		drawing_params()
 	};
+}
+
+std::string ui::crosshatching::image_src_filename() const {
+	return img_proc_ctrls_.src_filename;
 }
 
 cv::Mat ui::crosshatching::processed_image() const {

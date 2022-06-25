@@ -17,6 +17,7 @@
 #include <tuple>
 #include <variant>
 #include <string>
+#include <QStackedWidget>
 
 namespace ui {
 
@@ -104,5 +105,9 @@ namespace ui {
         QProgressBar* progress_;
         QPlainTextEdit* log_;
         QPushButton* button_;
+        QStackedWidget* btn_stack_;
+        QPushButton* view_drawing_btn_;
+        QPushButton* save_drawing_btn_;
+        QPushButton* exit_btn_;
     };
 }

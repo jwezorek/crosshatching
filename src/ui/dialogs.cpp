@@ -307,14 +307,37 @@ ui::drawing_progress::drawing_progress(const ch::crosshatching_job& job) :
     layout->addWidget(progress_ = new QProgressBar());
     progress_->setOrientation(Qt::Horizontal);
     layout->addWidget(log_ = new QPlainTextEdit());
+    log_->setReadOnly(true);
     log_->setMinimumHeight(300);
-    layout->addWidget(button_ = new QPushButton("Start"));
+
+    layout->addWidget(btn_stack_ = new QStackedWidget());
+
+    auto start_panel = new QWidget();
+    auto horz_layout1 = new QHBoxLayout(start_panel);
+    horz_layout1->addStretch();
+    horz_layout1->addWidget(button_ = new QPushButton("Start"));
+    horz_layout1->addStretch();
+
+    auto complete_panel = new QWidget();
+    auto horz_layout2 = new QHBoxLayout(complete_panel);
+    horz_layout2->addStretch();
+    horz_layout2->addWidget(view_drawing_btn_ = new QPushButton("View"));
+    horz_layout2->addWidget(save_drawing_btn_ = new QPushButton("Save drawing as ..."));
+    horz_layout2->addWidget(exit_btn_ = new QPushButton("Cancel"));
+    horz_layout2->addStretch();
+
+    btn_stack_->addWidget(start_panel);
+    btn_stack_->addWidget(complete_panel);
+    btn_stack_->setFixedHeight(46);
+    btn_stack_->setCurrentIndex(0);
+
+    this->resize( 800, this->height());
+
     connect(button_, &QPushButton::clicked, this, &ui::drawing_progress::generate_drawing);
 }
 
 void ui::drawing_progress::on_finished() {
-    int aaa;
-    aaa = 5;
+    btn_stack_->setCurrentIndex(1);
 }
 
 void ui::drawing_progress::update_progress(double pcnt) {
@@ -339,7 +362,7 @@ void ui::drawing_progress::generate_drawing() {
 
     connect(thread, &QThread::started, worker, &drawing_worker::process);
     connect(worker, &drawing_worker::finished, thread, &QThread::quit);
-
+    connect(thread, &QThread::finished, this, &drawing_progress::on_finished);
     connect(worker, &drawing_worker::finished, worker, &QObject::deleteLater);
     connect(thread, &QThread::finished, thread, &QObject::deleteLater);
     connect(worker, &drawing_worker::progress, this, &drawing_progress::update_progress);
