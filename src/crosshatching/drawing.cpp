@@ -24,6 +24,49 @@ namespace {
 
     constexpr int k_typical_number_of_strokes = 10000;
 
+    class progress_state {
+    private:
+        std::function<void(double)> prog_fn_;
+        std::function<void(const std::string&)> stat_fn_;
+        std::function<void(const std::string&)> log_fn_;
+        size_t total_blobs;
+        size_t curr_blob;
+    public:
+        progress_state(const ch::prog_callbacks& cbs) :
+            prog_fn_( cbs.update_progress_cb ),
+            stat_fn_( cbs.update_status_cb ),
+            log_fn_( cbs.log_message_cb ),
+            total_blobs(0),
+            curr_blob(0)
+        {};
+
+        void set_total_blobs(size_t n) {
+            total_blobs = n;
+        }
+
+        void tick() {
+            if (total_blobs == 0) {
+                return;
+            }
+            ++curr_blob;
+            if (prog_fn_) {
+                prog_fn_(static_cast<double>(curr_blob) / static_cast<double>(total_blobs));
+            }
+        }
+
+        void log(const std::string& msg) {
+            if (log_fn_) {
+                log_fn_(msg);
+            }
+        }
+
+        void status(const std::string& msg) {
+            if (stat_fn_) {
+                stat_fn_(msg);
+            }
+        }
+    };
+
     struct polygon_with_holes {
         ch::polyline border;
         std::vector<ch::polyline> holes;
@@ -794,6 +837,14 @@ namespace {
 
         using blob_range = r::any_view<std::tuple<ch::brush_fn, ink_layer_blob>>;
 
+        size_t total_blobs() const {
+            size_t total = 0;
+            for (const auto& layer : layers_) {
+                total += layer.blobs.size();
+            }
+            return total;
+        }
+
         r::any_view<blob_range> blobs() const {
             return  layers_ |
                 rv::transform(
@@ -854,7 +905,8 @@ namespace {
         return 1.0 - static_cast<double>(gray) / 255.0;
     }
 
-    std::tuple<std::vector<ch::polyline>, swatch_table> paint_ink_layer(ink_layer_stack::blob_range layer, const swatch_table& tbl, const ch::crosshatching_params& params) {
+    std::tuple<std::vector<ch::polyline>, swatch_table> paint_ink_layer(ink_layer_stack::blob_range layer, const swatch_table& tbl, 
+            const ch::crosshatching_params& params, progress_state& prog) {
         std::vector<ch::polyline> output;
         output.reserve(k_typical_number_of_strokes);
         std::unordered_map<ink_layer_stack::brush_token, ch::brush> brush_table;
@@ -880,6 +932,7 @@ namespace {
             if (output_table.find(tok) == output_table.end()) {
                 output_table[tok] = current_brush.render_swatches(value);
             }
+            prog.tick();
         }
         output.shrink_to_fit();
 
@@ -887,7 +940,14 @@ namespace {
     }
 }
 
-ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, const std::vector<std::tuple<ch::brush_fn, double>>& brush_intervals, const ch::crosshatching_params& params) {
+ch::drawing ch::generate_crosshatched_drawing(const ch::crosshatching_job& job, const ch::prog_callbacks& cbs) {
+    return generate_crosshatched_drawing(job.img, job.label_img, job.layers, job.params, cbs);
+}
+
+ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, const std::vector<std::tuple<ch::brush_fn, double>>& brush_intervals, const ch::crosshatching_params& params, 
+        const ch::prog_callbacks& cbs) {
+
+    progress_state prog_log(cbs);
 
     if (label_img.type() != CV_32SC1) {
         throw std::runtime_error("bad label image");
@@ -899,20 +959,15 @@ ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, co
 
     auto [brushes, thresholds] = split_brush_thresholds(brush_intervals);
     auto layers = ink_layer_images(img, label_img, thresholds);
-    /*
-    int i = 0;
-    for (const auto& layer : layers) {
-        std::string fname = "C:\\test\\ink_layer_" + std::to_string(++i) + ".png";
-        cv::imwrite(fname, layer);
-    }
-    */
+
     ink_layer_stack stack(layers, brushes, params.scale);
+    prog_log.set_total_blobs( stack.total_blobs() );
 
     std::vector<std::vector<ch::polyline>> layer_strokes(layers.size());
     swatch_table tok_to_bkgd = create_swatch_table();
 
     for (auto [index,layer] : rv::enumerate(stack.blobs())) {
-        std::tie(layer_strokes[index], tok_to_bkgd) = paint_ink_layer(layer, tok_to_bkgd, params);
+        std::tie(layer_strokes[index], tok_to_bkgd) = paint_ink_layer(layer, tok_to_bkgd, params, prog_log);
     }
 
     return ch::drawing {
@@ -922,7 +977,7 @@ ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, co
     };
 }
 
-ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, const std::vector<std::tuple<ch::brush_fn, double>>& brushes, const ch::crosshatching_params& params) {
+ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, const std::vector<std::tuple<ch::brush_fn, double>>& brushes, const ch::crosshatching_params& params, const ch::prog_callbacks& cbs) {
     
     auto labels = ch::grayscale_to_label_image(img);
     return generate_crosshatched_drawing(img, labels, brushes, params);
@@ -1011,8 +1066,3 @@ void ch::debug(cv::Mat img, cv::Mat labels) {
 
     ch::to_svg("C:\\test\\test_drawing.svg", ch_drawing);
 }
-
-
-
-
-

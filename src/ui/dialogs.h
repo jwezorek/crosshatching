@@ -1,12 +1,15 @@
 #pragma once
 
 #include "../crosshatching/brush_language.hpp"
+#include "../crosshatching/drawing.hpp"
 #include "cv_image_box.h"
 #include <opencv2/core.hpp>
 #include <QDialog>
 #include <QLineEdit>
 #include <QTextEdit>
 #include <QPushButton>
+#include <QProgressBar>
+#include <QPlainTextEdit>
 #include <QDialogButtonBox>
 #include <QComboBox>
 #include <QLabel>
@@ -82,5 +85,24 @@ namespace ui {
         cv_image_box* selector_;
         QDialogButtonBox* btns_;
         cv::Mat src_img_;
+    };
+
+    class drawing_progress : public QDialog {
+
+        Q_OBJECT
+
+    public:
+        drawing_progress(const ch::crosshatching_job& job);
+        void generate_drawing();
+        void update_progress(double pcnt);
+        void set_status_line(const std::string& str);
+        void log_message(const std::string& str);
+        void on_finished();
+    private:
+        ch::crosshatching_job job_;
+        QLabel* status_;
+        QProgressBar* progress_;
+        QPlainTextEdit* log_;
+        QPushButton* button_;
     };
 }

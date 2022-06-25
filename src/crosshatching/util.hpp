@@ -5,6 +5,7 @@
 #include <range/v3/all.hpp>
 #include <opencv2/core.hpp>
 #include <tuple>
+#include <optional>
 
 namespace ch {
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../crosshatching/drawing.hpp"
 #include "settingctrls.hpp"
 #include "treepanel.h"
 #include "cv_image_box.h"
@@ -63,6 +64,10 @@ namespace ui {
         void handle_pipeline_change(int index);
         cv::Mat input_to_nth_stage(int index) const;
         cv::Mat segmentation() const;
+        ch::crosshatching_job drawing_job() const;
+        std::vector<std::tuple<ch::brush_fn, double>> layers() const;
+        ch::crosshatching_params drawing_params() const;
+        cv::Mat processed_image() const;
 
         std::tuple<int, int> source_image_sz() const;
         ui::view_state view_state() const;

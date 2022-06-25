@@ -19,6 +19,7 @@
 #include <memory>
 #include <map>
 #include <array>
+#include <unordered_map>
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -131,6 +132,16 @@ namespace {
 			setEnabled(!brush_names_.empty());
 		}
 
+		std::vector<std::tuple<std::string, double>> layers() const {
+			return layers_ |
+				rv::transform(
+					[](const auto& p)->std::tuple<std::string, double> {
+						const auto& [val, name] = p;
+						return { name, val };
+					}
+			) | r::to_vector;
+		}
+
 	private:
 
 		std::vector<std::string> brush_names_;
@@ -217,6 +228,17 @@ namespace {
 				brushes[i] = item->text(0).toStdString();
 			}
 			return brushes;
+		}
+
+		std::unordered_map<std::string, ch::brush_fn> brush_dictionary() const {
+			std::unordered_map<std::string, ch::brush_fn> dictionary;
+			for (int i = 0; i < tree()->topLevelItemCount(); ++i) {
+				QTreeWidgetItem* item = tree()->topLevelItem(i);
+				std::string name = item->text(0).toStdString();
+				brush_item* bi = static_cast<brush_item*>(item);
+				dictionary[name] = std::get<ch::brush_fn>( bi->brush_expr->eval() );
+			}
+			return dictionary;
 		}
 
 	private:
@@ -383,6 +405,8 @@ void ui::crosshatching::test() {
 */
 
 void ui::crosshatching::generate() {
+	auto progress_box = std::make_unique<ui::drawing_progress>( drawing_job() );
+	progress_box->exec();
 }
 
 void ui::crosshatching::save_processed_image() {
@@ -486,6 +510,36 @@ cv::Mat ui::crosshatching::input_to_nth_stage(int index) const {
 
 cv::Mat ui::crosshatching::segmentation() const {
 	return static_cast<ui::mean_shift_segmentation*>(img_proc_ctrls_.pipeline.back())->labels();
+}
+
+ch::crosshatching_job ui::crosshatching::drawing_job() const {
+	return {
+		processed_image(),
+		segmentation(),
+		layers(),
+		drawing_params()
+	};
+}
+
+cv::Mat ui::crosshatching::processed_image() const {
+	return img_proc_ctrls_.current;
+}
+
+std::vector<std::tuple<ch::brush_fn, double>> ui::crosshatching::layers() const {
+	auto brush_dict = static_cast<brush_panel*>(crosshatching_.brushes)->brush_dictionary();
+	auto layer_name_vals = static_cast<layer_panel*>(crosshatching_.layers)->layers();
+	return layer_name_vals |
+		rv::transform(
+			[&](const auto& p)->std::tuple<ch::brush_fn, double> {
+				const auto& [brush_name, val] = p;
+				return { brush_dict.at(brush_name), val };
+			}
+	) | r::to_vector;
+}
+
+ch::crosshatching_params ui::crosshatching::drawing_params() const {
+	//TODO
+	return {};
 }
 
 void ui::crosshatching::handle_pipeline_change(int index) {

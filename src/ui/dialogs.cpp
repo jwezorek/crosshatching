@@ -1,6 +1,8 @@
 #include "dialogs.h"
 #include "brush_viewer.h"
+#include "drawing_worker.h"
 #include <QtWidgets>
+#include <memory>
 
 namespace {
     QWidget* spacer(int n) {
@@ -295,3 +297,55 @@ cv::Mat ui::test_swatch_picker::get_test_swatch(cv::Mat src_img) {
         return {};
     }
 }
+
+/*------------------------------------------------------------------------------------------------------------------------*/
+
+ui::drawing_progress::drawing_progress(const ch::crosshatching_job& job) :
+        job_(job) {
+    auto layout = new QVBoxLayout(this);
+    layout->addWidget(status_ = new QLabel(""));
+    layout->addWidget(progress_ = new QProgressBar());
+    progress_->setOrientation(Qt::Horizontal);
+    layout->addWidget(log_ = new QPlainTextEdit());
+    log_->setMinimumHeight(300);
+    layout->addWidget(button_ = new QPushButton("Start"));
+    connect(button_, &QPushButton::clicked, this, &ui::drawing_progress::generate_drawing);
+}
+
+void ui::drawing_progress::on_finished() {
+    int aaa;
+    aaa = 5;
+}
+
+void ui::drawing_progress::update_progress(double pcnt) {
+    int val = static_cast<int>(std::round(pcnt * 100.0));
+    progress_->setValue(val);
+}
+
+void ui::drawing_progress::set_status_line(const std::string& str) {
+    status_->setText(str.c_str());
+}
+
+void ui::drawing_progress::log_message(const std::string& str) {
+    log_->appendPlainText(str.c_str());
+    auto scroll_bar = log_->verticalScrollBar();
+    scroll_bar->setValue(scroll_bar->maximum()); // Scrolls to the bottom
+}
+
+void ui::drawing_progress::generate_drawing() {
+    QThread* thread = new QThread(nullptr);
+    drawing_worker* worker = new drawing_worker(job_);
+    worker->moveToThread(thread);
+
+    connect(thread, &QThread::started, worker, &drawing_worker::process);
+    connect(worker, &drawing_worker::finished, thread, &QThread::quit);
+
+    connect(worker, &drawing_worker::finished, worker, &QObject::deleteLater);
+    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+    connect(worker, &drawing_worker::progress, this, &drawing_progress::update_progress);
+    connect(worker, &drawing_worker::status, this, &drawing_progress::set_status_line);
+    connect(worker, &drawing_worker::log, this, &drawing_progress::log_message);
+
+    thread->start();
+}
+     
