@@ -32,6 +32,23 @@ namespace {
         std::function<void(const std::string&)> log_fn_;
         size_t total_blobs;
         size_t curr_blob;
+        size_t layer_blob;
+        size_t total_layer_blobs;
+
+        static bool completed_new_quantile(size_t running_count, size_t total_count, int quantile) {
+            if (running_count == 0) {
+                return true;
+            }
+            auto curr_quantile = (running_count * quantile) / total_count;
+            auto prev_quantile = ((running_count - 1) * quantile) / total_count;
+
+            return curr_quantile > prev_quantile;
+        }
+
+        static int pcnt_complete(size_t running_count, size_t total_count) {
+            return static_cast<int>((100.0 * running_count) / total_count);
+        }
+
     public:
         progress_state(const std::string& job_name, const ch::callbacks& cbs) :
             job_name_( job_name ),
@@ -46,13 +63,24 @@ namespace {
             total_blobs = n;
         }
 
+        void start_new_layer(size_t n) {
+            layer_blob = 0;
+            total_layer_blobs = n;
+        }
+
         void tick() {
             if (total_blobs == 0) {
                 return;
             }
             ++curr_blob;
+            ++layer_blob;
             if (prog_fn_) {
                 prog_fn_(static_cast<double>(curr_blob) / static_cast<double>(total_blobs));
+            }
+            if (log_fn_) {
+                if (completed_new_quantile(layer_blob, total_layer_blobs, 10)) {
+                    log(std::string("        ") + std::to_string(pcnt_complete(layer_blob, total_layer_blobs)) + "% complete...");
+                }
             }
         }
 
@@ -920,23 +948,10 @@ namespace {
         return 1.0 - static_cast<double>(gray) / 255.0;
     }
 
-    bool completed_new_quantile(size_t running_count, size_t total_count, int quantile) {
-        if (running_count == 0) {
-            return true;
-        }
-        auto curr_quantile = (running_count * quantile) / total_count;
-        auto prev_quantile = ((running_count-1) * quantile) / total_count;
-
-        return curr_quantile > prev_quantile;
-    }
-
-    int pcnt_complete(size_t running_count, size_t total_count) {
-        return static_cast<int>( (100.0 * running_count) / total_count );
-    }
-
     std::tuple<std::vector<ch::polyline>, swatch_table> paint_ink_layer(ink_layer_stack::blob_range layer, const swatch_table& tbl, 
             const ch::crosshatching_params& params, progress_state& prog) {
         size_t n = r::distance(layer);
+        prog.start_new_layer(n);
 
         std::vector<ch::polyline> output;
         output.reserve(k_typical_number_of_strokes);
@@ -966,9 +981,6 @@ namespace {
                 output_table[tok] = current_brush.render_swatches(value);
             }
             prog.tick();
-            if (completed_new_quantile(++count, n, 10)) {
-                prog.log(std::string("        ") + std::to_string(pcnt_complete(count, n)) + "% complete...");
-            }
         }
         output.shrink_to_fit();
 
