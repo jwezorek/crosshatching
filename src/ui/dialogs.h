@@ -3,6 +3,7 @@
 #include "../crosshatching/brush_language.hpp"
 #include "../crosshatching/drawing.hpp"
 #include "cv_image_box.h"
+#include "drawing_worker.h"
 #include <opencv2/core.hpp>
 #include <QDialog>
 #include <QLineEdit>
@@ -16,8 +17,11 @@
 #include <QMenu>
 #include <tuple>
 #include <variant>
+#include <any>
 #include <string>
 #include <QStackedWidget>
+#include <memory>
+#include <QThread>
 
 namespace ui {
 
@@ -109,5 +113,21 @@ namespace ui {
         QPushButton* view_drawing_btn_;
         QPushButton* save_drawing_btn_;
         QPushButton* exit_btn_;
+    };
+
+    class progress : public QDialog {
+
+        Q_OBJECT
+
+    public:
+        progress();
+        void update_progress(double pcnt);
+        std::function<void(double)> progress_func() const;
+        std::any run(const std::string& title, std::function<std::any()> job);
+
+    private:
+        QProgressBar* progress_;
+        std::unique_ptr<worker> worker_;
+        std::unique_ptr<QThread> thread_;
     };
 }

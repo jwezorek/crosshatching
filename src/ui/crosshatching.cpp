@@ -346,10 +346,23 @@ void ui::crosshatching::open()
 	img_proc_ctrls_.src_filename = fs::path(str).filename().string();
 }
 
-void ui::crosshatching::test() {
+void ui::crosshatching::test() { /*
 	if (crosshatching_.swatch.empty()) {
 		redo_test_swatch();
 	}
+	*/
+	auto box = std::make_unique<ui::progress>();
+	auto log = box->progress_func();
+	box->run(
+		"test progress...",
+		[log]()->std::any {
+			for (auto i = 0.1; i < 1.0; i += 0.1) {
+				QThread::msleep(500);
+				log(i);
+			}
+			return { 42.0 };
+		}
+	);
 }
 
 void ui::crosshatching::redo_test_swatch() {

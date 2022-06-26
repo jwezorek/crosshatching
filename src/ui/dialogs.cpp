@@ -372,3 +372,45 @@ void ui::drawing_progress::generate_drawing() {
     thread->start();
 }
      
+
+/*------------------------------------------------------------------------------------------------------------------------*/
+
+ui::progress::progress() : 
+        worker_(std::make_unique<worker>()),
+        thread_(std::make_unique<QThread>(nullptr)) {
+    setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+    auto layout = new QVBoxLayout(this);
+    layout->addWidget(progress_ = new QProgressBar());
+    setFixedWidth(550);
+}
+
+void ui::progress::update_progress(double pcnt) {
+    int val = static_cast<int>(std::round(pcnt * 100.0));
+    this->progress_->setValue(val);
+}
+
+std::function<void(double)> ui::progress::progress_func() const {
+    return [this](double pcnt) {
+        auto update_fn = worker_->progress_function();
+        update_fn(pcnt);
+    };
+}
+
+std::any ui::progress::run(const std::string& title, std::function<std::any()> job) {
+    setWindowTitle(title.c_str());
+
+    auto thread = thread_.get();
+    auto work = worker_.get();
+
+    work->set(job);
+    work->moveToThread(thread);
+
+    connect(thread, &QThread::started, work, &worker::process);
+    connect(work, &worker::finished, thread, &QThread::quit);
+    connect(thread, &QThread::finished, this, &QDialog::accept);
+    connect(work, &worker::progress, this, &progress::update_progress);
+
+    thread->start();
+    exec();
+    return worker_->output();
+}

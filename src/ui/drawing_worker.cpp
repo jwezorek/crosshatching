@@ -37,3 +37,33 @@ void drawing_worker::log_prog(const std::string& str) {
 drawing_worker::~drawing_worker()
 {
 }
+
+/*--------------------------------------------------------------------------------------------------*/
+
+worker::worker() :
+    QObject(nullptr)
+{}
+
+void worker::set(std::function<std::any()> job) {
+    job_ = job;
+}
+
+std::function<void(double)> worker::progress_function() {
+    return [this](double val)->void {
+        this->update_progress(val);
+    };
+}
+
+void worker::update_progress(double pcnt) {
+    emit progress(pcnt);
+}
+
+void worker::process()
+{
+    output_ = job_();
+    emit finished();
+}
+
+std::any worker::output() const {
+    return output_;
+}

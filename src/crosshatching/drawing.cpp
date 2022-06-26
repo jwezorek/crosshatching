@@ -24,7 +24,7 @@ namespace {
 
     constexpr int k_typical_number_of_strokes = 10000;
 
-    class progress_state {
+    class progress_logger {
     private:
         std::string job_name_;
         std::function<void(double)> prog_fn_;
@@ -50,7 +50,7 @@ namespace {
         }
 
     public:
-        progress_state(const std::string& job_name, const ch::callbacks& cbs) :
+        progress_logger(const std::string& job_name, const ch::callbacks& cbs) :
             job_name_( job_name ),
             prog_fn_( cbs.update_progress_cb ),
             stat_fn_( cbs.update_status_cb ),
@@ -93,7 +93,7 @@ namespace {
         void status(const std::string& msg) {
             if (stat_fn_) {
                 stat_fn_(msg);
-                log_fn_(std::string("----") + msg + std::string("----"));
+                log(std::string("----") + msg + std::string("----"));
             }
         }
     };
@@ -949,7 +949,7 @@ namespace {
     }
 
     std::tuple<std::vector<ch::polyline>, swatch_table> paint_ink_layer(ink_layer_stack::blob_range layer, const swatch_table& tbl, 
-            const ch::crosshatching_params& params, progress_state& prog) {
+            const ch::crosshatching_params& params, progress_logger& prog) {
         size_t n = r::distance(layer);
         prog.start_new_layer(n);
 
@@ -1002,7 +1002,7 @@ namespace {
     }
 
     ch::drawing generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, const std::vector<std::tuple<ch::brush_fn, double>>& brush_intervals, const ch::crosshatching_params& params,
-            progress_state& ps) {
+            progress_logger& ps) {
 
         sanitize_input_images(&img, &label_img);
 
@@ -1036,7 +1036,7 @@ namespace {
 }
 
 ch::drawing ch::generate_crosshatched_drawing(const ch::crosshatching_job& job, const ch::callbacks& cbs) {
-    progress_state ps(job.title, cbs);
+    progress_logger ps(job.title, cbs);
     ps.status(std::string("drawing ") + job.title);
     auto result = generate_crosshatched_drawing(job.img, job.label_img, job.layers, job.params, ps);
     ps.status(std::string("complete.")); // TODO: or error
