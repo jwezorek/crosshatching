@@ -16,6 +16,7 @@
 #include "qdebug.h"
 #include <QMessageBox>
 
+
 namespace r = ranges;
 namespace rv = ranges::views;
 namespace cl = ClipperLib;
@@ -1043,15 +1044,7 @@ ch::drawing ch::generate_crosshatched_drawing(const ch::crosshatching_job& job, 
     return result;
 }
 
-/*
-ch::drawing ch::generate_crosshatched_drawing(cv::Mat img, const std::vector<std::tuple<ch::brush_fn, double>>& brushes, const ch::crosshatching_params& params, const ch::callbacks& cbs) {
-    
-    auto labels = ch::grayscale_to_label_image(img);
-    return generate_crosshatched_drawing(img, labels, brushes, params);
-}
-*/
-
-void ch::to_svg(const std::string& filename, const drawing& d) {
+void ch::write_to_svg(const std::string& filename, const drawing& d) {
     std::ofstream outfile(filename);
 
     outfile << svg_header(static_cast<int>(d.sz.wd), static_cast<int>(d.sz.hgt));
@@ -1061,6 +1054,24 @@ void ch::to_svg(const std::string& filename, const drawing& d) {
 
     outfile << "</svg>" << std::endl;
     outfile.close();
+}
+
+ch::drawing ch::scale(const ch::drawing& d, double val) {
+    return {
+        d.strokes |
+            rv::transform([val](const ch::polyline& poly) { return ch::scale(poly, val); }) |
+            r::to_vector,
+        {val * d.sz.wd, val * d.sz.hgt},
+        val * d.stroke_wd
+    };
+}
+
+cv::Mat ch::paint_drawing(const drawing& d) {
+    cv::Mat mat(static_cast<int>(d.sz.hgt), static_cast<int>(d.sz.wd), CV_8U, 255);
+    for (const auto& ls : d.strokes) {
+        ch::paint_polyline(mat, ls, d.stroke_wd, 0, point{ 0, 0 });
+    }
+    return mat;
 }
 
 /*

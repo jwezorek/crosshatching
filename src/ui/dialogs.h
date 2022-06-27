@@ -83,7 +83,7 @@ namespace ui {
         cv::Mat test_swatch() const;
 
         static cv::Mat get_test_swatch(cv::Mat src);
-
+        static int swatch_sz();
     private:
         void update_btn_enabled_state();
 

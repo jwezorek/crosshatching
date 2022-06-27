@@ -289,6 +289,10 @@ void ui::test_swatch_picker::update_btn_enabled_state() {
     );
 }
 
+int ui::test_swatch_picker::swatch_sz() {
+    return k_test_swatch_sz;
+}
+
 cv::Mat ui::test_swatch_picker::get_test_swatch(cv::Mat src_img) {
     auto dlg = std::make_unique<ui::test_swatch_picker>(src_img);
     if (dlg->exec() == QDialog::Accepted) {

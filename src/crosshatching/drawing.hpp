@@ -44,6 +44,7 @@ namespace ch {
     };
 
     drawing generate_crosshatched_drawing(const crosshatching_job& job, const callbacks& cbs = {});
-    void to_svg(const std::string& filename, const drawing& d);
-
+    void write_to_svg(const std::string& filename, const drawing& d);
+    drawing scale(const drawing& d, double scale);
+    cv::Mat paint_drawing(const drawing& d);
 }

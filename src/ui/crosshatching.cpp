@@ -30,6 +30,7 @@ namespace {
 
 	constexpr auto k_view_menu_index = 1;
 	constexpr auto k_controls_width = 300;
+	constexpr auto k_swatch_scale = 4.0;
 
 	QMenu* create_view_menu(ui::crosshatching* parent) {
 		auto tr = [parent](const char* str) {return parent->tr(str); };
@@ -346,29 +347,33 @@ void ui::crosshatching::open()
 	img_proc_ctrls_.src_filename = fs::path(str).filename().string();
 }
 
-void ui::crosshatching::test() { /*
+void ui::crosshatching::test() { 
 	if (crosshatching_.swatch.empty()) {
 		redo_test_swatch();
-	}
-	*/
+	} 
 	auto box = std::make_unique<ui::progress>();
-	auto log = box->progress_func();
-	box->run(
-		"test progress...",
-		[log]()->std::any {
-			for (auto i = 0.1; i < 1.0; i += 0.1) {
-				QThread::msleep(500);
-				log(i);
-			}
-			return { 42.0 };
+	auto result = box->run(
+		"drawing test sample...",
+		[&]()->std::any {
+			auto drawing = ch::generate_crosshatched_drawing(
+				{ {}, crosshatching_.swatch, {}, layers(), drawing_params() },
+				{ box->progress_func(), {}, {} }
+			);
+			return { drawing };
 		}
 	);
+	//TODO: error handling
+	auto test = std::any_cast<ch::drawing>(result);
+	test = ch::scale(test, k_swatch_scale);
+	cv::Mat test_swatch = paint_drawing(test);
+	crosshatching_.drawing_swatch->set_image(test_swatch); 
 }
 
 void ui::crosshatching::redo_test_swatch() {
 
 	crosshatching_.swatch = ui::test_swatch_picker::get_test_swatch(img_proc_ctrls_.current);
-	crosshatching_.img_swatch->set_image(crosshatching_.swatch, 2.0);
+	crosshatching_.img_swatch->set_image(crosshatching_.swatch, k_swatch_scale);
+	crosshatching_.drawing_swatch->set_image(crosshatching_.swatch, k_swatch_scale);
 }
 
 /*
@@ -468,11 +473,13 @@ QWidget* ui::crosshatching::createCrosshatchCtrls() {
 	auto layout = new QHBoxLayout(picture_panel);
 	layout->addWidget( crosshatching_.img_swatch = new ui::cv_image_box() );
 	layout->addWidget( crosshatching_.drawing_swatch = new ui::cv_image_box());
-	crosshatching_.img_swatch->setFixedSize(QSize(400, 400));
-	crosshatching_.drawing_swatch->setFixedSize(QSize(400, 400));
+
+	int swatch_box_sz = test_swatch_picker::swatch_sz() * k_swatch_scale;
+	crosshatching_.img_swatch->setFixedSize(QSize(swatch_box_sz, swatch_box_sz));
+	crosshatching_.drawing_swatch->setFixedSize(QSize(swatch_box_sz, swatch_box_sz));
 
 	splitter->addWidget(picture_panel);
-	splitter->setSizes(QList<int>({ 120,500 }));
+	splitter->setSizes(QList<int>({ 180,500 }));
 
 	return splitter;
 }
