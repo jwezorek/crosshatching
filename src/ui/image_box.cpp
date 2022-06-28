@@ -1,4 +1,4 @@
-#include "cv_image_box.h"
+#include "image_box.h"
 #include "../crosshatching/util.hpp"
 
 ui::cv_image_box::cv_image_box(cv::Mat img)

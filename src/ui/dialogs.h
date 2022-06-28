@@ -2,7 +2,7 @@
 
 #include "../crosshatching/brush_language.hpp"
 #include "../crosshatching/drawing.hpp"
-#include "cv_image_box.h"
+#include "image_box.h"
 #include "drawing_worker.h"
 #include <opencv2/core.hpp>
 #include <QDialog>

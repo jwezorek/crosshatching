@@ -5,6 +5,9 @@
 #include <memory>
 
 namespace {
+
+    constexpr int k_test_swatch_sz = 150;
+
     QWidget* spacer(int n) {
         auto spacer = new QWidget();
         spacer->setFixedSize(QSize(n, n));
@@ -28,8 +31,6 @@ namespace {
     cv::Rect qt_rect_to_cv_rect(const QRect& r) {
         return cv::Rect(r.x(), r.y(), r.width(), r.height());
     }
-
-    constexpr int k_test_swatch_sz = 200;
 
     class rect_in_image_selector : public ui::cv_image_box {
 

@@ -5,47 +5,50 @@
 #include <QObject>
 #include "../crosshatching/drawing.hpp"
 
-class drawing_worker : public QObject
-{
-    Q_OBJECT
+namespace ui {
 
-public:
-    drawing_worker(const ch::crosshatching_job& job);
-    void process();
-    ch::drawing output() const;
+    class drawing_worker : public QObject
+    {
+        Q_OBJECT
 
-    void update_progress(double val);
-    void set_status_line(const std::string& str);
-    void log_prog(const std::string& str);
+    public:
+        drawing_worker(const ch::crosshatching_job& job);
+        void process();
+        ch::drawing output() const;
 
-    ~drawing_worker();
-signals:
-    void progress(double);
-    void status(std::string str);
-    void log(std::string str);
-    void finished();
+        void update_progress(double val);
+        void set_status_line(const std::string& str);
+        void log_prog(const std::string& str);
 
-private:
-    ch::crosshatching_job job_;
-    ch::drawing output_;
-};
+        ~drawing_worker();
+    signals:
+        void progress(double);
+        void status(std::string str);
+        void log(std::string str);
+        void finished();
 
-class worker : public QObject
-{
-    Q_OBJECT
+    private:
+        ch::crosshatching_job job_;
+        ch::drawing output_;
+    };
 
-private:
-    std::function<std::any()> job_;
-    std::any output_;
-public:
-    worker();
-    void set(std::function<std::any()> job);
-    std::function<void(double)> progress_function();
-    void update_progress(double pcnt);
-    void process();
-    std::any output() const;
+    class worker : public QObject
+    {
+        Q_OBJECT
 
-signals:
-    void progress(double);
-    void finished();
-};
+    private:
+        std::function<std::any()> job_;
+        std::any output_;
+    public:
+        worker();
+        void set(std::function<std::any()> job);
+        std::function<void(double)> progress_function();
+        void update_progress(double pcnt);
+        void process();
+        std::any output() const;
+
+    signals:
+        void progress(double);
+        void finished();
+    };
+}

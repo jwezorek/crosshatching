@@ -2,12 +2,12 @@
 #include <QThread>
 #include <qdebug.h>
 
-drawing_worker::drawing_worker(const ch::crosshatching_job& job) : 
+ui::drawing_worker::drawing_worker(const ch::crosshatching_job& job) : 
     QObject(nullptr),
     job_(job) 
 {}
 
-void drawing_worker::process()
+void ui::drawing_worker::process()
 {
     ch::callbacks cbs{
         [this](double pcnt) { this->update_progress(pcnt); },
@@ -19,51 +19,51 @@ void drawing_worker::process()
     emit finished();
 }
 
-ch::drawing drawing_worker::output() const {
+ch::drawing ui::drawing_worker::output() const {
     return output_;
 }
 
-void drawing_worker::update_progress(double val) {
+void ui::drawing_worker::update_progress(double val) {
     emit progress(val);
 }
-void drawing_worker::set_status_line(const std::string& str) {
+void ui::drawing_worker::set_status_line(const std::string& str) {
     emit status(str);
 }
 
-void drawing_worker::log_prog(const std::string& str) {
+void ui::drawing_worker::log_prog(const std::string& str) {
     emit log(str);
 }
 
-drawing_worker::~drawing_worker()
+ui::drawing_worker::~drawing_worker()
 {
 }
 
 /*--------------------------------------------------------------------------------------------------*/
 
-worker::worker() :
+ui::worker::worker() :
     QObject(nullptr)
 {}
 
-void worker::set(std::function<std::any()> job) {
+void ui::worker::set(std::function<std::any()> job) {
     job_ = job;
 }
 
-std::function<void(double)> worker::progress_function() {
+std::function<void(double)> ui::worker::progress_function() {
     return [this](double val)->void {
         this->update_progress(val);
     };
 }
 
-void worker::update_progress(double pcnt) {
+void ui::worker::update_progress(double pcnt) {
     emit progress(pcnt);
 }
 
-void worker::process()
+void ui::worker::process()
 {
     output_ = job_();
     emit finished();
 }
 
-std::any worker::output() const {
+std::any ui::worker::output() const {
     return output_;
 }

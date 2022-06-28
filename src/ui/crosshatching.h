@@ -3,7 +3,7 @@
 #include "../crosshatching/drawing.hpp"
 #include "settingctrls.hpp"
 #include "treepanel.h"
-#include "cv_image_box.h"
+#include "image_box.h"
 #include <QtWidgets>
 #include <QtWidgets/QMainWindow>
 #include <opencv2/core.hpp>
