@@ -66,7 +66,9 @@ namespace ui {
         cv::Mat input_to_nth_stage(int index) const;
         cv::Mat segmentation() const;
         ch::crosshatching_job drawing_job() const;
-        std::vector<std::tuple<ch::brush_fn, double>> layers() const;
+        std::vector<std::tuple<ch::brush_fn, double>> brush_per_intervals() const;
+        std::vector<std::tuple<ch::brush_fn, cv::Mat>> layers() const;
+        std::vector<cv::Mat> layer_images() const;
         ch::crosshatching_params drawing_params() const;
         std::string image_src_filename() const;
         cv::Mat processed_image() const;

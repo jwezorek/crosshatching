@@ -352,11 +352,12 @@ void ui::crosshatching::test() {
 		redo_test_swatch();
 	} 
 	auto box = std::make_unique<ui::progress>();
+	auto layers = ch::generate_ink_layer_images(crosshatching_.swatch, {}, brush_per_intervals());
 	auto result = box->run(
-		"drawing test sample...",
+		"drawing test swatch...",
 		[&]()->std::any {
 			auto drawing = ch::generate_crosshatched_drawing(
-				{ {}, crosshatching_.swatch, {}, layers(), drawing_params() },
+				{ {}, layers, drawing_params() },
 				{ box->progress_func(), {}, {} }
 			);
 			return { drawing };
@@ -468,8 +469,8 @@ QWidget* ui::crosshatching::createCrosshatchCtrls() {
 	vert_splitter->setMaximumWidth(100);
 	QSplitter* splitter = new QSplitter();
 	splitter->addWidget(vert_splitter);
-
-	auto picture_panel = new QWidget();
+	
+	QWidget* picture_panel = new QWidget();
 	auto layout = new QHBoxLayout(picture_panel);
 	layout->addWidget( crosshatching_.img_swatch = new ui::cv_image_box() );
 	layout->addWidget( crosshatching_.drawing_swatch = new ui::cv_image_box());
@@ -478,7 +479,11 @@ QWidget* ui::crosshatching::createCrosshatchCtrls() {
 	crosshatching_.img_swatch->setFixedSize(QSize(swatch_box_sz, swatch_box_sz));
 	crosshatching_.drawing_swatch->setFixedSize(QSize(swatch_box_sz, swatch_box_sz));
 
-	splitter->addWidget(picture_panel);
+	QScrollArea* scroller = new QScrollArea();
+	scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+	scroller->setWidget(picture_panel);
+
+	splitter->addWidget(scroller);
 	splitter->setSizes(QList<int>({ 180,500 }));
 
 	return splitter;
@@ -539,8 +544,6 @@ cv::Mat ui::crosshatching::segmentation() const {
 ch::crosshatching_job ui::crosshatching::drawing_job() const {
 	return {
 		image_src_filename(),
-		processed_image(),
-		segmentation(),
 		layers(),
 		drawing_params()
 	};
@@ -554,16 +557,31 @@ cv::Mat ui::crosshatching::processed_image() const {
 	return img_proc_ctrls_.current;
 }
 
-std::vector<std::tuple<ch::brush_fn, double>> ui::crosshatching::layers() const {
+std::vector<std::tuple<ch::brush_fn, double>> ui::crosshatching::brush_per_intervals() const {
 	auto brush_dict = static_cast<brush_panel*>(crosshatching_.brushes)->brush_dictionary();
 	auto layer_name_vals = static_cast<layer_panel*>(crosshatching_.layers)->layers();
 	return layer_name_vals |
+			rv::transform(
+				[&](const auto& p)->std::tuple<ch::brush_fn, double> {
+					const auto& [brush_name, val] = p;
+					return { brush_dict.at(brush_name), val };
+				}
+		) | r::to_vector;
+}
+
+std::vector<std::tuple<ch::brush_fn, cv::Mat>> ui::crosshatching::layers() const {
+	auto brush_and_threshold = brush_per_intervals();
+	return generate_ink_layer_images( processed_image(), segmentation(), brush_and_threshold );
+}
+
+std::vector<cv::Mat> ui::crosshatching::layer_images() const {
+	auto layer_pairs = layers();
+	return layer_pairs |
 		rv::transform(
-			[&](const auto& p)->std::tuple<ch::brush_fn, double> {
-				const auto& [brush_name, val] = p;
-				return { brush_dict.at(brush_name), val };
+			[](const auto& tup)->cv::Mat {
+				return std::get<1>(tup);
 			}
-	) | r::to_vector;
+		) | r::to_vector;
 }
 
 ch::crosshatching_params ui::crosshatching::drawing_params() const {

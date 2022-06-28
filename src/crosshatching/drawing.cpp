@@ -1002,15 +1002,18 @@ namespace {
         }
     }
 
-    ch::drawing generate_crosshatched_drawing(cv::Mat img, cv::Mat label_img, const std::vector<std::tuple<ch::brush_fn, double>>& brush_intervals, const ch::crosshatching_params& params,
-            progress_logger& ps) {
+    std::tuple<std::vector<ch::brush_fn>, std::vector<cv::Mat>> split_layers_and_brushes(
+        const std::vector<std::tuple<ch::brush_fn, cv::Mat>>& brushes_and_imgs) {
+        return {
+            brushes_and_imgs | rv::transform([](const auto& p) {return std::get<0>(p); }) | r::to_vector,
+            brushes_and_imgs | rv::transform([](const auto& p) {return std::get<1>(p); }) | r::to_vector
+        };
+    }
 
-        sanitize_input_images(&img, &label_img);
+    ch::drawing draw_layers( const std::vector<std::tuple<ch::brush_fn, cv::Mat>>& layers_and_brushes, 
+            const ch::crosshatching_params& params, progress_logger& ps) {
 
-        auto [brushes, thresholds] = split_brush_thresholds(brush_intervals);
-
-        ps.log(std::string("  generating ") + std::to_string(thresholds.size()) + " layer images...");
-        auto layers = ink_layer_images(img, label_img, thresholds);
+        auto [brushes, layers] = split_layers_and_brushes(layers_and_brushes);
 
         ps.log("  constructing ink layer stack...");
         ink_layer_stack stack(layers, brushes, params.scale);
@@ -1029,19 +1032,29 @@ namespace {
 
         return ch::drawing{
             layer_strokes | rv::join | r::to_vector,
-            scaled_dimensions(img, params.scale),
+            scaled_dimensions(layers.front(), params.scale),
             static_cast<double>(params.stroke_width)
         };
     }
+}
 
+std::vector<std::tuple<ch::brush_fn, cv::Mat>> ch::generate_ink_layer_images(cv::Mat img, cv::Mat label_img,
+        const std::vector<std::tuple<ch::brush_fn, double>>& brush_intervals) {
+    sanitize_input_images(&img, &label_img);
+    auto [brushes, thresholds] = split_brush_thresholds(brush_intervals);
+    auto layer_images = ink_layer_images(img, label_img, thresholds);
+    return rv::zip(brushes, layer_images) | r::to<std::vector<std::tuple<ch::brush_fn,cv::Mat>>>();
 }
 
 ch::drawing ch::generate_crosshatched_drawing(const ch::crosshatching_job& job, const ch::callbacks& cbs) {
+    
     progress_logger ps(job.title, cbs);
     ps.status(std::string("drawing ") + job.title);
-    auto result = generate_crosshatched_drawing(job.img, job.label_img, job.layers, job.params, ps);
+    auto result = draw_layers(job.layers, job.params, ps);
     ps.status(std::string("complete.")); // TODO: or error
+
     return result;
+    
 }
 
 void ch::write_to_svg(const std::string& filename, const drawing& d) {

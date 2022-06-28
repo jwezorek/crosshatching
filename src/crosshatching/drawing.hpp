@@ -31,9 +31,7 @@ namespace ch {
 
     struct crosshatching_job {
         std::string title;
-        cv::Mat img; 
-        cv::Mat label_img;
-        std::vector<std::tuple<ch::brush_fn, double>> layers;
+        std::vector<std::tuple<ch::brush_fn, cv::Mat>> layers;
         crosshatching_params params;
     };
 
@@ -43,6 +41,10 @@ namespace ch {
         std::function<void(const std::string&)> log_message_cb;
     };
 
+    std::vector<std::tuple<ch::brush_fn, cv::Mat>> generate_ink_layer_images(
+        cv::Mat img, cv::Mat label_img,
+        const std::vector<std::tuple<ch::brush_fn, double>>& brush_intervals
+    );
     drawing generate_crosshatched_drawing(const crosshatching_job& job, const callbacks& cbs = {});
     void write_to_svg(const std::string& filename, const drawing& d);
     drawing scale(const drawing& d, double scale);
