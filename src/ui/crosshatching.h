@@ -4,6 +4,7 @@
 #include "settingctrls.hpp"
 #include "treepanel.h"
 #include "image_box.h"
+#include "image_tab_ctrl.h"
 #include <QtWidgets>
 #include <QtWidgets/QMainWindow>
 #include <opencv2/core.hpp>
@@ -28,11 +29,23 @@ namespace ui {
     };
 
     struct crosshatching_ctrls {
+
+        enum class view : int {
+            swatch = 0,
+            layers = 1,
+            drawing = 2
+        };
+
         tree_panel* brushes;
         list_panel* layers;
         image_box* img_swatch;
         image_box* drawing_swatch;
+        image_box* drawing;
+        image_tab_ctrl* layer_viewer;
+        QStackedWidget* viewer_stack;
         cv::Mat swatch;
+
+        void set_view(view v);
     };
 
     class crosshatching : public QMainWindow
@@ -61,6 +74,10 @@ namespace ui {
         void createMainMenu();
         QWidget* createImageProcPipelineCtrls();
         QWidget* createCrosshatchCtrls();
+
+        void set_swatch_view(cv::Mat swatch, bool left);
+        void set_layer_view(const std::vector<cv::Mat>& layers);
+
         void display(cv::Mat mat = {});
         void handle_pipeline_change(int index);
         cv::Mat input_to_nth_stage(int index) const;

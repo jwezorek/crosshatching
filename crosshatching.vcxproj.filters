@@ -73,6 +73,9 @@
     <ClCompile Include="src\ui\drawing_worker.cpp">
       <Filter>Source Files\ui</Filter>
     </ClCompile>
+    <ClCompile Include="src\ui\image_tab_ctrl.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="src\ui\crosshatching.qrc">
@@ -102,6 +105,9 @@
       <Filter>Source Files\ui</Filter>
     </QtMoc>
     <QtMoc Include="src\ui\drawing_worker.h">
+      <Filter>Source Files\ui</Filter>
+    </QtMoc>
+    <QtMoc Include="src\ui\image_tab_ctrl.h">
       <Filter>Source Files\ui</Filter>
     </QtMoc>
   </ItemGroup>

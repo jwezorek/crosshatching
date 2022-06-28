@@ -345,6 +345,7 @@ void ui::crosshatching::open()
 	display( img_proc_ctrls_.src );
 	change_source_image( img_proc_ctrls_.src );
 	img_proc_ctrls_.src_filename = fs::path(str).filename().string();
+
 }
 
 void ui::crosshatching::test() { 
@@ -367,14 +368,40 @@ void ui::crosshatching::test() {
 	auto test = std::any_cast<ch::drawing>(result);
 	test = ch::scale(test, k_swatch_scale);
 	cv::Mat test_swatch = paint_drawing(test);
-	crosshatching_.drawing_swatch->set_image(test_swatch); 
+	set_swatch_view(test_swatch, false);
+}
+
+void ui::crosshatching::set_swatch_view(cv::Mat swatch, bool left) {
+	if (left) {
+		crosshatching_.swatch = swatch;
+		crosshatching_.img_swatch->set_image(swatch, k_swatch_scale);
+		crosshatching_.drawing_swatch->set_image(swatch, k_swatch_scale);
+	} else {
+		crosshatching_.drawing_swatch->set_image(swatch);
+	}
+	crosshatching_.set_view(crosshatching_ctrls::view::swatch);
+}
+
+void ui::crosshatching::set_layer_view(const std::vector<cv::Mat>& layers) {
+	int n = static_cast<int>(layers.size());
+	auto names = rv::concat(
+			rv::iota(0, n) |
+			rv::transform(
+				[](int i)->std::string {
+					return "layer " + std::to_string(i + 1);
+				}
+			), 
+			rv::single(std::string("image"))
+		);
+	auto images = rv::concat(layers, rv::single(processed_image()));
+	auto tab_content = rv::zip(names, images) |
+		r::to<std::vector<std::tuple<std::string, cv::Mat>>>();
+	crosshatching_.layer_viewer->set_content(tab_content);
+	crosshatching_.set_view(crosshatching_ctrls::view::layers);
 }
 
 void ui::crosshatching::redo_test_swatch() {
-
-	crosshatching_.swatch = ui::test_swatch_picker::get_test_swatch(img_proc_ctrls_.current);
-	crosshatching_.img_swatch->set_image(crosshatching_.swatch, k_swatch_scale);
-	crosshatching_.drawing_swatch->set_image(crosshatching_.swatch, k_swatch_scale);
+	set_swatch_view(ui::test_swatch_picker::get_test_swatch(img_proc_ctrls_.current), true);
 }
 
 /*
@@ -479,11 +506,20 @@ QWidget* ui::crosshatching::createCrosshatchCtrls() {
 	crosshatching_.img_swatch->setFixedSize(QSize(swatch_box_sz, swatch_box_sz));
 	crosshatching_.drawing_swatch->setFixedSize(QSize(swatch_box_sz, swatch_box_sz));
 
-	QScrollArea* scroller = new QScrollArea();
-	scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
-	scroller->setWidget(picture_panel);
+	QScrollArea* swatch_viewer = new QScrollArea();
+	swatch_viewer->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+	swatch_viewer->setWidget(picture_panel);
 
-	splitter->addWidget(scroller);
+	crosshatching_.layer_viewer = new image_tab_ctrl();
+	crosshatching_.drawing = new image_box();
+
+	crosshatching_.viewer_stack = new QStackedWidget();
+
+	crosshatching_.viewer_stack->addWidget(swatch_viewer);
+	crosshatching_.viewer_stack->addWidget(crosshatching_.layer_viewer);
+	crosshatching_.viewer_stack->addWidget(crosshatching_.drawing);
+
+	splitter->addWidget(crosshatching_.viewer_stack);
 	splitter->setSizes(QList<int>({ 180,500 }));
 
 	return splitter;
@@ -646,4 +682,9 @@ ui::view_state ui::crosshatching::view_state() const {
 	auto view_menu = menuBar()->actions()[k_view_menu_index];
 	auto items = view_menu->children();
 	return {};
+}
+
+void ui::crosshatching_ctrls::set_view(view v)
+{
+	viewer_stack->setCurrentIndex( static_cast<int>(v) );
 }

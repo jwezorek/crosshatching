@@ -162,6 +162,7 @@
     <ClCompile Include="src\ui\dialogs.cpp" />
     <ClCompile Include="src\ui\drawing_worker.cpp" />
     <ClCompile Include="src\ui\float_value_slider.cpp" />
+    <ClCompile Include="src\ui\image_tab_ctrl.cpp" />
     <ClCompile Include="src\ui\settingctrls.cpp" />
     <ClCompile Include="src\ui\treepanel.cpp" />
   </ItemGroup>
@@ -181,6 +182,7 @@
     <ClInclude Include="src\crosshatching\peglib.h" />
     <ClInclude Include="src\crosshatching\segmentation.hpp" />
     <ClInclude Include="src\crosshatching\util.hpp" />
+    <QtMoc Include="src\ui\image_tab_ctrl.h" />
     <QtMoc Include="src\ui\drawing_worker.h" />
     <QtMoc Include="src\ui\image_box.h" />
     <QtMoc Include="src\ui\brush_viewer.h" />
