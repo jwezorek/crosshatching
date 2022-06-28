@@ -21,7 +21,7 @@ namespace ui {
     struct image_processing_ctrls {
         std::string src_filename;
         std::vector<image_processing_pipeline_item*> pipeline;
-        cv_image_box* image_box;
+        image_box* img_box;
         cv::Mat src;
         cv::Mat current;
         view_state view_state;
@@ -30,8 +30,8 @@ namespace ui {
     struct crosshatching_ctrls {
         tree_panel* brushes;
         list_panel* layers;
-        cv_image_box* img_swatch;
-        cv_image_box* drawing_swatch;
+        image_box* img_swatch;
+        image_box* drawing_swatch;
         cv::Mat swatch;
     };
 

@@ -87,7 +87,7 @@ namespace ui {
     private:
         void update_btn_enabled_state();
 
-        cv_image_box* selector_;
+        image_box* selector_;
         QDialogButtonBox* btns_;
         cv::Mat src_img_;
     };

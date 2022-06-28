@@ -32,11 +32,11 @@ namespace {
         return cv::Rect(r.x(), r.y(), r.width(), r.height());
     }
 
-    class rect_in_image_selector : public ui::cv_image_box {
+    class rect_in_image_selector : public ui::image_box {
 
     public:
         rect_in_image_selector(cv::Mat img, std::function<void()> state_change_callback) :
-                cv_image_box(img),
+                image_box(img),
                 selected_rect_(0,0,0,0),
                 state_change_cb_(state_change_callback) {
             selection_in_progress_ = false;

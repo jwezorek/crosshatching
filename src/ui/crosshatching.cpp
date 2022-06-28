@@ -472,8 +472,8 @@ QWidget* ui::crosshatching::createCrosshatchCtrls() {
 	
 	QWidget* picture_panel = new QWidget();
 	auto layout = new QHBoxLayout(picture_panel);
-	layout->addWidget( crosshatching_.img_swatch = new ui::cv_image_box() );
-	layout->addWidget( crosshatching_.drawing_swatch = new ui::cv_image_box());
+	layout->addWidget( crosshatching_.img_swatch = new ui::image_box() );
+	layout->addWidget( crosshatching_.drawing_swatch = new ui::image_box());
 
 	int swatch_box_sz = test_swatch_picker::swatch_sz() * k_swatch_scale;
 	crosshatching_.img_swatch->setFixedSize(QSize(swatch_box_sz, swatch_box_sz));
@@ -508,7 +508,7 @@ QWidget* ui::crosshatching::createImageProcPipelineCtrls()
 	}
 
 	QScrollArea* scroller = new QScrollArea();
-	scroller->setWidget(img_proc_ctrls_.image_box = new cv_image_box());
+	scroller->setWidget(img_proc_ctrls_.img_box = new image_box());
 	scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
 	QSplitter* splitter = new QSplitter();
@@ -623,9 +623,9 @@ void ui::crosshatching::display(cv::Mat img) {
 	int wd = mat.cols;
 	int hgt = mat.rows;
 	int stride = mat.step;
-	img_proc_ctrls_.image_box->setFixedHeight(hgt);
-	img_proc_ctrls_.image_box->setFixedWidth(wd);
-	img_proc_ctrls_.image_box->set_image(mat);
+	img_proc_ctrls_.img_box->setFixedHeight(hgt);
+	img_proc_ctrls_.img_box->setFixedWidth(wd);
+	img_proc_ctrls_.img_box->set_image(mat);
 }
 
 std::tuple<int, int> ui::crosshatching::source_image_sz() const {
