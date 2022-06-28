@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../crosshatching/drawing.hpp"
+#include "../crosshatching/brush_language.hpp"
 #include "settingctrls.hpp"
 #include "treepanel.h"
 #include "image_box.h"
@@ -28,6 +29,57 @@ namespace ui {
         view_state view_state;
     };
 
+	class layer_panel : public ui::list_panel {
+
+        Q_OBJECT
+
+	public:
+		layer_panel();
+		void set_brush_names(const std::vector<std::string>& brush_names);
+        std::vector<std::tuple<std::string, double>> layers() const;
+
+	private:
+
+		std::vector<std::string> brush_names_;
+		std::map<double, std::string> layers_;
+
+        std::tuple<std::string, double> row(int n) const;
+        void add_layer();
+        void cell_double_clicked(int r, int col);
+        void delete_layer();
+        void insert_layer(const std::string& brush, double end_of_range);
+        void setRowText(int row, const std::string& brush, const std::string& from, const std::string& to);
+        void sync_layers_to_ui();
+	};
+
+	class brush_panel : public ui::tree_panel {
+
+        Q_OBJECT
+
+	public:
+
+		brush_panel(layer_panel& layers);
+		std::vector<std::string> brush_names() const;
+        std::unordered_map<std::string, ch::brush_fn> brush_dictionary() const;
+
+	private:
+
+		layer_panel& layer_panel_;
+
+		class brush_item : public QTreeWidgetItem {
+		public:
+            brush_item(const std::string& name, ch::brush_expr_ptr expr);
+            brush_item(ch::brush_expr_ptr expr);
+			ch::brush_expr_ptr brush_expr;
+		};
+
+        static void insert_brush_item(brush_item* parent, brush_item* item);
+        static void insert_toplevel_item(QTreeWidget* tree, const std::string& name, ch::brush_expr_ptr expr);
+        void add_brush_node();
+        void delete_brush_node();
+        void sync_layer_panel();
+	};
+
     struct crosshatching_ctrls {
 
         enum class view : int {
@@ -36,8 +88,8 @@ namespace ui {
             drawing = 2
         };
 
-        tree_panel* brushes;
-        list_panel* layers;
+        brush_panel* brushes;
+        layer_panel* layers;
         image_box* img_swatch;
         image_box* drawing_swatch;
         image_box* drawing;

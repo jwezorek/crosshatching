@@ -4,7 +4,6 @@
 #include "dialogs.h"
 #include "../crosshatching/drawing.hpp"
 #include "../crosshatching/util.hpp"
-#include "../crosshatching/brush_language.hpp"
 #include <QtWidgets>
 #include <QSlider>
 #include <opencv2/core.hpp>
@@ -111,212 +110,6 @@ namespace {
 
 		return ch_menu;
 	}
-
-	class layer_panel : public ui::list_panel {
-
-	public:
-		layer_panel() :
-			ui::list_panel("layers", 3, [&]() { this->add_layer(); }, [&]() { this->delete_layer(); }) {
-
-			//layers_->horizontalHeader()->setStretchLastSection(true);
-			list()->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-			list()->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
-			list()->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed);
-			list()->setColumnWidth(1, 75);
-			list()->setColumnWidth(2, 75);
-			//list()->setSelectionMode(QAbstractItemView::NoSelection);
-			list()->setSelectionBehavior(QAbstractItemView::SelectRows);
-			list()->connect(list(), &QTableWidget::cellDoubleClicked, this, &layer_panel::cell_double_clicked);
-			list()->setHorizontalHeaderLabels(QStringList{ "brush", "from value", "to value" });
-
-			setEnabled(false);
-		}
-
-		void set_brush_names(const std::vector<std::string>& brush_names) {
-			brush_names_ = brush_names;
-			setEnabled(!brush_names_.empty());
-		}
-
-		std::vector<std::tuple<std::string, double>> layers() const {
-			return layers_ |
-				rv::transform(
-					[](const auto& p)->std::tuple<std::string, double> {
-						const auto& [val, name] = p;
-						return { name, val };
-					}
-			) | r::to_vector;
-		}
-
-	private:
-
-		std::vector<std::string> brush_names_;
-		std::map<double, std::string> layers_;
-
-
-		std::tuple<std::string, double> row(int n) const {
-			auto brush = list()->item(n, 0)->text().toStdString();
-			auto val = list()->item(n, 2)->text().toDouble();
-			return { brush,val };
-		}
-
-		void add_layer() {
-			auto result = ui::layer_dialog::create_layer_item(brush_names_, list()->rowCount() == 0);
-			if (result) {
-				auto [brush, end_of_range] = *result;
-				insert_layer(brush, end_of_range);
-			}
-		}
-
-		void cell_double_clicked(int r, int col) {
-			auto [brush, val] = row(r);
-			auto result = ui::layer_dialog::edit_layer_item(brush_names_, brush, val);
-			if (result) {
-				layers_.erase(val);
-				auto [brush, end_of_range] = *result;
-				insert_layer(brush, end_of_range);
-			}
-		}
-
-	    void delete_layer() {
-			auto current_row = list()->currentRow();
-			if (current_row >= 0) {
-				auto [brush, val] = row(current_row);
-				layers_.erase(val);
-				sync_layers_to_ui();
-			}
-		}
-
-		void insert_layer(const std::string& brush, double end_of_range) {
-			layers_[end_of_range] = brush;
-			sync_layers_to_ui();
-		}
-
-		void setRowText(int row, const std::string& brush, const std::string& from, const std::string& to) {
-			std::array<QTableWidgetItem*, 3> items = {
-				new QTableWidgetItem(brush.c_str()),
-				new QTableWidgetItem(from.c_str()),
-				new QTableWidgetItem(to.c_str())
-			};
-			for (auto [col, item] : rv::enumerate(items)) {
-				item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-				list()->setItem(row, col, item );
-			}
-		}
-
-		void sync_layers_to_ui() {
-			list()->setRowCount(layers_.size());
-			int row = 0;
-			std::string prev = "0.0";
-			for (const auto& [val, name] : layers_) {
-				std::string curr = std::to_string(val);
-				setRowText(row, name, prev, curr);
-				prev = curr;
-				++row;
-			}
-		}
-	};
-
-	class brush_panel : public ui::tree_panel {
-
-	public:
-
-		brush_panel( layer_panel& layers ) : 
-				tree_panel("brushes", [&]() {this->add_brush_node(); }, [&]() {this->delete_brush_node(); }),
-				layer_panel_(layers) {
-		}
-
-		std::vector<std::string> brush_names() const {
-			std::vector<std::string> brushes(tree()->topLevelItemCount());
-			for (int i = 0; i < tree()->topLevelItemCount(); ++i) {
-				QTreeWidgetItem* item = tree()->topLevelItem(i);
-				brushes[i] = item->text(0).toStdString();
-			}
-			return brushes;
-		}
-
-		std::unordered_map<std::string, ch::brush_fn> brush_dictionary() const {
-			std::unordered_map<std::string, ch::brush_fn> dictionary;
-			for (int i = 0; i < tree()->topLevelItemCount(); ++i) {
-				QTreeWidgetItem* item = tree()->topLevelItem(i);
-				std::string name = item->text(0).toStdString();
-				brush_item* bi = static_cast<brush_item*>(item);
-				dictionary[name] = std::get<ch::brush_fn>( bi->brush_expr->eval() );
-			}
-			return dictionary;
-		}
-
-	private:
-
-		layer_panel& layer_panel_;
-
-		class brush_item : public QTreeWidgetItem {
-		public:
-			brush_item(const std::string& name, ch::brush_expr_ptr expr) :
-				QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString(name.c_str()))),
-				brush_expr(expr)
-			{}
-
-			brush_item(ch::brush_expr_ptr expr) :
-				QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString(expr->to_short_string().c_str()))),
-				brush_expr(expr)
-			{}
-
-			ch::brush_expr_ptr brush_expr;
-		};
-
-		static void insert_brush_item(brush_item* parent, brush_item* item) {
-			parent->addChild(item);
-			if (item->brush_expr->is_expression()) {
-				auto expr = item->brush_expr;
-				auto children = expr->children();
-				if (!children) {
-					return;
-				}
-				for (auto child : *children) {
-					insert_brush_item(item, new brush_item(child));
-				}
-			}
-		}
-
-		static void insert_toplevel_item(QTreeWidget* tree, const std::string& name, ch::brush_expr_ptr expr) {
-			auto toplevel_item = new brush_item(name, expr);
-			tree->addTopLevelItem(toplevel_item);
-			auto children = expr->children();
-
-			if (!children) {
-				return;
-			}
-
-			for (auto child : *children) {
-				insert_brush_item(toplevel_item, new brush_item(child));
-			}
-		}
-
-	   void add_brush_node() {
-			if (tree()->selectedItems().empty()) {
-				auto result = ui::brush_dialog::create_brush();
-				if (result) {
-					const auto& [name, brush] = *result;
-					insert_toplevel_item(tree(), name, brush);
-					sync_layer_panel();
-				}
-			} else {
-				// TODO: add child item
-			}
-		}
-
-		void delete_brush_node() {
-			if (!tree()->selectedItems().empty()) {
-				QMessageBox mb;
-				mb.setText( tree()->selectedItems().first()->text(0) + " delete");
-				mb.exec();
-			}
-		}
-
-		void sync_layer_panel() {
-			layer_panel_.set_brush_names(brush_names());
-		}
-	};
 
 }
 
@@ -687,4 +480,190 @@ ui::view_state ui::crosshatching::view_state() const {
 void ui::crosshatching_ctrls::set_view(view v)
 {
 	viewer_stack->setCurrentIndex( static_cast<int>(v) );
+}
+
+/*------------------------------------------------------------------------------------------*/
+
+ui::layer_panel::layer_panel() :
+	ui::list_panel("layers", 3, [&]() { this->add_layer(); }, [&]() { this->delete_layer(); }) {
+
+	//layers_->horizontalHeader()->setStretchLastSection(true);
+	list()->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+	list()->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
+	list()->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed);
+	list()->setColumnWidth(1, 75);
+	list()->setColumnWidth(2, 75);
+	//list()->setSelectionMode(QAbstractItemView::NoSelection);
+	list()->setSelectionBehavior(QAbstractItemView::SelectRows);
+	list()->connect(list(), &QTableWidget::cellDoubleClicked, this, &layer_panel::cell_double_clicked);
+	list()->setHorizontalHeaderLabels(QStringList{ "brush", "from value", "to value" });
+
+	setEnabled(false);
+}
+
+void ui::layer_panel::set_brush_names(const std::vector<std::string>& brush_names) {
+	brush_names_ = brush_names;
+	setEnabled(!brush_names_.empty());
+}
+
+std::vector<std::tuple<std::string, double>> ui::layer_panel::layers() const {
+	return layers_ |
+		rv::transform(
+			[](const auto& p)->std::tuple<std::string, double> {
+				const auto& [val, name] = p;
+				return { name, val };
+			}
+	) | r::to_vector;
+}
+
+std::tuple<std::string, double> ui::layer_panel::row(int n) const {
+	auto brush = list()->item(n, 0)->text().toStdString();
+	auto val = list()->item(n, 2)->text().toDouble();
+	return { brush,val };
+}
+
+void ui::layer_panel::add_layer() {
+	auto result = ui::layer_dialog::create_layer_item(brush_names_, list()->rowCount() == 0);
+	if (result) {
+		auto [brush, end_of_range] = *result;
+		insert_layer(brush, end_of_range);
+	}
+}
+
+void ui::layer_panel::cell_double_clicked(int r, int col) {
+	auto [brush, val] = row(r);
+	auto result = ui::layer_dialog::edit_layer_item(brush_names_, brush, val);
+	if (result) {
+		layers_.erase(val);
+		auto [brush, end_of_range] = *result;
+		insert_layer(brush, end_of_range);
+	}
+}
+
+void ui::layer_panel::delete_layer() {
+	auto current_row = list()->currentRow();
+	if (current_row >= 0) {
+		auto [brush, val] = row(current_row);
+		layers_.erase(val);
+		sync_layers_to_ui();
+	}
+}
+
+void ui::layer_panel::insert_layer(const std::string& brush, double end_of_range) {
+	layers_[end_of_range] = brush;
+	sync_layers_to_ui();
+}
+
+void ui::layer_panel::setRowText(int row, const std::string& brush, const std::string& from, const std::string& to) {
+	std::array<QTableWidgetItem*, 3> items = {
+		new QTableWidgetItem(brush.c_str()),
+		new QTableWidgetItem(from.c_str()),
+		new QTableWidgetItem(to.c_str())
+	};
+	for (auto [col, item] : rv::enumerate(items)) {
+		item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+		list()->setItem(row, col, item);
+	}
+}
+
+void ui::layer_panel::sync_layers_to_ui() {
+	list()->setRowCount(layers_.size());
+	int row = 0;
+	std::string prev = "0.0";
+	for (const auto& [val, name] : layers_) {
+		std::string curr = std::to_string(val);
+		setRowText(row, name, prev, curr);
+		prev = curr;
+		++row;
+	}
+}
+
+/*------------------------------------------------------------------------------------------*/
+
+ui::brush_panel::brush_panel(layer_panel& layers) :
+	tree_panel("brushes", [&]() {this->add_brush_node(); }, [&]() {this->delete_brush_node(); }),
+	layer_panel_(layers) {
+}
+
+std::vector<std::string> ui::brush_panel::brush_names() const {
+	std::vector<std::string> brushes(tree()->topLevelItemCount());
+	for (int i = 0; i < tree()->topLevelItemCount(); ++i) {
+		QTreeWidgetItem* item = tree()->topLevelItem(i);
+		brushes[i] = item->text(0).toStdString();
+	}
+	return brushes;
+}
+
+std::unordered_map<std::string, ch::brush_fn> ui::brush_panel::brush_dictionary() const {
+	std::unordered_map<std::string, ch::brush_fn> dictionary;
+	for (int i = 0; i < tree()->topLevelItemCount(); ++i) {
+		QTreeWidgetItem* item = tree()->topLevelItem(i);
+		std::string name = item->text(0).toStdString();
+		brush_item* bi = static_cast<brush_item*>(item);
+		dictionary[name] = std::get<ch::brush_fn>(bi->brush_expr->eval());
+	}
+	return dictionary;
+}
+
+ui::brush_panel::brush_item::brush_item(const std::string& name, ch::brush_expr_ptr expr) :
+	QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString(name.c_str()))),
+	brush_expr(expr)
+{}
+
+ui::brush_panel::brush_item::brush_item(ch::brush_expr_ptr expr) :
+	QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString(expr->to_short_string().c_str()))),
+	brush_expr(expr)
+{}
+
+void ui::brush_panel::insert_brush_item(brush_item* parent, brush_item* item) {
+	parent->addChild(item);
+	if (item->brush_expr->is_expression()) {
+		auto expr = item->brush_expr;
+		auto children = expr->children();
+		if (!children) {
+			return;
+		}
+		for (auto child : *children) {
+			insert_brush_item(item, new brush_item(child));
+		}
+	}
+}
+
+void ui::brush_panel::insert_toplevel_item(QTreeWidget* tree, const std::string& name, ch::brush_expr_ptr expr) {
+	auto toplevel_item = new brush_item(name, expr);
+	tree->addTopLevelItem(toplevel_item);
+	auto children = expr->children();
+
+	if (!children) {
+		return;
+	}
+
+	for (auto child : *children) {
+		insert_brush_item(toplevel_item, new brush_item(child));
+	}
+}
+
+void ui::brush_panel::add_brush_node() {
+	if (tree()->selectedItems().empty()) {
+		auto result = ui::brush_dialog::create_brush();
+		if (result) {
+			const auto& [name, brush] = *result;
+			insert_toplevel_item(tree(), name, brush);
+			sync_layer_panel();
+		}
+	} else {
+		// TODO: add child item
+	}
+}
+
+void ui::brush_panel::delete_brush_node() {
+	if (!tree()->selectedItems().empty()) {
+		QMessageBox mb;
+		mb.setText(tree()->selectedItems().first()->text(0) + " delete");
+		mb.exec();
+	}
+}
+
+void ui::brush_panel::sync_layer_panel() {
+	layer_panel_.set_brush_names(brush_names());
 }
