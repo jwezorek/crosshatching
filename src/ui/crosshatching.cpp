@@ -161,6 +161,15 @@ void ui::crosshatching::test() {
 	auto test = std::any_cast<ch::drawing>(result);
 	test = ch::scale(test, k_swatch_scale);
 	cv::Mat test_swatch = paint_drawing(test);
+
+	int swatch_box_sz = test_swatch_picker::swatch_sz() * k_swatch_scale;
+	if (swatch_box_sz != test_swatch.rows) {
+		double scale = static_cast<double>(swatch_box_sz) / test_swatch.rows;
+		qDebug() << "scale: " << scale;
+		test_swatch = ch::convert_to_3channel_grayscale(test_swatch);
+		cv::resize(test_swatch, test_swatch, cv::Size(), scale, scale, cv::INTER_AREA);
+	}
+
 	set_swatch_view(test_swatch, false);
 }
 
@@ -197,56 +206,6 @@ void ui::crosshatching::set_layer_view() {
 void ui::crosshatching::redo_test_swatch() {
 	set_swatch_view(ui::test_swatch_picker::get_test_swatch(img_proc_ctrls_.current), true);
 }
-
-/*
-void ui::crosshatching::test() {
-	auto start_time = std::chrono::system_clock::now();
-	std::string script = R"(
-        (pipe
-            (merge
-                (pipe 
-                    (lin_brush
-                        (norm_rnd (lerp 0 800) (lerp 50 100))
-                        (norm_rnd (lerp 200 0) (lerp 20 0.05))
-                        (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
-                    )
-                	(rot 45)
-                    (dis (ramp 0.20 false true))
-                )
-                (pipe 
-                    (ramp 0.50 true true)
-                    (lin_brush
-                        (norm_rnd (lerp 0 800) (lerp 50 100))
-                        (norm_rnd (lerp 200 0) (lerp 20 0.05))
-                        (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
-                    )
-                    (rot 315)
-                    (dis (ramp 0.20 false true))
-                )
-            )
-            (jiggle (norm_rnd 0.0 0.02))
-        )
-	)";
-    auto result = ch::brush_language_to_func(script);
-	if (std::holds_alternative<std::string>(result)) {
-		QMessageBox msg_box;
-		msg_box.setText(std::get<std::string>(result).c_str());
-		msg_box.exec();
-		return;
-	}
-	//ch::brush br(std::get<ch::brush_fn>(result));
-	//br.build_n(10);
-
-	cv::Mat mat = current_image_;
-	auto drawing = ch::generate_crosshatched_drawing(mat, { {std::get<ch::brush_fn>(result), 1.0} }, ch::crosshatching_params(5.0));
-	ch::to_svg("C:\\test\\testo.svg", drawing);
-
-	std::chrono::duration<double> elapsed = std::chrono::system_clock::now() - start_time;
-	QMessageBox msg_box;
-	msg_box.setText(std::to_string(elapsed.count()).c_str());
-	msg_box.exec();
-}
-*/
 
 void ui::crosshatching::generate() {
 	auto progress_box = std::make_unique<ui::drawing_progress>( drawing_job() );

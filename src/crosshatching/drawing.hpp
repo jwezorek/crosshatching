@@ -21,7 +21,7 @@ namespace ch {
         double epsilon;
         double swatch_sz;
 
-        crosshatching_params(double sc = 1.0, int sw = 1, double eps = k_epsilon, double sz = k_swatch_sz) :
+        crosshatching_params(double sc = 5.0, int sw = 1, double eps = k_epsilon, double sz = k_swatch_sz) :
             scale(sc),
             stroke_width(sw),
             epsilon(eps),
