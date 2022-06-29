@@ -20,7 +20,7 @@ namespace ui {
         {}
     };
 
-    struct image_processing_ctrls {
+    struct image_processing_tools {
         std::string src_filename;
         std::vector<image_processing_pipeline_item*> pipeline;
         image_box* img_box;
@@ -83,7 +83,7 @@ namespace ui {
         void sync_layer_panel();
 	};
 
-    struct crosshatching_ctrls {
+    struct drawing_tools {
 
         enum class view : int {
             swatch = 0,
@@ -103,12 +103,12 @@ namespace ui {
         void set_view(view v);
     };
 
-    class crosshatching : public QMainWindow
+    class main_window : public QMainWindow
     {
         Q_OBJECT
 
     public:
-        crosshatching(QWidget* parent = Q_NULLPTR);
+        main_window(QWidget* parent = Q_NULLPTR);
 
         void open();
         void save_processed_image();
@@ -126,12 +126,13 @@ namespace ui {
         void handle_view_bw_change(bool bw);
 
     private:
-        void createMainMenu();
-        QWidget* createImageProcPipelineCtrls();
-        QWidget* createCrosshatchCtrls();
+        void create_main_menu();
+        QWidget* create_image_processing_pipeline_tools();
+        QWidget* create_drawing_tools();
 
         void set_swatch_view(cv::Mat swatch, bool left);
         void set_layer_view();
+        void set_drawing_view(cv::Mat drawing);
 
         void display(cv::Mat mat = {});
         void handle_pipeline_change(int index);
@@ -148,8 +149,8 @@ namespace ui {
         std::tuple<int, int> source_image_sz() const;
         ui::view_state view_state() const;
 
-        image_processing_ctrls img_proc_ctrls_;
-        crosshatching_ctrls crosshatching_;
+        image_processing_tools img_proc_ctrls_;
+        drawing_tools crosshatching_;
     };
 
 };

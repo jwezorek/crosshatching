@@ -157,7 +157,7 @@
     <ClCompile Include="src\crosshatching\util.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\ui\brush_viewer.cpp" />
-    <ClCompile Include="src\ui\crosshatching.cpp" />
+    <ClCompile Include="src\ui\main_window.cpp" />
     <ClCompile Include="src\ui\image_box.cpp" />
     <ClCompile Include="src\ui\dialogs.cpp" />
     <ClCompile Include="src\ui\drawing_worker.cpp" />
@@ -170,7 +170,7 @@
     <QtRcc Include="src\ui\crosshatching.qrc" />
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="src\ui\crosshatching.h" />
+    <QtMoc Include="src\ui\main_window.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\crosshatching\brush.hpp" />

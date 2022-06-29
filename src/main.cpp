@@ -1,4 +1,4 @@
-#include "ui/crosshatching.h"
+#include "ui/main_window.h"
 #include <QtWidgets/QApplication>
 #include <qstylefactory.h>
 #include <functional>
@@ -37,9 +37,9 @@ void setDarkTheme() {
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
+    QApplication app(argc, argv);
 	setDarkTheme();
-    ui::crosshatching w;
-    w.show();
-    return a.exec();
+    ui::main_window app_window;
+	app_window.show();
+    return app.exec();
 }

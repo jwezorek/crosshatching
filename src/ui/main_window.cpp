@@ -1,4 +1,4 @@
-#include "crosshatching.h"
+#include "main_window.h"
 #include "settingctrls.hpp"
 #include "treepanel.h"
 #include "dialogs.h"
@@ -31,13 +31,13 @@ namespace {
 	constexpr auto k_controls_width = 300;
 	constexpr auto k_swatch_scale = 4.0;
 
-	QMenu* create_view_menu(ui::crosshatching* parent) {
+	QMenu* create_view_menu(ui::main_window* parent) {
 		auto tr = [parent](const char* str) {return parent->tr(str); };
 		QMenu* view_menu = new QMenu(tr("&View"));
 
 		QAction* action_bw = new QAction(tr("Black and white"), parent);
 		action_bw->setCheckable(true);
-		parent->connect(action_bw, &QAction::toggled, parent, &ui::crosshatching::handle_view_bw_change);
+		parent->connect(action_bw, &QAction::toggled, parent, &ui::main_window::handle_view_bw_change);
 
 		QActionGroup* scale_actions = new QActionGroup(parent);
 		std::array<int,10> scales = { 100, 125, 150, 175, 200, 250, 300, 350, 400, 500 };
@@ -63,16 +63,16 @@ namespace {
 		return view_menu;
 	}
 
-	QMenu* create_file_menu(ui::crosshatching* parent) {
+	QMenu* create_file_menu(ui::main_window* parent) {
 		auto tr = [parent](const char* str) {return parent->tr(str); };
 		QMenu* file_menu = new QMenu(tr("&File"));
 
 		QAction* action_open = new QAction(tr("&Open ..."), parent);
-		parent->connect(action_open, &QAction::triggered, parent, &ui::crosshatching::open);
+		parent->connect(action_open, &QAction::triggered, parent, &ui::main_window::open);
 		file_menu->addAction(action_open);
 
 		QAction* action_save = new QAction(tr("Save processed image ..."), parent);
-		parent->connect(action_save, &QAction::triggered, parent, &ui::crosshatching::save_processed_image);
+		parent->connect(action_save, &QAction::triggered, parent, &ui::main_window::save_processed_image);
 		file_menu->addAction(action_save);
 
 		file_menu->addSeparator();
@@ -84,28 +84,28 @@ namespace {
 		return file_menu;
 	}
 
-	QMenu* create_crosshatching_menu(ui::crosshatching* parent) {
+	QMenu* create_crosshatching_menu(ui::main_window* parent) {
 		auto tr = [parent](const char* str) {return parent->tr(str); };
 		QMenu* ch_menu = new QMenu(tr("&Crosshatching"));
 
 		QAction* actionOpen = new QAction(tr("&Settings"), parent);
-		parent->connect(actionOpen, &QAction::triggered, parent, &ui::crosshatching::edit_settings);
+		parent->connect(actionOpen, &QAction::triggered, parent, &ui::main_window::edit_settings);
 		ch_menu->addAction(actionOpen);
 
 		ch_menu->addSeparator();
 
 		QAction* action_test = new QAction(tr("&Test"), parent);
-		parent->connect(action_test, &QAction::triggered, parent, &ui::crosshatching::test);
+		parent->connect(action_test, &QAction::triggered, parent, &ui::main_window::test);
 		ch_menu->addAction(action_test);
 
 		QAction* redo_test_swatch = new QAction(tr("Change test swatch"), parent);
-		parent->connect(redo_test_swatch, &QAction::triggered, parent, &ui::crosshatching::redo_test_swatch);
+		parent->connect(redo_test_swatch, &QAction::triggered, parent, &ui::main_window::redo_test_swatch);
 		ch_menu->addAction(redo_test_swatch);
 
 		ch_menu->addSeparator();
 
 		QAction* action_generate = new QAction(tr("&Generate"), parent);
-		parent->connect(action_generate, &QAction::triggered, parent, &ui::crosshatching::generate);
+		parent->connect(action_generate, &QAction::triggered, parent, &ui::main_window::generate);
 		ch_menu->addAction(action_generate);
 
 		return ch_menu;
@@ -113,22 +113,22 @@ namespace {
 
 }
 
-ui::crosshatching::crosshatching(QWidget *parent)
+ui::main_window::main_window(QWidget *parent)
     : QMainWindow(parent)
 {
 	resize(QGuiApplication::primaryScreen()->availableGeometry().size() * 0.7);
-	createMainMenu();
+	create_main_menu();
 
 	QTabWidget* tab_ctrl = new QTabWidget();
 	tab_ctrl->setTabPosition(QTabWidget::TabPosition::East);
-	tab_ctrl->addTab( createImageProcPipelineCtrls(), "image");
-	tab_ctrl->addTab( createCrosshatchCtrls(), "crosshatch");
+	tab_ctrl->addTab( create_image_processing_pipeline_tools(), "image");
+	tab_ctrl->addTab( create_drawing_tools(), "crosshatch");
 
     setCentralWidget(tab_ctrl);
 	handle_source_image_change( img_proc_ctrls_.src );
 }
 
-void ui::crosshatching::open()
+void ui::main_window::open()
 {
 	auto image_filename = QFileDialog::getOpenFileName(this,
 		tr("Open image"), "/home", tr("PNG (*.png);; Bitmap (*.bmp);; JPeg (*.jpeg *.jpg)"));
@@ -138,10 +138,9 @@ void ui::crosshatching::open()
 	display( img_proc_ctrls_.src );
 	change_source_image( img_proc_ctrls_.src );
 	img_proc_ctrls_.src_filename = fs::path(str).filename().string();
-
 }
 
-void ui::crosshatching::test() { 
+void ui::main_window::test() {
 	if (crosshatching_.swatch.empty()) {
 		redo_test_swatch();
 	} 
@@ -165,7 +164,6 @@ void ui::crosshatching::test() {
 	int swatch_box_sz = test_swatch_picker::swatch_sz() * k_swatch_scale;
 	if (swatch_box_sz != test_swatch.rows) {
 		double scale = static_cast<double>(swatch_box_sz) / test_swatch.rows;
-		qDebug() << "scale: " << scale;
 		test_swatch = ch::convert_to_3channel_grayscale(test_swatch);
 		cv::resize(test_swatch, test_swatch, cv::Size(), scale, scale, cv::INTER_AREA);
 	}
@@ -173,7 +171,7 @@ void ui::crosshatching::test() {
 	set_swatch_view(test_swatch, false);
 }
 
-void ui::crosshatching::set_swatch_view(cv::Mat swatch, bool left) {
+void ui::main_window::set_swatch_view(cv::Mat swatch, bool left) {
 	if (left) {
 		crosshatching_.swatch = swatch;
 		crosshatching_.img_swatch->set_image(swatch, k_swatch_scale);
@@ -181,10 +179,10 @@ void ui::crosshatching::set_swatch_view(cv::Mat swatch, bool left) {
 	} else {
 		crosshatching_.drawing_swatch->set_image(swatch);
 	}
-	crosshatching_.set_view(crosshatching_ctrls::view::swatch);
+	crosshatching_.set_view(drawing_tools::view::swatch);
 }
 
-void ui::crosshatching::set_layer_view() {
+void ui::main_window::set_layer_view() {
 	auto layers = layer_images();
 	int n = static_cast<int>(layers.size());
 	auto names = rv::concat(
@@ -200,35 +198,41 @@ void ui::crosshatching::set_layer_view() {
 	auto tab_content = rv::zip(names, images) |
 		r::to<std::vector<std::tuple<std::string, cv::Mat>>>();
 	crosshatching_.layer_viewer->set_content(tab_content);
-	crosshatching_.set_view(crosshatching_ctrls::view::layers);
+	crosshatching_.set_view(drawing_tools::view::layers);
 }
 
-void ui::crosshatching::redo_test_swatch() {
+void ui::main_window::set_drawing_view(cv::Mat drawing) {
+	crosshatching_.drawing->setFixedSize(drawing.cols, drawing.rows);
+	crosshatching_.drawing->set_image(drawing);
+	crosshatching_.set_view(drawing_tools::view::drawing);
+}
+
+void ui::main_window::redo_test_swatch() {
 	set_swatch_view(ui::test_swatch_picker::get_test_swatch(img_proc_ctrls_.current), true);
 }
 
-void ui::crosshatching::generate() {
+void ui::main_window::generate() {
 	auto progress_box = std::make_unique<ui::drawing_progress>( drawing_job() );
 	progress_box->exec();
 }
 
-void ui::crosshatching::save_processed_image() {
+void ui::main_window::save_processed_image() {
 
 }
 
-void ui::crosshatching::edit_settings() {
+void ui::main_window::edit_settings() {
 
 }
 
-void ui::crosshatching::createMainMenu()
+void ui::main_window::create_main_menu()
 {
 	menuBar()->addMenu( create_file_menu(this) );
 	menuBar()->addMenu( create_view_menu(this) );
 	menuBar()->addMenu( create_crosshatching_menu(this));
-	connect(this, &crosshatching::change_source_image, this, &crosshatching::handle_source_image_change);
+	connect(this, &main_window::change_source_image, this, &main_window::handle_source_image_change);
 }
 
-void ui::crosshatching::handle_source_image_change(cv::Mat& img) {
+void ui::main_window::handle_source_image_change(cv::Mat& img) {
 	for (auto* pipeline_stage : img_proc_ctrls_.pipeline) {
 		pipeline_stage->initialize();
 	}
@@ -239,7 +243,7 @@ void ui::crosshatching::handle_source_image_change(cv::Mat& img) {
 	crosshatch_menu->setEnabled(enable_image_dependent_menus);
 }
 
-QWidget* ui::crosshatching::createCrosshatchCtrls() {
+QWidget* ui::main_window::create_drawing_tools() {
 	QSplitter* vert_splitter = new QSplitter();
 	vert_splitter->setOrientation(Qt::Orientation::Vertical);
 	crosshatching_.layers = new layer_panel();
@@ -264,24 +268,27 @@ QWidget* ui::crosshatching::createCrosshatchCtrls() {
 	swatch_viewer->setWidget(picture_panel);
 
 	crosshatching_.layer_viewer = new image_tab_ctrl();
-	crosshatching_.drawing = new image_box();
+
+	QScrollArea* drawing_scroller = new QScrollArea();
+	drawing_scroller->setWidget(crosshatching_.drawing = new image_box());
+	drawing_scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
 	crosshatching_.viewer_stack = new QStackedWidget();
 
 	crosshatching_.viewer_stack->addWidget(swatch_viewer);
 	crosshatching_.viewer_stack->addWidget(crosshatching_.layer_viewer);
-	crosshatching_.viewer_stack->addWidget(crosshatching_.drawing);
+	crosshatching_.viewer_stack->addWidget(drawing_scroller);
 
 	splitter->addWidget(crosshatching_.viewer_stack);
 	splitter->setSizes(QList<int>({ 180,500 }));
 
 	connect(crosshatching_.layers, &layer_panel::layers_changed,
-		this, &crosshatching::set_layer_view);
+		this, &main_window::set_layer_view);
 
 	return splitter;
 }
 
-QWidget* ui::crosshatching::createImageProcPipelineCtrls()
+QWidget* ui::main_window::create_image_processing_pipeline_tools()
 {
 	QTabWidget* tab_ctrl = new QTabWidget();
 	tab_ctrl->setMaximumWidth(k_controls_width);
@@ -296,7 +303,7 @@ QWidget* ui::crosshatching::createImageProcPipelineCtrls()
 	for (auto* stage: img_proc_ctrls_.pipeline) {
 		stage->populate();
 		tab_ctrl->addTab(stage, (std::string("stage ") + std::to_string(stage->index() + 1)).c_str());
-		connect(stage, &ui::image_processing_pipeline_item::changed, this, &crosshatching::handle_pipeline_change);
+		connect(stage, &ui::image_processing_pipeline_item::changed, this, &main_window::handle_pipeline_change);
 	}
 
 	QScrollArea* scroller = new QScrollArea();
@@ -311,7 +318,7 @@ QWidget* ui::crosshatching::createImageProcPipelineCtrls()
 	return splitter;
 }
 
-cv::Mat ui::crosshatching::input_to_nth_stage(int index) const {
+cv::Mat ui::main_window::input_to_nth_stage(int index) const {
 	if (index == 0) {
 		return img_proc_ctrls_.src;
 	} 
@@ -329,11 +336,11 @@ cv::Mat ui::crosshatching::input_to_nth_stage(int index) const {
 	return input;
 }
 
-cv::Mat ui::crosshatching::segmentation() const {
+cv::Mat ui::main_window::segmentation() const {
 	return static_cast<ui::mean_shift_segmentation*>(img_proc_ctrls_.pipeline.back())->labels();
 }
 
-ch::crosshatching_job ui::crosshatching::drawing_job() const {
+ch::crosshatching_job ui::main_window::drawing_job() const {
 	return {
 		image_src_filename(),
 		layers(),
@@ -341,15 +348,15 @@ ch::crosshatching_job ui::crosshatching::drawing_job() const {
 	};
 }
 
-std::string ui::crosshatching::image_src_filename() const {
+std::string ui::main_window::image_src_filename() const {
 	return img_proc_ctrls_.src_filename;
 }
 
-cv::Mat ui::crosshatching::processed_image() const {
+cv::Mat ui::main_window::processed_image() const {
 	return img_proc_ctrls_.current;
 }
 
-std::vector<std::tuple<ch::brush_fn, double>> ui::crosshatching::brush_per_intervals() const {
+std::vector<std::tuple<ch::brush_fn, double>> ui::main_window::brush_per_intervals() const {
 	auto brush_dict = static_cast<brush_panel*>(crosshatching_.brushes)->brush_dictionary();
 	auto layer_name_vals = static_cast<layer_panel*>(crosshatching_.layers)->layers();
 	return layer_name_vals |
@@ -361,12 +368,12 @@ std::vector<std::tuple<ch::brush_fn, double>> ui::crosshatching::brush_per_inter
 		) | r::to_vector;
 }
 
-std::vector<std::tuple<ch::brush_fn, cv::Mat>> ui::crosshatching::layers() const {
+std::vector<std::tuple<ch::brush_fn, cv::Mat>> ui::main_window::layers() const {
 	auto brush_and_threshold = brush_per_intervals();
 	return generate_ink_layer_images( processed_image(), segmentation(), brush_and_threshold );
 }
 
-std::vector<cv::Mat> ui::crosshatching::layer_images() const {
+std::vector<cv::Mat> ui::main_window::layer_images() const {
 	auto layer_pairs = layers();
 	return layer_pairs |
 		rv::transform(
@@ -376,12 +383,12 @@ std::vector<cv::Mat> ui::crosshatching::layer_images() const {
 		) | r::to_vector;
 }
 
-ch::crosshatching_params ui::crosshatching::drawing_params() const {
+ch::crosshatching_params ui::main_window::drawing_params() const {
 	//TODO
 	return {};
 }
 
-void ui::crosshatching::handle_pipeline_change(int index) {
+void ui::main_window::handle_pipeline_change(int index) {
 	std::for_each(img_proc_ctrls_.pipeline.begin() + index, img_proc_ctrls_.pipeline.end(),
 		[](ui::image_processing_pipeline_item* stage) {
 			stage->clear_output();
@@ -400,7 +407,7 @@ void ui::crosshatching::handle_pipeline_change(int index) {
 	display(mat);
 }
 
-void ui::crosshatching::display(cv::Mat img) {
+void ui::main_window::display(cv::Mat img) {
 	if (!img.empty()) {
 		img_proc_ctrls_.current = img;
 	}
@@ -420,27 +427,27 @@ void ui::crosshatching::display(cv::Mat img) {
 	img_proc_ctrls_.img_box->set_image(mat);
 }
 
-std::tuple<int, int> ui::crosshatching::source_image_sz() const {
+std::tuple<int, int> ui::main_window::source_image_sz() const {
 	return { img_proc_ctrls_.src.cols, img_proc_ctrls_.src.rows };
 }
 
-void ui::crosshatching::handle_view_scale_change(double scale) {
+void ui::main_window::handle_view_scale_change(double scale) {
 	img_proc_ctrls_.view_state.scale = scale;
 	display();
 }
 
-void ui::crosshatching::handle_view_bw_change(bool bw) {
+void ui::main_window::handle_view_bw_change(bool bw) {
 	img_proc_ctrls_.view_state.black_and_white = bw;
 	display();
 }
 
-ui::view_state ui::crosshatching::view_state() const {
+ui::view_state ui::main_window::view_state() const {
 	auto view_menu = menuBar()->actions()[k_view_menu_index];
 	auto items = view_menu->children();
 	return {};
 }
 
-void ui::crosshatching_ctrls::set_view(view v)
+void ui::drawing_tools::set_view(view v)
 {
 	viewer_stack->setCurrentIndex( static_cast<int>(v) );
 }
