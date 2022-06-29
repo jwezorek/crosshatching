@@ -38,6 +38,9 @@ namespace ui {
 		void set_brush_names(const std::vector<std::string>& brush_names);
         std::vector<std::tuple<std::string, double>> layers() const;
 
+    signals:
+        void layers_changed();
+
 	private:
 
 		std::vector<std::string> brush_names_;
@@ -128,7 +131,7 @@ namespace ui {
         QWidget* createCrosshatchCtrls();
 
         void set_swatch_view(cv::Mat swatch, bool left);
-        void set_layer_view(const std::vector<cv::Mat>& layers);
+        void set_layer_view();
 
         void display(cv::Mat mat = {});
         void handle_pipeline_change(int index);

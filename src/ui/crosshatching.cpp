@@ -175,7 +175,8 @@ void ui::crosshatching::set_swatch_view(cv::Mat swatch, bool left) {
 	crosshatching_.set_view(crosshatching_ctrls::view::swatch);
 }
 
-void ui::crosshatching::set_layer_view(const std::vector<cv::Mat>& layers) {
+void ui::crosshatching::set_layer_view() {
+	auto layers = layer_images();
 	int n = static_cast<int>(layers.size());
 	auto names = rv::concat(
 			rv::iota(0, n) |
@@ -314,6 +315,9 @@ QWidget* ui::crosshatching::createCrosshatchCtrls() {
 
 	splitter->addWidget(crosshatching_.viewer_stack);
 	splitter->setSizes(QList<int>({ 180,500 }));
+
+	connect(crosshatching_.layers, &layer_panel::layers_changed,
+		this, &crosshatching::set_layer_view);
 
 	return splitter;
 }
@@ -528,6 +532,7 @@ void ui::layer_panel::add_layer() {
 		auto [brush, end_of_range] = *result;
 		insert_layer(brush, end_of_range);
 	}
+	emit layers_changed();
 }
 
 void ui::layer_panel::cell_double_clicked(int r, int col) {
@@ -537,6 +542,7 @@ void ui::layer_panel::cell_double_clicked(int r, int col) {
 		layers_.erase(val);
 		auto [brush, end_of_range] = *result;
 		insert_layer(brush, end_of_range);
+		emit layers_changed();
 	}
 }
 
@@ -546,6 +552,7 @@ void ui::layer_panel::delete_layer() {
 		auto [brush, val] = row(current_row);
 		layers_.erase(val);
 		sync_layers_to_ui();
+		emit layers_changed();
 	}
 }
 
