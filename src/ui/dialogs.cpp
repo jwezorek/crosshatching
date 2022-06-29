@@ -305,7 +305,8 @@ cv::Mat ui::test_swatch_picker::get_test_swatch(cv::Mat src_img) {
 
 /*------------------------------------------------------------------------------------------------------------------------*/
 
-ui::drawing_progress::drawing_progress(const ch::crosshatching_job& job) :
+ui::drawing_progress::drawing_progress(ui::main_window* parent, const ch::crosshatching_job& job) :
+        parent_(parent),
         job_(job) {
     auto layout = new QVBoxLayout(this);
     layout->addWidget(status_ = new QLabel(""));
@@ -339,10 +340,12 @@ ui::drawing_progress::drawing_progress(const ch::crosshatching_job& job) :
     this->resize( 800, this->height());
 
     connect(button_, &QPushButton::clicked, this, &ui::drawing_progress::generate_drawing);
+    connect(view_drawing_btn_, &QPushButton::clicked, this, &ui::drawing_progress::view_drawing);
 }
 
 void ui::drawing_progress::on_finished() {
     btn_stack_->setCurrentIndex(1);
+    drawing_ = worker_->output();
 }
 
 void ui::drawing_progress::update_progress(double pcnt) {
@@ -360,16 +363,34 @@ void ui::drawing_progress::log_message(const std::string& str) {
     scroll_bar->setValue(scroll_bar->maximum()); // Scrolls to the bottom
 }
 
+void ui::drawing_progress::view_drawing() {
+    if (!drawing_) {
+        return;
+    }
+    auto drawing = drawing_.value();
+    auto box = std::make_unique<ui::progress>();
+    auto result = box->run(
+        "painting crosshatching...",
+        [&]()->std::any {
+            return ch::paint_drawing(drawing, box->progress_func());
+        }
+    );
+    auto mat = std::any_cast<cv::Mat>(result);
+    parent_->set_drawing_view(mat);
+}
+
 void ui::drawing_progress::generate_drawing() {
-    QThread* thread = new QThread(nullptr);
-    drawing_worker* worker = new drawing_worker(job_);
+    thread_ = std::make_unique<QThread>(nullptr);
+    worker_ = std::make_unique<drawing_worker>(job_);
+
+    auto thread = thread_.get();
+    auto worker = worker_.get();
+
     worker->moveToThread(thread);
 
     connect(thread, &QThread::started, worker, &drawing_worker::process);
     connect(worker, &drawing_worker::finished, thread, &QThread::quit);
     connect(thread, &QThread::finished, this, &drawing_progress::on_finished);
-    connect(worker, &drawing_worker::finished, worker, &QObject::deleteLater);
-    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
     connect(worker, &drawing_worker::progress, this, &drawing_progress::update_progress);
     connect(worker, &drawing_worker::status, this, &drawing_progress::set_status_line);
     connect(worker, &drawing_worker::log, this, &drawing_progress::log_message);

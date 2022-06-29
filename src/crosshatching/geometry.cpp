@@ -108,6 +108,21 @@ void ch::paint_polyline(cv::Mat& mat, const polyline& poly, double thickness, in
 	cv::polylines(mat, int_pts, false, color, thickness, 8, 0);
 }
 
+void ch::paint_polyline_aa(cv::Mat& mat, const polyline& poly, double thickness, int color, point offset)
+{
+	std::vector<cv::Point> int_pts(poly.size());
+	std::transform(poly.begin(), poly.end(), int_pts.begin(),
+		[offset](const auto& p) {
+			return cv::Point(
+				static_cast<int>(std::round(p.x + offset.x)),
+				static_cast<int>(std::round(p.y + offset.y))
+			);
+		}
+	);
+	auto npts = int_pts.size();
+	cv::polylines(mat, int_pts, false, color, thickness, cv::LINE_AA, 0);
+}
+
 double ch::euclidean_distance(const point& pt1, const point& pt2)
 {
 	auto x_diff = pt2.x - pt1.x;

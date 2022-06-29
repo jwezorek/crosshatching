@@ -24,6 +24,7 @@ namespace ch {
     polyline transform(const polyline& poly, const matrix& mat);
     point transform(const point& pt, const matrix& mat);
     void paint_polyline(cv::Mat& mat, const polyline& p, double thickness, int color, point offset = { 0,0 });
+    void paint_polyline_aa(cv::Mat& mat, const polyline& p, double thickness, int color, point offset = { 0,0 });
 
     double euclidean_distance(const point& pt1, const point& pt2);
 

@@ -117,6 +117,10 @@ namespace ui {
         void redo_test_swatch();
         void edit_settings();
 
+        void set_swatch_view(cv::Mat swatch, bool left);
+        void set_layer_view();
+        void set_drawing_view(cv::Mat drawing);
+
     signals:
         void change_source_image(cv::Mat& img);
 
@@ -129,10 +133,6 @@ namespace ui {
         void create_main_menu();
         QWidget* create_image_processing_pipeline_tools();
         QWidget* create_drawing_tools();
-
-        void set_swatch_view(cv::Mat swatch, bool left);
-        void set_layer_view();
-        void set_drawing_view(cv::Mat drawing);
 
         void display(cv::Mat mat = {});
         void handle_pipeline_change(int index);

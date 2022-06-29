@@ -1079,10 +1079,14 @@ ch::drawing ch::scale(const ch::drawing& d, double val) {
     };
 }
 
-cv::Mat ch::paint_drawing(const drawing& d) {
+cv::Mat ch::paint_drawing(const drawing& d, std::function<void(double)> update_progress_cb) {
     cv::Mat mat(static_cast<int>(d.sz.hgt), static_cast<int>(d.sz.wd), CV_8U, 255);
-    for (const auto& ls : d.strokes) {
-        ch::paint_polyline(mat, ls, d.stroke_wd, 0, point{ 0, 0 });
+    auto n = static_cast<double>(d.strokes.size());
+    for (const auto& [index, ls] : rv::enumerate(d.strokes)) {
+        ch::paint_polyline_aa(mat, ls, d.stroke_wd, 0, point{ 0, 0 });
+        if (update_progress_cb) {
+            update_progress_cb(index / n);
+        }
     }
     return mat;
 }

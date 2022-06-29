@@ -212,7 +212,7 @@ void ui::main_window::redo_test_swatch() {
 }
 
 void ui::main_window::generate() {
-	auto progress_box = std::make_unique<ui::drawing_progress>( drawing_job() );
+	auto progress_box = std::make_unique<ui::drawing_progress>( this, drawing_job() );
 	progress_box->exec();
 }
 
