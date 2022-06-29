@@ -102,6 +102,7 @@ namespace ui {
         drawing_progress(ui::main_window* parent, const ch::crosshatching_job& job);
         void generate_drawing();
         void view_drawing();
+        void save_drawing();
         void update_progress(double pcnt);
         void set_status_line(const std::string& str);
         void log_message(const std::string& str);

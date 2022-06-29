@@ -46,7 +46,8 @@ namespace ch {
         const std::vector<std::tuple<ch::brush_fn, double>>& brush_intervals
     );
     drawing generate_crosshatched_drawing(const crosshatching_job& job, const callbacks& cbs = {});
-    void write_to_svg(const std::string& filename, const drawing& d);
+    void write_to_svg(const std::string& filename, const drawing& d, 
+        std::function<void(double)> update_progress_cb = {});
     drawing scale(const drawing& d, double scale);
     cv::Mat paint_drawing(const drawing& d, std::function<void(double)> update_progress_cb = {});
 }

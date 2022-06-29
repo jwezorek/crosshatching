@@ -1057,14 +1057,19 @@ ch::drawing ch::generate_crosshatched_drawing(const ch::crosshatching_job& job, 
     
 }
 
-void ch::write_to_svg(const std::string& filename, const drawing& d) {
+void ch::write_to_svg(const std::string& filename, const drawing& d, 
+        std::function<void(double)> update_progress) {
     std::ofstream outfile(filename);
 
     outfile << svg_header(static_cast<int>(d.sz.wd), static_cast<int>(d.sz.hgt));
-
-    for (const auto& poly : d.strokes)
+    
+    auto n = static_cast<double>(d.strokes.size());
+    for (const auto& [index, poly] : rv::enumerate(d.strokes)) {
         outfile << polyline_to_svg(poly, d.stroke_wd) << std::endl;
-
+        if (update_progress) {
+            update_progress(index / n);
+        }
+    }
     outfile << "</svg>" << std::endl;
     outfile.close();
 }

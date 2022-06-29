@@ -308,13 +308,14 @@ cv::Mat ui::test_swatch_picker::get_test_swatch(cv::Mat src_img) {
 ui::drawing_progress::drawing_progress(ui::main_window* parent, const ch::crosshatching_job& job) :
         parent_(parent),
         job_(job) {
+    setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+
     auto layout = new QVBoxLayout(this);
     layout->addWidget(status_ = new QLabel(""));
     layout->addWidget(progress_ = new QProgressBar());
     progress_->setOrientation(Qt::Horizontal);
     layout->addWidget(log_ = new QPlainTextEdit());
     log_->setReadOnly(true);
-    log_->setMinimumHeight(300);
 
     layout->addWidget(btn_stack_ = new QStackedWidget());
 
@@ -328,8 +329,8 @@ ui::drawing_progress::drawing_progress(ui::main_window* parent, const ch::crossh
     auto horz_layout2 = new QHBoxLayout(complete_panel);
     horz_layout2->addStretch();
     horz_layout2->addWidget(view_drawing_btn_ = new QPushButton("View"));
-    horz_layout2->addWidget(save_drawing_btn_ = new QPushButton("Save drawing as ..."));
-    horz_layout2->addWidget(exit_btn_ = new QPushButton("Cancel"));
+    horz_layout2->addWidget(save_drawing_btn_ = new QPushButton("Save drawing and exit"));
+    horz_layout2->addWidget(exit_btn_ = new QPushButton("Exit"));
     horz_layout2->addStretch();
 
     btn_stack_->addWidget(start_panel);
@@ -341,6 +342,12 @@ ui::drawing_progress::drawing_progress(ui::main_window* parent, const ch::crossh
 
     connect(button_, &QPushButton::clicked, this, &ui::drawing_progress::generate_drawing);
     connect(view_drawing_btn_, &QPushButton::clicked, this, &ui::drawing_progress::view_drawing);
+    connect(save_drawing_btn_, &QPushButton::clicked, this, &ui::drawing_progress::save_drawing);
+    connect(exit_btn_, &QPushButton::clicked, this, &QDialog::reject);
+
+    status_->hide();
+    progress_->hide();
+    log_->hide();
 }
 
 void ui::drawing_progress::on_finished() {
@@ -379,7 +386,36 @@ void ui::drawing_progress::view_drawing() {
     parent_->set_drawing_view(mat);
 }
 
+void ui::drawing_progress::save_drawing() {
+    if (!drawing_) {
+        return;
+    }
+    auto docs = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    auto drawing_filename = QFileDialog::getSaveFileName(this,
+        tr("Save drawing"), docs, tr("SVG (*.svg);"));
+    auto filename = drawing_filename.toStdString();
+    if (filename.empty()) {
+        return;
+    }
+    auto drawing = drawing_.value();
+    auto box = std::make_unique<ui::progress>();
+    auto result = box->run(
+        "writing drawing...",
+        [&]()->std::any {
+            ch::write_to_svg(filename, drawing, box->progress_func());
+            return 0;
+        }
+    );
+    this->accept();
+}
+
 void ui::drawing_progress::generate_drawing() {
+    status_->show();
+    progress_->show();
+    log_->show();
+    button_->hide();
+    log_->setMinimumHeight(300);
+
     thread_ = std::make_unique<QThread>(nullptr);
     worker_ = std::make_unique<drawing_worker>(job_);
 
