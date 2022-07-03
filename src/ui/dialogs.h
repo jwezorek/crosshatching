@@ -24,6 +24,7 @@
 #include <QStackedWidget>
 #include <memory>
 #include <QThread>
+#include <QCheckBox>
 
 namespace ui {
 
@@ -137,5 +138,48 @@ namespace ui {
         QProgressBar* progress_;
         std::unique_ptr<worker> worker_;
         std::unique_ptr<QThread> thread_;
+    };
+
+    class settings : public QDialog {
+
+        Q_OBJECT
+
+    public:
+        settings(const ch::parameters& params);
+        static std::optional<ch::parameters> edit_settings( const ch::parameters& params);
+
+        void set_scale(double sc);
+        void set_stroke_width(double sw);
+        void set_epsilon(double eps);
+        void set_swatch_sz(int ss);
+
+        double scale() const;
+        int stroke_wd() const;
+        double epsilon() const;
+        int swatch_sz() const;
+
+    private:
+
+        QLineEdit* create_double_editor(double min, double max, int sig_digits);
+        QLineEdit* create_int_editor(int min, int max);
+
+        template<typename T>
+        static void set_value(QLineEdit* editor, T value) {
+            editor->setText(
+                std::to_string(value).c_str()
+            );
+        }
+
+        template<typename T>
+        static T get_value(QLineEdit* editor) {
+            return static_cast<T>(editor->text().toDouble());
+        }
+
+        QLineEdit* scale_;
+        QLineEdit* stroke_width_;
+        QLineEdit* epsilon_;
+        QLineEdit* swatch_sz_;
+        QCheckBox* use_black_;
+        QDialogButtonBox* btns_;
     };
 }

@@ -19,7 +19,7 @@ namespace {
         ROOT <- Expr
         Symbol <- < [_a-z]+ >
         Number <- < [.0-9]+ >
-        Op <- 'pipe' | 'norm_rnd' | 'lerp' | 'ramp' | 'rot' | 'dis' | 'jiggle' | 'merge' | 'lin_brush'
+        Op <- 'pipe' | 'norm_rnd' | 'lerp' | 'ramp' | 'rot' | 'dis' | 'jiggle' | 'merge' | 'lin_brush' | 'scatter'
         Expr <- '(' Op (Expr / Symbol / Number)+ ')'
         %whitespace <- [ \t\r\n]*
       )"
@@ -37,7 +37,8 @@ namespace {
             {"dis",      ch::symbol::disintegrate},
             {"merge",    ch::symbol::merge},
             {"jiggle",   ch::symbol::jiggle},
-            {"lin_brush",ch::symbol::linear_brush}
+            {"lin_brush",ch::symbol::linear_brush},
+            {"scatter", ch::symbol::scatter_brush}
         };
         return tbl.at(str);
     }
@@ -54,7 +55,8 @@ namespace {
             {ch::symbol::disintegrate, "dis"},
             {ch::symbol::merge,        "merge"},
             {ch::symbol::jiggle,       "jiggle"},
-            {ch::symbol::linear_brush, "lin_brush"}
+            {ch::symbol::linear_brush, "lin_brush"},
+            {ch::symbol::scatter_brush, "scatter"}
         };
         return tbl.at(sym);
     }
@@ -172,6 +174,13 @@ namespace {
             ch::make_default_hatching_unit()
         );
     }
+
+    ch::brush_pipeline_item eval_scatter_brush_expr(const expr_args& args) {
+        return ch::make_scatter_hatching_brush_fn(
+            expr_to_parameter_adapter(args[0]),
+            expr_to_parameter_adapter(args[1])
+        );
+    }
 }
 
 /*----------------------------------------------------------------------------------------------------*/
@@ -190,7 +199,8 @@ ch::brush_pipeline_item ch::brush_expr::eval() const {
         {ch::symbol::disintegrate,  eval_disintegrate_expr},
         {ch::symbol::merge,         eval_merge_expr},
         {ch::symbol::jiggle,        eval_jiggle_expr},
-        {ch::symbol::linear_brush,  eval_linear_brush_expr}
+        {ch::symbol::linear_brush,  eval_linear_brush_expr},
+        {ch::symbol::scatter_brush,  eval_scatter_brush_expr}
     };
     const auto& evaluator = tbl.at(op_);
     return evaluator(children_);

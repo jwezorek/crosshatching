@@ -15,24 +15,27 @@ namespace ch {
         double stroke_wd;
     };
 
-    struct crosshatching_params {
+    struct parameters {
         double scale;
         int stroke_width; 
         double epsilon;
-        double swatch_sz;
+        int swatch_sz;
+        bool use_true_black;
 
-        crosshatching_params(double sc = 5.0, int sw = 1, double eps = k_epsilon, double sz = k_swatch_sz) :
+        parameters(double sc = 5.0, int sw = 1, double eps = k_epsilon, 
+                int sz = k_swatch_sz, bool black = false) :
             scale(sc),
             stroke_width(sw),
             epsilon(eps),
-            swatch_sz(sz)
+            swatch_sz(sz),
+            use_true_black(black)
         {}
     };
 
     struct crosshatching_job {
         std::string title;
         std::vector<std::tuple<ch::brush_fn, cv::Mat>> layers;
-        crosshatching_params params;
+        parameters params;
     };
 
     struct callbacks {

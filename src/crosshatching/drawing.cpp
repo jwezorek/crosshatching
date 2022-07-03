@@ -950,7 +950,7 @@ namespace {
     }
 
     std::tuple<std::vector<ch::polyline>, swatch_table> paint_ink_layer(ink_layer_stack::blob_range layer, const swatch_table& tbl, 
-            const ch::crosshatching_params& params, progress_logger& prog) {
+            const ch::parameters& params, progress_logger& prog) {
         size_t n = r::distance(layer);
         prog.start_new_layer(n);
 
@@ -968,7 +968,7 @@ namespace {
                 current_brush = iter->second;
             } else {
                 current_brush = ch::brush(brush_func, params.stroke_width, params.epsilon,
-                    { params.swatch_sz }, tbl.at(parent_tok));
+                    { static_cast<double>(params.swatch_sz) }, tbl.at(parent_tok));
                 current_brush.build_n(20);
                 brush_table[parent_tok] = current_brush;
             }
@@ -1011,7 +1011,7 @@ namespace {
     }
 
     ch::drawing draw_layers( const std::vector<std::tuple<ch::brush_fn, cv::Mat>>& layers_and_brushes, 
-            const ch::crosshatching_params& params, progress_logger& ps) {
+            const ch::parameters& params, progress_logger& ps) {
 
         auto [brushes, layers] = split_layers_and_brushes(layers_and_brushes);
 
@@ -1054,7 +1054,6 @@ ch::drawing ch::generate_crosshatched_drawing(const ch::crosshatching_job& job, 
     ps.status(std::string("complete.")); // TODO: or error
 
     return result;
-    
 }
 
 void ch::write_to_svg(const std::string& filename, const drawing& d, 

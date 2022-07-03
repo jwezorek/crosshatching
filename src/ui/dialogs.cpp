@@ -263,7 +263,7 @@ void ui::layer_dialog::update_btn_enabled_state() {
     btns_->button(QDialogButtonBox::Ok)->setEnabled(valid_value);
 }
 
-/*------------------------------------------------------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------------------------------------------*/
 
 ui::test_swatch_picker::test_swatch_picker(cv::Mat img) :
         src_img_(img) {
@@ -475,4 +475,112 @@ std::any ui::progress::run(const std::string& title, std::function<std::any()> j
     thread->start();
     exec();
     return worker_->output();
+}
+
+/*--------------------------------------------------------------------------------------------------------------*/
+
+ui::settings::settings(const ch::parameters& params) {
+    setWindowTitle("Crosshatching parameters");
+    this->setFixedSize(500, 500);
+
+    auto layout = new QVBoxLayout(this);
+    layout->addWidget(new QLabel("Scale"));
+    layout->addWidget(scale_ = create_double_editor(1.0, 10.0, 2));
+
+    layout->addSpacing(10);
+
+    layout->addWidget(new QLabel("Stroke width"));
+    layout->addWidget(stroke_width_ = create_int_editor(1, 10));
+
+    layout->addSpacing(10);
+
+    layout->addWidget(new QLabel("Epsilon"));
+    layout->addWidget(epsilon_ = create_double_editor(0.0, 2.0, 7));
+
+    layout->addSpacing(10);
+
+    layout->addWidget(new QLabel("Swatch size"));
+    layout->addWidget(swatch_sz_ = create_int_editor(10,1000));
+
+    layout->addSpacing(10);
+
+    layout->addWidget(use_black_ = new QCheckBox("Use full black polygons"));
+
+    layout->addSpacing(10);
+
+    layout->addWidget(btns_ = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel));
+    connect(btns_, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(btns_, &QDialogButtonBox::rejected, this, &QDialog::reject);
+
+    set_scale(params.scale);
+    set_stroke_width(params.stroke_width);
+    set_epsilon(params.epsilon);
+    set_swatch_sz(params.swatch_sz);
+}
+
+std::optional<ch::parameters> ui::settings::edit_settings(const ch::parameters& params) {
+
+    settings* dlg = new settings(params);
+    if (dlg->exec() == QDialog::Accepted) {
+        return { {
+            dlg->scale(),
+            dlg->stroke_wd(),
+            dlg->epsilon(),
+            dlg->swatch_sz(),
+            false
+        } };
+    } else {
+        return {};
+    }
+}
+
+QLineEdit* ui::settings::create_double_editor(double min, double max, int sig_digits) {
+    auto editor = new QLineEdit();
+
+    auto validator = new QDoubleValidator(min, max, sig_digits, this);
+    validator->setNotation(QDoubleValidator::StandardNotation);
+    editor->setValidator(validator);
+
+    return editor;
+}
+
+QLineEdit* ui::settings::create_int_editor(int min, int max) {
+    auto editor = new QLineEdit();
+
+    auto validator = new QIntValidator(min, max, this);
+    editor->setValidator(validator);
+
+    return editor;
+}
+
+void ui::settings::set_scale(double sc) {
+    set_value(scale_, sc);
+}
+
+void ui::settings::set_stroke_width(double sw) {
+    set_value(stroke_width_, sw);
+}
+
+void ui::settings::set_epsilon(double eps) {
+    set_value(epsilon_, eps);
+}
+
+void ui::settings::set_swatch_sz(int ss) {
+    set_value(swatch_sz_, ss);
+}
+
+double ui::settings::scale() const {
+    return get_value<double>(scale_);
+}
+
+int ui::settings::stroke_wd() const {
+    return get_value<int>(stroke_width_);
+}
+
+double ui::settings::epsilon() const {
+    return get_value<double>(epsilon_);
+}
+
+int ui::settings::swatch_sz() const {
+    return get_value<int>(swatch_sz_);
 }

@@ -99,6 +99,7 @@ namespace ui {
         image_tab_ctrl* layer_viewer;
         QStackedWidget* viewer_stack;
         cv::Mat swatch;
+        ch::parameters params_;
 
         void set_view(view v);
     };
@@ -142,7 +143,7 @@ namespace ui {
         std::vector<std::tuple<ch::brush_fn, double>> brush_per_intervals() const;
         std::vector<std::tuple<ch::brush_fn, cv::Mat>> layers() const;
         std::vector<cv::Mat> layer_images() const;
-        ch::crosshatching_params drawing_params() const;
+        ch::parameters drawing_params() const;
         std::string image_src_filename() const;
         cv::Mat processed_image() const;
 

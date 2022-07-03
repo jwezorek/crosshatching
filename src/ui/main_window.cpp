@@ -221,7 +221,10 @@ void ui::main_window::save_processed_image() {
 }
 
 void ui::main_window::edit_settings() {
-
+	auto result = ui::settings::edit_settings(crosshatching_.params_);
+	if (result) {
+		crosshatching_.params_ = result.value();
+	}
 }
 
 void ui::main_window::create_main_menu()
@@ -383,9 +386,8 @@ std::vector<cv::Mat> ui::main_window::layer_images() const {
 		) | r::to_vector;
 }
 
-ch::crosshatching_params ui::main_window::drawing_params() const {
-	//TODO
-	return {};
+ch::parameters ui::main_window::drawing_params() const {
+	return crosshatching_.params_;
 }
 
 void ui::main_window::handle_pipeline_change(int index) {

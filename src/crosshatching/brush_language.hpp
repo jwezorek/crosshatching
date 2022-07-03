@@ -15,6 +15,7 @@ namespace ch {
         false_,
         pipe,
         linear_brush,
+        scatter_brush,
         norm_rnd,
         lerp,
         ramp,

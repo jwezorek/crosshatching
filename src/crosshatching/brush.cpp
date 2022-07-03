@@ -11,6 +11,7 @@
 #include <fstream>
 #include <queue>
 #include <chrono>
+#include <qdebug.h>
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -22,6 +23,29 @@ namespace {
         double space;
         double x;
     };
+
+    ch::polyline random_line_segment(const ch::dimensions& sz, ch::rnd_fn line_len) {
+        auto half_wd = sz.wd / 2.0;
+        auto half_hgt = sz.hgt / 2.0;
+        auto half_len = line_len() / 2.0;
+
+        auto theta = ch::uniform_rnd(0, 2.0 * std::numbers::pi / 2.0);
+        auto cos_theta = std::cos(theta);
+        auto sin_theta = std::sin(theta);
+
+        double x = ch::uniform_rnd(-half_wd, half_wd);
+        double y = ch::uniform_rnd(-half_hgt, half_hgt);
+
+        double x1 = x + half_len * cos_theta;
+        double y1 = y + half_len * sin_theta;
+        double x2 = x - half_len * cos_theta;
+        double y2 = y - half_len * sin_theta;
+
+        return {
+            {x1 , y1},
+            {x2 , y2}
+        };
+    }
 
     auto row_of_crosshatching(double wd, double hgt, double y, const ch::rnd_fn& run_length, const ch::rnd_fn& space_length, const ch::unit_of_hatching_fn& h_fn) {
         auto half_wd = wd / 2.0;
@@ -238,6 +262,20 @@ ch::crosshatching_range ch::one_horz_stroke(double x1, double x2, double y, doub
     return rv::single(ch::polyline{ {x1,y} , {x2,y} });
 }
 
+ch::crosshatching_swatch ch::scatter_crosshatching(int n, ch::rnd_fn line_len, ch::dimensions sz, double stroke_wd)
+{
+    return {
+        rv::iota(0,n) |
+        rv::transform(
+            [sz,line_len](int i)->ch::polyline {
+                return random_line_segment(sz, line_len);
+            }
+        ),
+        sz,
+        stroke_wd
+    };
+}
+
 ch::crosshatching_swatch ch::linear_crosshatching(rnd_fn run_length, rnd_fn space_length, rnd_fn vert_space,
     unit_of_hatching_fn h_fn, ch::dimensions viewable_swatch_sz, double stroke_wd) {
     auto dim = std::sqrt(2.0) * (std::max(viewable_swatch_sz.wd , viewable_swatch_sz.hgt));
@@ -417,6 +455,17 @@ ch::param_adapter_fn ch::make_one_parameter_param_adapter(ch::param_adapter_fn f
 }
 */
 
+ch::brush_fn ch::make_scatter_hatching_brush_fn(const param_adapter_fn& count_fn, const param_adapter_fn& line_len)
+{
+    return [count_fn, line_len](double stroke, ch::dimensions sz, double t)->crosshatching_swatch {
+        int n = static_cast<int>(std::exp(t * count_fn(t)));
+        return scatter_crosshatching(n, 
+            [line_len, t]()->double { return line_len(t); },
+            sz, stroke
+        );
+    };
+}
+
 ch::brush_fn ch::make_linear_hatching_brush_fn(const param_adapter_fn& run_length, const param_adapter_fn& space_length,
     const param_adapter_fn& vert_space, const param_unit_of_hatching_fn& h_fn)
 {
@@ -502,6 +551,11 @@ double sample(ch::dimensions sz, ch::brush_fn fn, double t, int n, int thickness
     SAMPLE_TIME += elapsed.count();
 
     return gray;
+}
+
+ch::dimensions ch::operator*(double k, const dimensions& d)
+{
+    return dimensions(k * d.wd, k * d.hgt);
 }
 
 double ch::debug_sample_time() {
@@ -596,10 +650,8 @@ void ch::brush::build() {
     }
 }
 
-static int BUILD_N_CALLs = 0;
 void ch::brush::build_n(int n)
 {
-    BUILD_N_CALLs++;
     if (!is_uinitiailized()) {
         throw std::runtime_error("brush is already built");
     }
@@ -607,10 +659,6 @@ void ch::brush::build_n(int n)
     for (int i = 0; i < n; ++i) {
         get_or_sample_param(delta * i);
     }
-}
-
-int ch::debug_num_brushes_built() {
-    return BUILD_N_CALLs;
 }
 
 double ch::brush::stroke_width() const
