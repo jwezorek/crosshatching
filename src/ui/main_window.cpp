@@ -75,6 +75,10 @@ namespace {
 		parent->connect(action_save, &QAction::triggered, parent, &ui::main_window::save_processed_image);
 		file_menu->addAction(action_save);
 
+		//QAction* action_debug = new QAction(tr("Debug"), parent);
+		//parent->connect(action_debug, &QAction::triggered, parent, &ui::main_window::debug);
+		//file_menu->addAction(action_debug);
+
 		file_menu->addSeparator();
 
 		QAction* exit = new QAction(tr("&Exit"), parent);
@@ -217,7 +221,7 @@ void ui::main_window::generate() {
 }
 
 void ui::main_window::save_processed_image() {
-
+	
 }
 
 void ui::main_window::edit_settings() {

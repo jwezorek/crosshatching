@@ -1,6 +1,5 @@
 #include "drawing.hpp"
 #include "geometry.hpp"
-#include "clipper.hpp"
 #include "brush_language.hpp"
 #include "segmentation.hpp"
 #include <opencv2/core.hpp>
@@ -8,18 +7,19 @@
 #include <opencv2/imgproc.hpp>
 #include <range/v3/all.hpp>
 #include <stdexcept>
-#include <fstream>
-#include <iostream>
 #include <unordered_set>
 #include <array>
 #include <chrono>
+#include <fstream>
 #include "qdebug.h"
-#include <QMessageBox>
 
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
+#include <boost/geometry/geometries/linestring.hpp>
+#include <boost/geometry/multi/geometries/multi_linestring.hpp>
 
 namespace r = ranges;
 namespace rv = ranges::views;
-namespace cl = ClipperLib;
 
 namespace {
 
@@ -385,67 +385,6 @@ namespace {
         };
     }
 
-    cl::cInt to_cint(double val, double scale) {
-        return static_cast<cl::cInt>(std::round(val * scale));
-    }
-
-    double from_cint(cl::cInt val, double scale) {
-        return val / scale;
-    }
-
-    cl::Path polyline_to_clipper_path(const ch::polyline& poly, double scale) {
-        return poly |
-            rv::transform(
-                [scale](const ch::point& pt)->cl::IntPoint {
-                    return {
-                        to_cint(pt.x, scale),
-                        to_cint(pt.y, scale)
-                    };
-                }
-            ) |
-            r::to_vector;
-    }
-
-    cl::Paths polylines_to_clipper_paths(const std::vector<ch::polyline>& polys, double scale) {
-        return polys |
-            rv::transform(
-                [scale](const auto& poly)->cl::Path {
-                    return polyline_to_clipper_path(poly, scale);
-                }
-            ) |
-            r::to_vector;
-    }
-
-    cl::Paths poly_with_holes_to_clipper_paths(const polygon_with_holes& poly, double scale) {
-        return polylines_to_clipper_paths(
-            rv::concat(rv::single(poly.border), poly.holes) | r::to_vector,
-            scale
-        );
-    }
-
-    ch::polyline clipper_path_to_polyline(const cl::Path& path, double scale) {
-        return path |
-            rv::transform(
-                [scale](const cl::IntPoint& pt)->ch::point {
-                    return {
-                        from_cint(pt.X, scale),
-                        from_cint(pt.Y, scale)
-                    };
-                }
-            ) |
-            r::to_vector;
-    }
-
-    std::vector<ch::polyline> clipper_paths_to_polylines(const cl::Paths& paths, double scale) {
-        return paths |
-            rv::transform(
-                [scale](const auto& path)->ch::polyline {
-                    return clipper_path_to_polyline(path, scale);
-                }
-            ) |
-            r::to_vector;
-    }
-
     std::vector<ch::polyline> clip_crosshatching_to_bbox(ch::crosshatching_range swatch, const ch::rectangle& bbox) {
         auto input = swatch | r::to_vector;
         size_t n = 0;
@@ -468,24 +407,75 @@ namespace {
         return output;
     }
 
-    std::vector<ch::polyline> clip_swatch_to_poly(ch::crosshatching_swatch swatch, polygon_with_holes& poly, double scale = 100.0) {
-        cl::PolyTree polytree;
-        cl::Clipper clipper;
-        auto bbox = ch::bounding_rectangle(poly.border);
-        auto cross_hatching_segments = clip_crosshatching_to_bbox(swatch.content, bbox);
-        auto subject = polylines_to_clipper_paths(cross_hatching_segments, scale);
-        auto clip = poly_with_holes_to_clipper_paths(poly, scale);
+    namespace bg = boost::geometry;
+    namespace bgm = boost::geometry::model;
 
-        clipper.AddPaths(subject, cl::ptSubject, false);
-        clipper.AddPaths(clip, cl::ptClip, true);
-        if (!clipper.Execute(cl::ctIntersection, polytree, cl::pftEvenOdd, cl::pftEvenOdd)) {
-            throw std::runtime_error("clipper failed.");
+    using bg_point = bgm::point<double, 2, bg::cs::cartesian>;
+    using bg_polygon = bgm::polygon<bg_point, true, false>;
+    using bg_polyline = bgm::linestring<bg_point>;
+    using bg_polylines = bgm::multi_linestring<bg_polyline>;
+
+    bg_polylines polylines_to_boost_geometry(const std::vector<ch::polyline>& lines) {
+        bg_polylines pl;
+        pl.reserve(lines.size());
+        for (const auto& line : lines) {
+            bg_polyline bgl;
+            bgl.reserve(line.size());
+            for (const auto pt : line) {
+                bgl.push_back( { pt.x, pt.y } );
+            }
+            pl.emplace_back(std::move(bgl));
+        }
+        return pl;
+    }
+
+    bg_polygon poly_with_holes_to_boost_geometry(const polygon_with_holes& poly) {
+        bg_polygon bgp;
+
+        bgp.outer().reserve(poly.border.size());
+        for (const auto& pt : poly.border) {
+            bgp.outer().push_back({ pt.x, pt.y });
         }
 
-        cl::Paths clipped;
-        OpenPathsFromPolyTree(polytree, clipped);
+        auto num_holes = poly.holes.size();
+        bgp.inners().resize(num_holes);
+        for (size_t i = 0; i < num_holes; ++i) {
+            const auto& hole = poly.holes[i];
+            bgp.inners()[i].reserve(poly.holes[i].size());
+            for (const auto& pt : hole) {
+                bgp.inners()[i].push_back({ pt.x,pt.y });
+            }
+        }
 
-        return clipper_paths_to_polylines(clipped, scale);
+        return bgp;
+    }
+
+    std::vector<ch::polyline> boost_geometry_to_polylines(const bg_polylines& lines) {
+        return lines |
+            rv::transform(
+                [](const bg_polyline& bgl)->ch::polyline {
+                    return bgl | rv::transform(
+                        [](const bg_point& bgpt)->ch::point {
+                            return { bg::get<0>(bgpt), bg::get<1>(bgpt) };
+                        }
+                    ) | r::to_vector;
+                }
+        ) | r::to_vector;
+    }
+
+    std::vector<ch::polyline> clip_strokes_with_boost_geometry(const std::vector<ch::polyline>& strokes, const polygon_with_holes& poly) {
+        auto bg_strokes = polylines_to_boost_geometry(strokes);
+        auto bg_poly = poly_with_holes_to_boost_geometry(poly);
+        bg_polylines result;
+        bg::intersection(bg_poly, bg_strokes, result);
+        return boost_geometry_to_polylines(result);
+    }
+
+
+    std::vector<ch::polyline> clip_swatch_to_poly(const ch::crosshatching_swatch& swatch, const polygon_with_holes& poly, double scale = 100.0) {
+        auto bbox = ch::bounding_rectangle(poly.border);
+        auto cross_hatching_segments = clip_crosshatching_to_bbox(swatch.content, bbox);
+        return clip_strokes_with_boost_geometry(cross_hatching_segments, poly);
     }
 
     ch::polyline int_polyline_to_polyline(const int_polyline& ip) {
@@ -1049,9 +1039,15 @@ std::vector<std::tuple<ch::brush_fn, cv::Mat>> ch::generate_ink_layer_images(cv:
 ch::drawing ch::generate_crosshatched_drawing(const ch::crosshatching_job& job, const ch::callbacks& cbs) {
     
     progress_logger ps(job.title, cbs);
+
+    auto start_time = std::chrono::high_resolution_clock().now();
+
     ps.status(std::string("drawing ") + job.title);
     auto result = draw_layers(job.layers, job.params, ps);
     ps.status(std::string("complete.")); // TODO: or error
+
+    std::chrono::duration<double> elapsed = std::chrono::high_resolution_clock().now() - start_time;
+    ps.log(std::string("( ") + std::to_string(elapsed.count()) + " seconds)");
 
     return result;
 }
@@ -1094,3 +1090,8 @@ cv::Mat ch::paint_drawing(const drawing& d, std::function<void(double)> update_p
     }
     return mat;
 }
+
+void ch::debug()
+{
+}
+

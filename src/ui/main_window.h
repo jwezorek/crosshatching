@@ -117,6 +117,7 @@ namespace ui {
         void test();
         void redo_test_swatch();
         void edit_settings();
+        //void debug();
 
         void set_swatch_view(cv::Mat swatch, bool left);
         void set_layer_view();

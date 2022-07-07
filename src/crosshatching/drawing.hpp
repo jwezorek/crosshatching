@@ -53,4 +53,6 @@ namespace ch {
         std::function<void(double)> update_progress_cb = {});
     drawing scale(const drawing& d, double scale);
     cv::Mat paint_drawing(const drawing& d, std::function<void(double)> update_progress_cb = {});
+
+    void debug();
 }

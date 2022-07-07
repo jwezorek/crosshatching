@@ -149,7 +149,6 @@
   <ItemGroup>
     <ClCompile Include="src\crosshatching\brush.cpp" />
     <ClCompile Include="src\crosshatching\brush_language.cpp" />
-    <ClCompile Include="src\crosshatching\clipper.cpp" />
     <ClCompile Include="src\crosshatching\drawing.cpp" />
     <ClCompile Include="src\crosshatching\geometry.cpp" />
     <ClCompile Include="src\crosshatching\meanshift.cpp" />
@@ -175,7 +174,6 @@
   <ItemGroup>
     <ClInclude Include="src\crosshatching\brush.hpp" />
     <ClInclude Include="src\crosshatching\brush_language.hpp" />
-    <ClInclude Include="src\crosshatching\clipper.hpp" />
     <ClInclude Include="src\crosshatching\drawing.hpp" />
     <ClInclude Include="src\crosshatching\geometry.hpp" />
     <ClInclude Include="src\crosshatching\meanshift.hpp" />

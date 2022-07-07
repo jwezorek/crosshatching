@@ -380,7 +380,8 @@ double ch::measure_gray_level(crosshatching_swatch swatch, cv::Mat bkgd)
     auto mat = paint_cross_hatching(swatch, bkgd);
     auto n = swatch.sz.wd * swatch.sz.hgt;
     auto white_pixels = cv::countNonZero(mat);
-    return static_cast<double>(n - white_pixels) / static_cast<double>(n);
+    auto gray = static_cast<double>(n - white_pixels) / static_cast<double>(n);
+    return  gray;
 }
 
 void ch::to_svg(const std::string& filename, crosshatching_swatch swatch)
