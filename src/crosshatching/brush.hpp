@@ -113,6 +113,8 @@ namespace ch {
         static int num_samples();
     };
 
+    using brush_ptr = std::shared_ptr<brush>;
+
     dimensions operator*(double left, const dimensions& right);
 
 }

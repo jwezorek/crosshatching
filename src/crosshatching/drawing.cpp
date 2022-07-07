@@ -10,6 +10,7 @@
 #include <unordered_set>
 #include <array>
 #include <chrono>
+#include <memory>
 #include <fstream>
 #include "qdebug.h"
 
@@ -910,11 +911,11 @@ namespace {
         };
     }
 
-    std::vector<ch::polyline> crosshatched_poly_with_holes(const polygon_with_holes& input, double color, ch::brush& brush) {
+    std::vector<ch::polyline> crosshatched_poly_with_holes(const polygon_with_holes& input, double color, ch::brush_ptr brush) {
         auto [x1, y1, x2, y2] = ch::bounding_rectangle(input.border);
         cv::Point2d center = { (x1 + x2) / 2.0,(y1 + y2) / 2.0 };
         auto poly = ::transform(input, ch::translation_matrix(-center));
-        auto swatch = brush.get_hatching(color, { x2 - x1,y2 - y1 });
+        auto swatch = brush->get_hatching(color, { x2 - x1,y2 - y1 });
         auto strokes = clip_swatch_to_poly(swatch, poly);
         return ch::transform(strokes, ch::translation_matrix(center));
     }
@@ -945,20 +946,25 @@ namespace {
 
         std::vector<ch::polyline> output;
         output.reserve(k_typical_number_of_strokes);
-        std::unordered_map<ink_layer_stack::brush_token, ch::brush> brush_table;
+        std::unordered_map<ink_layer_stack::brush_token, ch::brush_ptr> brush_table;
         swatch_table output_table = create_swatch_table();
 
         size_t count = 0;
         for (const auto& [brush_func, blob] : layer) {
             auto parent_tok = blob.parent_token();
             auto iter = brush_table.find(parent_tok);
-            ch::brush current_brush;
+            ch::brush_ptr current_brush;
             if (iter != brush_table.end()) {
                 current_brush = iter->second;
             } else {
-                current_brush = ch::brush(brush_func, params.stroke_width, params.epsilon,
-                    { static_cast<double>(params.swatch_sz) }, tbl.at(parent_tok));
-                current_brush.build_n(20);
+                current_brush = std::make_shared<ch::brush>(
+                    brush_func, 
+                    params.stroke_width, 
+                    params.epsilon,
+                    ch::dimensions(static_cast<double>(params.swatch_sz)), 
+                    tbl.at(parent_tok)
+                );
+                current_brush->build_n(20);
                 brush_table[parent_tok] = current_brush;
             }
 
@@ -968,7 +974,7 @@ namespace {
 
             auto tok = blob.tokenize();
             if (output_table.find(tok) == output_table.end()) {
-                output_table[tok] = current_brush.render_swatches(value);
+                output_table[tok] = current_brush->render_swatches(value);
             }
             prog.tick();
         }
