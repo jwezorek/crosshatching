@@ -859,8 +859,7 @@ namespace {
                         const auto& [layer_index, blobs_per_layer] = tup;
                         return to_ink_layer(blobs_per_layer, layer_index, brushes.at(layer_index));
                     }
-                ) |
-                r::to_vector;
+                ) | r::to_vector;
             populate_blob_parents(layers);
             scale(scale_factor);
         }
