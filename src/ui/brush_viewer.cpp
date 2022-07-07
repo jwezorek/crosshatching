@@ -20,6 +20,7 @@ ui::brush_viewer::brush_viewer(const std::string& brush_name, ch::brush_fn brush
 
     brush_ = ch::brush(brush, 1);
     brush_.build_n(10);
+    update_swatch();
 }
 
 void ui::brush_viewer::update_swatch() {
