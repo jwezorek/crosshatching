@@ -20,6 +20,8 @@ namespace ch {
 
         dimensions(double d = 0.0);
         dimensions(double w, double h);
+
+        double area() const;
     };
 
     struct crosshatching_swatch {
@@ -68,7 +70,7 @@ namespace ch {
     param_unit_of_hatching_fn make_default_hatching_unit();
     brush_adapter_fn make_one_param_brush_adaptor(brush_adapter_fn fn, param_adapter_fn param);
     brush_adapter_fn make_random_brush_adaptor(random_brush_adaptor_fn fn, param_adapter_fn param);
-    brush_fn make_scatter_hatching_brush_fn(const param_adapter_fn& count_fn, const param_adapter_fn& run_length);
+    brush_fn make_scatter_hatching_brush_fn(const param_adapter_fn& run_length);
     brush_fn make_linear_hatching_brush_fn(const param_adapter_fn& run_length, const param_adapter_fn& space_length, const param_adapter_fn& vert_space,
         const param_unit_of_hatching_fn& h_fn);
 

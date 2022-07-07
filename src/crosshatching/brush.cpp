@@ -405,6 +405,9 @@ ch::dimensions::dimensions(double w, double h) : wd(w), hgt(h)
 {
 }
 
+double ch::dimensions::area() const {
+    return wd * hgt;
+}
 
 ch::crosshatching_swatch ch::run_brush_pipeline(const brush_pipeline& pipeline, double thickness, dimensions sz, double t)
 {
@@ -456,14 +459,12 @@ ch::param_adapter_fn ch::make_one_parameter_param_adapter(ch::param_adapter_fn f
 }
 */
 
-ch::brush_fn ch::make_scatter_hatching_brush_fn(const param_adapter_fn& count_fn, const param_adapter_fn& line_len)
+ch::brush_fn ch::make_scatter_hatching_brush_fn(const param_adapter_fn& line_len)
 {
-    return [count_fn, line_len](double stroke, ch::dimensions sz, double t)->crosshatching_swatch {
-        int n = static_cast<int>(std::exp(t * count_fn(t)));
-        return scatter_crosshatching(n, 
-            [line_len, t]()->double { return line_len(t); },
-            sz, stroke
-        );
+    return [line_len](double stroke, ch::dimensions sz, double t)->crosshatching_swatch {
+        int n = static_cast<int>( t * t * sz.area() );
+        auto random_line_len = [line_len, t]()->double { return line_len(t); };
+        return scatter_crosshatching( n, random_line_len, sz, stroke );
     };
 }
 

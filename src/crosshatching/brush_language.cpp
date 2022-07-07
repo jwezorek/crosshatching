@@ -177,8 +177,7 @@ namespace {
 
     ch::brush_pipeline_item eval_scatter_brush_expr(const expr_args& args) {
         return ch::make_scatter_hatching_brush_fn(
-            expr_to_parameter_adapter(args[0]),
-            expr_to_parameter_adapter(args[1])
+            expr_to_parameter_adapter(args[0])
         );
     }
 }
