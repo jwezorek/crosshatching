@@ -73,8 +73,12 @@ namespace ui {
 		public:
             brush_item(const std::string& name, ch::brush_expr_ptr expr);
             brush_item(ch::brush_expr_ptr expr);
+            
 			ch::brush_expr_ptr brush_expr;
             bool is_toplevel;
+
+            ch::brush_expr* as_expr();
+            bool is_leaf() const;
 		};
 
         static void insert_brush_item(brush_item* parent, brush_item* item);

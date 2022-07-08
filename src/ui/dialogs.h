@@ -43,13 +43,15 @@ namespace ui {
         static ch::brush_expr_ptr edit_brush_expr(const std::string& code);
 
         void set(const std::string& name, const std::string& code);
-
+        void set(const std::string& code);
     private:
 
         void parse_brush_code();
         void launch_brush_viewer();
         void update_btn_enabled_state();
+        void clear_brush();
 
+        QLabel* name_lbl_;
         QLineEdit* name_box_;
         QTextEdit* code_box_;
         QDialogButtonBox* btns_;

@@ -598,6 +598,15 @@ ui::brush_panel::brush_item::brush_item(ch::brush_expr_ptr expr) :
 	is_toplevel(false)
 {}
 
+ch::brush_expr* ui::brush_panel::brush_item::as_expr()
+{
+	return dynamic_cast<ch::brush_expr*>(brush_expr.get());
+}
+
+bool ui::brush_panel::brush_item::is_leaf() const {
+	return (!brush_expr->children() || brush_expr->children()->empty());
+}
+
 void ui::brush_panel::insert_brush_item(brush_item* parent, brush_item* item) {
 	parent->addChild(item);
 	if (item->brush_expr->is_expression()) {
@@ -651,17 +660,43 @@ void ui::brush_panel::sync_layer_panel() {
 	layer_panel_.set_brush_names(brush_names());
 }
 
+QTreeWidgetItem* toplevel_parent(QTreeWidgetItem* twi) {
+	while (twi->parent()) {
+		twi = twi->parent();
+	}
+	return twi;
+}
+
 void ui::brush_panel::handle_double_click(QTreeWidgetItem* item, int column) {
 	brush_item* bi = static_cast<brush_item*>(item);
 	if (bi->is_toplevel) {
 		auto result = brush_dialog::edit_brush(bi->text(0).toStdString(), 
-			bi->brush_expr->to_string());
+			bi->brush_expr->to_formatted_string());
 		if (result) {
 			auto [new_name, expr] = result.value();
-			bi->setText(0, new_name.c_str());
-			bi->brush_expr = expr;
+			tree()->removeItemWidget(item, 0);
+			delete item;
+			insert_toplevel_item(tree(), new_name, expr);
 		} 
 	} else {
-		//TODO: handle editing a subexpr...
+		if (bi->is_leaf()) {
+			return; //TODO
+		}
+		auto result = brush_dialog::edit_brush_expr(bi->brush_expr->to_formatted_string());
+		if (result) {
+			auto toplevel_item = toplevel_parent(item);
+			auto toplevel_brush_item = static_cast<brush_item*>(toplevel_item);
+			auto parent = static_cast<brush_item*>(item->parent());
+			parent->as_expr()->replace_child(bi->brush_expr, result);
+
+			std::string test1 = parent->brush_expr->to_string();
+			std::string toplevel = toplevel_brush_item->brush_expr->to_formatted_string();
+
+			auto toplevel_parent_body = toplevel_brush_item->brush_expr;
+			auto toplevel_parent_name = toplevel_brush_item->text(0).toStdString();
+			tree()->removeItemWidget(toplevel_item, 0);
+			delete toplevel_item;
+			insert_toplevel_item(tree(), toplevel_parent_name, toplevel_parent_body);
+		}
 	}
 }

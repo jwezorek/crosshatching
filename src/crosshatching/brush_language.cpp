@@ -4,6 +4,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <sstream>
+#include <qDebug>
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -184,6 +185,39 @@ namespace {
 
 /*----------------------------------------------------------------------------------------------------*/
 
+int brush_expr_depth( const ch::brush_expr_base& expr)
+{
+    auto child_exprs = expr.children();
+    if (!child_exprs) {
+        return 0;
+    }
+    if (child_exprs->empty()) {
+        return 0;
+    }
+    int deepest = -1;
+    for (auto child : *child_exprs) {
+        auto child_depth = brush_expr_depth( *child );
+        if (child_depth > deepest) {
+            deepest = child_depth;
+        }
+    }
+    return deepest + 1;
+}
+
+std::string ch::brush_expr_base::to_formatted_string(int n) const {
+    return to_string();
+}
+
+const std::vector<ch::brush_expr_ptr>* ch::brush_expr_base::children() const {
+    return nullptr;
+}
+
+bool ch::brush_expr_base::is_expression() const {
+    return false;
+}
+
+/*----------------------------------------------------------------------------------------------------*/
+
 ch::brush_expr::brush_expr(ch::symbol op) :
     op_(op)
 {}
@@ -214,17 +248,35 @@ std::string ch::brush_expr::to_short_string() const
     return sym_to_string(op_);
 }
 
-std::string ch::brush_expr::to_string(int n) const {
+bool ch::brush_expr::is_one_liner() const {
+    return brush_expr_depth( *this ) <= 2;
+}
+
+std::string ch::brush_expr::to_string() const {
     std::stringstream ss;
-
-    std::string indent(4 * n,' ');
-    
-    ss << indent << "(" << sym_to_string(op_) << "\n";
+    ss << "(" << sym_to_string(op_) << " ";
     for (auto iter = children_.begin(); iter != children_.end(); ++iter) {
-        ss << (*iter)->to_string(n+1);
+        ss << (*iter)->to_string();
+        if (iter != std::prev(children_.end())) {
+            ss << " ";
+        }
     }
-    ss << indent << ")\n";
+    ss << ")";
+    return ss.str();
+}
 
+std::string ch::brush_expr::to_formatted_string(int n) const {
+    std::string indent(4 * n, ' ');
+    std::stringstream ss;
+    if (is_one_liner()) {
+        ss << indent << to_string() << "\n";
+    } else {
+        ss << indent << "(" << to_short_string() << "\n";
+        for (auto child : children_) {
+            ss << child->to_formatted_string(n + 1);
+        }
+        ss << indent << ")\n";
+    }
     return ss.str();
 }
 
@@ -238,6 +290,18 @@ const std::vector<ch::brush_expr_ptr>* ch::brush_expr::children() const  {
 
 bool ch::brush_expr::is_expression() const {
     return true;
+}
+
+void ch::brush_expr::replace_child(brush_expr_ptr old_child, brush_expr_ptr new_child) {
+    auto iter = std::find_if(children_.begin(), children_.end(), 
+        [old_child](brush_expr_ptr bep)->bool {
+            return bep.get() == old_child.get();
+        }
+    );
+    if (iter != children_.end()) {
+        qDebug() << "child replaced";
+        *iter = new_child;
+    }
 }
 
 /*----------------------------------------------------------------------------------------------------*/
@@ -256,11 +320,11 @@ std::optional<ch::symbol> ch::symbol_expr::sym_type() const {
 
 std::string ch::symbol_expr::to_short_string() const
 {
-    return to_string(0);
+    return sym_to_string(sym_);
 }
 
-std::string ch::symbol_expr::to_string(int n) const {
-    return  std::string(4 * n,' ') + sym_to_string(sym_) + "\n";
+std::string ch::symbol_expr::to_string() const {
+    return  to_short_string();
 }
 
 std::optional<double> ch::symbol_expr::to_number() const {
@@ -283,11 +347,11 @@ std::optional<ch::symbol> ch::num_expr::sym_type() const {
 
 std::string ch::num_expr::to_short_string() const
 {
-    return to_string(0);
+    return  std::to_string(val_);
 }
 
-std::string ch::num_expr::to_string(int n) const  {
-    return std::string(4 * n,' ') + std::to_string(val_) + "\n";
+std::string ch::num_expr::to_string() const  {
+    return  to_short_string();
 }
 
 std::optional<double> ch::num_expr::to_number() const {
@@ -322,3 +386,4 @@ std::variant<ch::brush_expr_ptr, std::string> ch::brush_language_to_expr(const s
         return std::string("unknown error");
     };
 }
+

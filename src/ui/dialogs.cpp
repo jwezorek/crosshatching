@@ -111,7 +111,7 @@ ui::brush_dialog::brush_dialog(QWidget* parent) :
     initialize_dlg( this, "New brush...");
 
     auto layout = new QVBoxLayout(this);
-    layout->addWidget( new QLabel("name") );
+    layout->addWidget( name_lbl_ = new QLabel("name") );
     layout->addWidget( name_box_ = new QLineEdit() );
     layout->addWidget(spacer(5));
     layout->addWidget( new QLabel("code") );
@@ -129,6 +129,7 @@ ui::brush_dialog::brush_dialog(QWidget* parent) :
     connect(parse_btn, &QPushButton::clicked, this, &brush_dialog::parse_brush_code);
     connect(view_btn_, &QPushButton::clicked, this, &brush_dialog::launch_brush_viewer);
     connect(name_box_, &QLineEdit::textChanged, this, &brush_dialog::update_btn_enabled_state);
+    connect(code_box_, &QTextEdit::textChanged, this, &brush_dialog::clear_brush);
 
     update_btn_enabled_state();
 }
@@ -151,9 +152,15 @@ void ui::brush_dialog::launch_brush_viewer() {
     viewer->exec();
 }
 
+void ui::brush_dialog::clear_brush() {
+    brush_ = {};
+    update_btn_enabled_state();
+}
+
 void ui::brush_dialog::update_btn_enabled_state() {
     bool has_valid_brush = brush_ != nullptr;
-    bool has_valid_name = !name_box_->text().isEmpty(); // TODO: need to test for name collisions.
+    // TODO: need to test for name collisions.
+    bool has_valid_name = !name_box_->text().isEmpty() || name_box_->isHidden();
     view_btn_->setEnabled(has_valid_brush);
     btns_->button(QDialogButtonBox::Ok)->setEnabled(has_valid_brush && has_valid_name);
 }
@@ -187,11 +194,25 @@ std::optional<std::tuple<std::string, ch::brush_expr_ptr>> ui::brush_dialog::edi
 }
 
 ch::brush_expr_ptr ui::brush_dialog::edit_brush_expr(const std::string& code) {
-    return {};
+    std::unique_ptr<ui::brush_dialog> dlg = std::make_unique<ui::brush_dialog>();
+    dlg->set(code);
+    if (dlg->exec() == QDialog::Accepted) {
+        return dlg->brush_expr();
+    } else {
+        return nullptr;
+    }
 }
 
 void ui::brush_dialog::set(const std::string& name, const std::string& code) {
     name_box_->setText(name.c_str());
+    code_box_->setText(code.c_str());
+    parse_brush_code();
+}
+
+void ui::brush_dialog::set(const std::string& code) {
+    name_box_->hide();
+    name_lbl_->hide();
+    view_btn_->hide();
     code_box_->setText(code.c_str());
     parse_brush_code();
 }
