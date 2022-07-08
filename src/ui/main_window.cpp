@@ -636,23 +636,21 @@ void ui::brush_panel::insert_toplevel_item(QTreeWidget* tree, const std::string&
 }
 
 void ui::brush_panel::add_brush_node() {
-	if (tree()->selectedItems().empty()) {
-		auto result = ui::brush_dialog::create_brush();
-		if (result) {
-			const auto& [name, brush] = *result;
-			insert_toplevel_item(tree(), name, brush);
-			sync_layer_panel();
-		}
-	} else {
-		// TODO: add child item
+	auto result = ui::brush_dialog::create_brush();
+	if (result) {
+		const auto& [name, brush] = *result;
+		insert_toplevel_item(tree(), name, brush);
+		sync_layer_panel();
 	}
 }
 
 void ui::brush_panel::delete_brush_node() {
 	if (!tree()->selectedItems().empty()) {
-		QMessageBox mb;
-		mb.setText(tree()->selectedItems().first()->text(0) + " delete");
-		mb.exec();
+		auto item = tree()->selectedItems().first();
+		if (!item->parent()) {
+			tree()->removeItemWidget(item, 0);
+			delete item;
+		}
 	}
 }
 
