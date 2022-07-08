@@ -74,6 +74,7 @@ namespace ui {
             brush_item(const std::string& name, ch::brush_expr_ptr expr);
             brush_item(ch::brush_expr_ptr expr);
 			ch::brush_expr_ptr brush_expr;
+            bool is_toplevel;
 		};
 
         static void insert_brush_item(brush_item* parent, brush_item* item);
@@ -81,6 +82,7 @@ namespace ui {
         void add_brush_node();
         void delete_brush_node();
         void sync_layer_panel();
+        void handle_double_click(QTreeWidgetItem* item, int column);
 	};
 
     struct drawing_tools {

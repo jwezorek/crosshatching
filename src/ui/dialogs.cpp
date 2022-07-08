@@ -176,9 +176,24 @@ std::optional<std::tuple<std::string, ch::brush_expr_ptr>> ui::brush_dialog::cre
     }
 }
 
+std::optional<std::tuple<std::string, ch::brush_expr_ptr>> ui::brush_dialog::edit_brush(const std::string& name, const std::string& code) {
+    std::unique_ptr<ui::brush_dialog> dlg = std::make_unique<ui::brush_dialog>();
+    dlg->set(name, code);
+    if (dlg->exec() == QDialog::Accepted) {
+        return { { dlg->brush_name(), dlg->brush_expr() } };
+    } else {
+        return {};
+    }
+}
 
-ch::brush_expr_ptr ui::brush_dialog::edit_brush(const std::string& name, const std::string& code) {
+ch::brush_expr_ptr ui::brush_dialog::edit_brush_expr(const std::string& code) {
     return {};
+}
+
+void ui::brush_dialog::set(const std::string& name, const std::string& code) {
+    name_box_->setText(name.c_str());
+    code_box_->setText(code.c_str());
+    parse_brush_code();
 }
 
 ui::layer_dialog::layer_dialog(const std::vector<std::string>& brushes, const ui::layer_param& current_layer_params) :

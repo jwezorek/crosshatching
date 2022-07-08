@@ -560,8 +560,10 @@ void ui::layer_panel::sync_layers_to_ui() {
 /*------------------------------------------------------------------------------------------*/
 
 ui::brush_panel::brush_panel(layer_panel& layers) :
-	tree_panel("brushes", [&]() {this->add_brush_node(); }, [&]() {this->delete_brush_node(); }),
-	layer_panel_(layers) {
+		tree_panel("brushes", [&]() {this->add_brush_node(); }, 
+			[&]() {this->delete_brush_node(); }),
+		layer_panel_(layers) {
+	connect(tree(), &QTreeWidget::itemDoubleClicked, this, &brush_panel::handle_double_click);
 }
 
 std::vector<std::string> ui::brush_panel::brush_names() const {
@@ -586,12 +588,14 @@ std::unordered_map<std::string, ch::brush_fn> ui::brush_panel::brush_dictionary(
 
 ui::brush_panel::brush_item::brush_item(const std::string& name, ch::brush_expr_ptr expr) :
 	QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString(name.c_str()))),
-	brush_expr(expr)
+	brush_expr(expr), 
+	is_toplevel(true)
 {}
 
 ui::brush_panel::brush_item::brush_item(ch::brush_expr_ptr expr) :
 	QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString(expr->to_short_string().c_str()))),
-	brush_expr(expr)
+	brush_expr(expr), 
+	is_toplevel(false)
 {}
 
 void ui::brush_panel::insert_brush_item(brush_item* parent, brush_item* item) {
@@ -645,4 +649,19 @@ void ui::brush_panel::delete_brush_node() {
 
 void ui::brush_panel::sync_layer_panel() {
 	layer_panel_.set_brush_names(brush_names());
+}
+
+void ui::brush_panel::handle_double_click(QTreeWidgetItem* item, int column) {
+	brush_item* bi = static_cast<brush_item*>(item);
+	if (bi->is_toplevel) {
+		auto result = brush_dialog::edit_brush(bi->text(0).toStdString(), 
+			bi->brush_expr->to_string());
+		if (result) {
+			auto [new_name, expr] = result.value();
+			bi->setText(0, new_name.c_str());
+			bi->brush_expr = expr;
+		} 
+	} else {
+		//TODO: handle editing a subexpr...
+	}
 }

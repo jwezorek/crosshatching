@@ -33,13 +33,16 @@ namespace ch {
         virtual brush_pipeline_item eval() const = 0;
         virtual std::optional<symbol> sym_type() const = 0;
         virtual std::string to_short_string() const = 0;
-        virtual std::string to_string() const = 0;
+        virtual std::string to_string(int indent) const = 0;
         virtual std::optional<double> to_number() const = 0;
         virtual const std::vector<brush_expr_ptr>* children() const {
             return nullptr;
         }
         virtual bool is_expression() const {
             return false;
+        }
+        std::string to_string() const {
+            return to_string(0);
         }
     };
 
@@ -55,7 +58,7 @@ namespace ch {
         brush_pipeline_item eval() const override;
         std::optional<symbol> sym_type() const override;
         std::string to_short_string() const override;
-        std::string to_string() const override;
+        std::string to_string(int indent) const override;
         std::optional<double>  to_number() const override;
         const std::vector<brush_expr_ptr>* children() const override;
         bool is_expression() const override;
@@ -72,7 +75,7 @@ namespace ch {
         brush_pipeline_item eval() const override;
         virtual std::optional<symbol> sym_type() const override;
         std::string to_short_string() const override;
-        std::string to_string() const override;
+        std::string to_string(int indent) const override;
         std::optional<double> to_number() const override;
 
     private:
@@ -85,7 +88,7 @@ namespace ch {
         brush_pipeline_item eval() const override;
         virtual std::optional<symbol> sym_type() const override;
         std::string to_short_string() const override;
-        std::string to_string() const override;
+        std::string to_string(int indent) const override;
         std::optional<double> to_number() const override;
 
     private:

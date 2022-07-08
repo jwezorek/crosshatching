@@ -214,17 +214,16 @@ std::string ch::brush_expr::to_short_string() const
     return sym_to_string(op_);
 }
 
-std::string ch::brush_expr::to_string() const {
+std::string ch::brush_expr::to_string(int n) const {
     std::stringstream ss;
+
+    std::string indent(4 * n,' ');
     
-    ss << "(" << sym_to_string(op_) << " ";
+    ss << indent << "(" << sym_to_string(op_) << "\n";
     for (auto iter = children_.begin(); iter != children_.end(); ++iter) {
-        ss << (*iter)->to_string();
-        if (iter != std::prev(children_.end())) {
-            ss << " ";
-        }
+        ss << (*iter)->to_string(n+1);
     }
-    ss << ")";
+    ss << indent << ")\n";
 
     return ss.str();
 }
@@ -257,11 +256,11 @@ std::optional<ch::symbol> ch::symbol_expr::sym_type() const {
 
 std::string ch::symbol_expr::to_short_string() const
 {
-    return to_string();
+    return to_string(0);
 }
 
-std::string ch::symbol_expr::to_string() const {
-    return sym_to_string(sym_);
+std::string ch::symbol_expr::to_string(int n) const {
+    return  std::string(4 * n,' ') + sym_to_string(sym_) + "\n";
 }
 
 std::optional<double> ch::symbol_expr::to_number() const {
@@ -284,11 +283,11 @@ std::optional<ch::symbol> ch::num_expr::sym_type() const {
 
 std::string ch::num_expr::to_short_string() const
 {
-    return to_string();
+    return to_string(0);
 }
 
-std::string ch::num_expr::to_string() const  {
-    return std::to_string(val_);
+std::string ch::num_expr::to_string(int n) const  {
+    return std::string(4 * n,' ') + std::to_string(val_) + "\n";
 }
 
 std::optional<double> ch::num_expr::to_number() const {
