@@ -103,8 +103,7 @@ namespace {
     }
 
     ch::polyline jitter(const ch::polyline& poly, const ch::rnd_fn& jit) {
-        return r::to_vector(
-            rv::concat(
+        return  rv::concat(
                 rv::join(
                     poly |
                     rv::sliding(2) |
@@ -114,26 +113,23 @@ namespace {
                         }
                     )
                 ),
-                rv::single(poly.back())
-                            )
-        );
+                rv::single(poly.back()) 
+            ) | r::to_<ch::polyline>();
     }
 
     ch::polyline fragment(const ch::polyline& poly, const ch::rnd_fn& frag) {
-        return r::to_vector(
-            rv::concat(
-                rv::join(
-                    poly |
-                    rv::sliding(2) |
-                    rv::transform(
-                        [frag](auto rng) {
-                            return fragment_line_segment(rng[0], rng[1], frag);
-                        }
-                    )
-                ),
-                rv::single(poly.back())
-                            )
-        );
+        return  rv::concat(
+            rv::join(
+                poly |
+                rv::sliding(2) |
+                rv::transform(
+                    [frag](auto rng) {
+                        return fragment_line_segment(rng[0], rng[1], frag);
+                    }
+                )
+            ),
+            rv::single(poly.back())
+        ) | r::to_<ch::polyline>();
     }
 
     ch::polyline jiggle(const ch::polyline& poly, const ch::rnd_fn& jig) {

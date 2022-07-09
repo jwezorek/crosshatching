@@ -9,8 +9,31 @@
 
 namespace r = ranges;
 namespace rv = ranges::views;
+namespace bg = boost::geometry;
 
 namespace {
+
+	template<typename T>
+	T scale_geometry(const T& poly, double scale)
+	{
+		return poly |
+			rv::transform([scale](const auto& pt) { return scale * pt; }) |
+			r::to_<T>();
+	}
+
+	template<typename T>
+	ch::rectangle bounding_rect_of_geometry(const T& poly) {
+		auto floats = poly | 
+			rv::transform([](const auto& pt) {return cv::Point2f(pt); }) |
+			r::to_vector;
+		cv::Rect2d rect = cv::boundingRect(floats);
+		return {
+			static_cast<double>(rect.x),
+			static_cast<double>(rect.y),
+			static_cast<double>(rect.x + rect.width),
+			static_cast<double>(rect.y + rect.height)
+		};
+	}
 
 	bool are_parallel(ch::point p1, ch::point p2, ch::point p3) {
 		if (p1.x == p2.x && p2.x == p3.x) {
@@ -22,7 +45,7 @@ namespace {
 		return false;
 	}
 
-	ch::polyline elide_adjacent_parallel_edges(const ch::polyline& poly) {
+	ch::ring elide_adjacent_parallel_edges(const ch::ring& poly) {
 		auto first = poly.front();
 		auto last = poly.back();
 		return rv::concat(rv::concat(rv::single(last), poly), rv::single(first)) |
@@ -36,8 +59,7 @@ namespace {
 				[](auto rng3)->ch::point {
 					return rng3[1];
 				}
-			) |
-					r::to_vector;
+			) | r::to_<ch::ring>();
 	}
 
 	namespace cohen_sutherland {
@@ -139,6 +161,26 @@ namespace {
 	}
 }
 
+ch::polyline ch::make_polyline(size_t sz)
+{
+	polyline poly;
+	poly.resize(sz);
+	return poly;
+}
+
+ch::ring ch::make_ring(size_t sz) {
+	ring r;
+	r.resize(sz);
+	return r;
+}
+
+ch::polygon ch::make_polygon(const ch::ring& outer, const std::vector<ch::ring>& inners) {
+	ch::polygon poly;
+	poly.outer() = outer;
+	poly.inners() = inners;
+	return poly;
+}
+
 ch::matrix ch::rotation_matrix(double theta)
 {
 	return rotation_matrix(std::cos(theta), std::sin(theta));
@@ -208,7 +250,7 @@ ch::point ch::mean_point(const polyline& poly)
 
 ch::polyline ch::transform(const polyline& poly, const matrix& mat)
 {
-	ch::polyline output(poly.size());
+	ch::polyline output = make_polyline(poly.size());
 	std::transform(poly.begin(), poly.end(), output.begin(),
 		[&mat](const auto& p) {return transform(p, mat); }
 	);
@@ -221,6 +263,21 @@ ch::point ch::transform(const point& pt, const matrix& mat)
 	v << pt.x, pt.y, 1.0;
 	v = mat * v;
 	return { v[0], v[1] }; 
+}
+
+ch::ring ch::transform(const ring& r, const matrix& mat) {
+	ch::ring output = make_ring(r.size());
+	std::transform(r.begin(), r.end(), output.begin(),
+		[&mat](const auto& p) {return transform(p, mat); }
+	);
+	return output;
+}
+
+ch::polygon ch::transform(const ch::polygon& p, const ch::matrix& mat) {
+	return make_polygon(
+		transform(p.outer(), mat),
+		p.inners() | rv::transform([&mat](const auto& hole) {return ch::transform(hole, mat); }) | r::to_vector
+	);
 }
 
 void ch::paint_polyline(cv::Mat& mat, const polyline& poly, double thickness, int color, point offset)
@@ -269,14 +326,32 @@ std::size_t ch::point_hasher::operator()(const cv::Point& p) const
 	return seed;
 }
 
-ch::polyline ch::scale(const polyline& poly, double scale)
-{
-	return poly |
-		rv::transform([scale](const auto& pt) { return scale * pt; }) |
-		r::to_vector;
+ch::polylines ch::clip_lines_to_poly(const ch::polylines& strokes, const ch::polygon& poly) {
+	polylines result;
+	bg::intersection(poly, strokes, result);
+	return result;
 }
 
-ch::polyline ch::simplify_rectilinear_polygon(const ch::polyline& poly) {
+ch::ring ch::scale(const ch::ring& r, double scale)
+{
+	return scale_geometry<ring>(r, scale);
+}
+
+ch::polyline ch::scale(const polyline& poly, double scale)
+{
+	return scale_geometry<polyline>(poly, scale);
+}
+
+ch::polygon ch::scale(const polygon& poly, double val) {
+	return make_polygon(
+		scale(poly.outer(), val),
+		poly.inners() |
+		rv::transform([val](const auto& r) {return scale(r, val); }) |
+		r::to_vector
+	);
+}
+
+ch::ring ch::simplify_rectilinear_ring(const ch::ring& poly) {
 	return elide_adjacent_parallel_edges(poly);
 }
 
@@ -290,14 +365,11 @@ std::optional<ch::line_segment> ch::linesegment_rectangle_intersection(const ch:
 }
 
 ch::rectangle ch::bounding_rectangle(const ch::polyline& poly) {
-	auto floats = poly | rv::transform([](const cv::Point2d& pt) {return cv::Point2f(pt); }) | r::to_vector;
-	cv::Rect2d rect = cv::boundingRect(floats);
-	return {
-		static_cast<double>(rect.x),
-		static_cast<double>(rect.y),
-		static_cast<double>(rect.x + rect.width),
-		static_cast<double>(rect.y + rect.height)
-	};
+	return bounding_rect_of_geometry(poly);
+}
+
+ch::rectangle ch::bounding_rectangle(const ch::ring& poly) {
+	return bounding_rect_of_geometry(poly);
 }
 
 cv::Rect ch::union_rect_and_pt(const cv::Rect& r, cv::Point2i pt) {

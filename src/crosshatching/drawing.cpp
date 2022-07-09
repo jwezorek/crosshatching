@@ -14,11 +14,6 @@
 #include <fstream>
 #include "qdebug.h"
 
-#include <boost/geometry.hpp>
-#include <boost/geometry/geometries/polygon.hpp>
-#include <boost/geometry/geometries/linestring.hpp>
-#include <boost/geometry/multi/geometries/multi_linestring.hpp>
-
 namespace r = ranges;
 namespace rv = ranges::views;
 
@@ -100,16 +95,11 @@ namespace {
         }
     };
 
-    struct polygon_with_holes {
-        ch::polyline border;
-        std::vector<ch::polyline> holes;
-    };
-
     struct blob {
         uchar value;
-        polygon_with_holes poly;
+        ch::polygon poly;
 
-        blob(uchar v, const polygon_with_holes& p) :
+        blob(uchar v, const ch::polygon& p) :
             value(v), poly(p)
         {}
     };
@@ -272,7 +262,7 @@ namespace {
         return { {ip[northwest_index], counter_clockwise ? direction::NW : direction::SW}, northwest_index };
     }
 
-    void push_if_new(ch::polyline& poly, const cv::Point2d& pt) {
+    void push_if_new(ch::ring& poly, const ch::point& pt) {
         if (!poly.empty() && poly.back() == pt) {
             return;
         }
@@ -295,8 +285,8 @@ namespace {
         );
     }
 
-    ch::polyline contour_to_polygon(const int_polyline& ip, bool counter_clockwise = true) {
-        ch::polyline poly;
+    ch::ring contour_to_ring(const int_polyline& ip, bool counter_clockwise = true) {
+        ch::ring poly;
         int n = static_cast<int>(ip.size());
         poly.reserve(n);
 
@@ -317,12 +307,12 @@ namespace {
         } while (get_vertex(crawler) != poly.front());
 
         poly.shrink_to_fit();
-        return ch::simplify_rectilinear_polygon(poly);
+        return ch::simplify_rectilinear_ring(poly);
     }
 
-    std::vector<polygon_with_holes> contour_info_to_polygons(const find_contour_output& contours) {
+    std::vector<ch::polygon> contour_info_to_polygons(const find_contour_output& contours) {
         std::unordered_map<int, int> contour_index_to_poly_index;
-        std::vector<polygon_with_holes> blobs;
+        std::vector<ch::polygon> blobs;
         for (int i = 0; i < contours.hierarchy.size(); ++i) {
             const cv::Vec4i& h = contours.hierarchy[i];
             int parent = h[3];
@@ -330,7 +320,7 @@ namespace {
             if (parent == -1) { // contour is an outer polygon
                 int poly_index = static_cast<int>(blobs.size());
                 blobs.emplace_back(
-                    polygon_with_holes{ contour_to_polygon(contour, true), {} }
+                    ch::make_polygon(contour_to_ring(contour, true), {})
                 );
                 contour_index_to_poly_index[i] = poly_index;
             } else { // contour is a hole, so find its parent...
@@ -338,13 +328,13 @@ namespace {
                 if (iter == contour_index_to_poly_index.end()) {
                     throw std::runtime_error("contour hierearchy had a child contour before its parent");
                 }
-                blobs[iter->second].holes.push_back(contour_to_polygon(contour, false));
+                blobs[iter->second].inners().push_back(contour_to_ring(contour, false));
             }
         }
         return blobs;
     }
 
-    std::string loop_to_path_commands(const ch::polyline& poly, double scale) {
+    std::string loop_to_path_commands(const ch::ring& poly, double scale) {
         std::stringstream ss;
         ss << "M " << scale * poly[0].x << "," << scale * poly[0].y << " L";
         for (const auto& pt : rv::tail(poly)) {
@@ -354,16 +344,16 @@ namespace {
         return ss.str();
     }
 
-    std::string svg_path_commands(const polygon_with_holes& poly, double scale) {
+    std::string svg_path_commands(const ch::polygon& poly, double scale) {
         std::stringstream ss;
-        ss << loop_to_path_commands(poly.border, scale);
-        for (const auto& hole : poly.holes) {
+        ss << loop_to_path_commands(poly.outer(), scale);
+        for (const auto& hole : poly.inners()) {
             ss << " " << loop_to_path_commands(hole, scale);
         }
         return ss.str();
     }
 
-    std::string poly_with_holes_to_svg(uchar gray, const polygon_with_holes& poly, double scale) {
+    std::string poly_with_holes_to_svg(uchar gray, const ch::polygon& poly, double scale) {
         std::stringstream ss;
         ss << "<path fill-rule=\"evenodd\" stroke=\"none\" fill=\"";
         ss << ch::gray_to_svg_color(gray) << "\" d=\"";
@@ -372,27 +362,13 @@ namespace {
         return ss.str();
     }
 
-    polygon_with_holes scale_poly(const polygon_with_holes& poly, double scale) {
-        return {
-            ch::scale(poly.border, scale),
-            poly.holes | rv::transform([scale](const auto& p) {return ch::scale(p, scale); }) | r::to_vector
-        };
-    }
-
-    polygon_with_holes transform(const polygon_with_holes& p, const ch::matrix& mat) {
-        return {
-            ch::transform(p.border, mat),
-            p.holes | rv::transform([&mat](const auto& hole) {return ch::transform(hole, mat); }) | r::to_vector
-        };
-    }
-
-    std::vector<ch::polyline> clip_crosshatching_to_bbox(ch::crosshatching_range swatch, const ch::rectangle& bbox) {
+    ch::polylines clip_crosshatching_to_bbox(ch::crosshatching_range swatch, const ch::rectangle& bbox) {
         auto input = swatch | r::to_vector;
         size_t n = 0;
         for (const auto& poly : input) {
             n += poly.size() - 1;
         }
-        std::vector<ch::polyline> output;
+        ch::polylines output;
         output.reserve(n);
         for (const auto& poly : input) {
             for (auto rng : poly | rv::sliding(2)) {
@@ -408,75 +384,10 @@ namespace {
         return output;
     }
 
-    namespace bg = boost::geometry;
-    namespace bgm = boost::geometry::model;
-
-    using bg_point = bgm::point<double, 2, bg::cs::cartesian>;
-    using bg_polygon = bgm::polygon<bg_point, true, false>;
-    using bg_polyline = bgm::linestring<bg_point>;
-    using bg_polylines = bgm::multi_linestring<bg_polyline>;
-
-    bg_polylines polylines_to_boost_geometry(const std::vector<ch::polyline>& lines) {
-        bg_polylines pl;
-        pl.reserve(lines.size());
-        for (const auto& line : lines) {
-            bg_polyline bgl;
-            bgl.reserve(line.size());
-            for (const auto pt : line) {
-                bgl.push_back( { pt.x, pt.y } );
-            }
-            pl.emplace_back(std::move(bgl));
-        }
-        return pl;
-    }
-
-    bg_polygon poly_with_holes_to_boost_geometry(const polygon_with_holes& poly) {
-        bg_polygon bgp;
-
-        bgp.outer().reserve(poly.border.size());
-        for (const auto& pt : poly.border) {
-            bgp.outer().push_back({ pt.x, pt.y });
-        }
-
-        auto num_holes = poly.holes.size();
-        bgp.inners().resize(num_holes);
-        for (size_t i = 0; i < num_holes; ++i) {
-            const auto& hole = poly.holes[i];
-            bgp.inners()[i].reserve(poly.holes[i].size());
-            for (const auto& pt : hole) {
-                bgp.inners()[i].push_back({ pt.x,pt.y });
-            }
-        }
-
-        return bgp;
-    }
-
-    std::vector<ch::polyline> boost_geometry_to_polylines(const bg_polylines& lines) {
-        return lines |
-            rv::transform(
-                [](const bg_polyline& bgl)->ch::polyline {
-                    return bgl | rv::transform(
-                        [](const bg_point& bgpt)->ch::point {
-                            return { bg::get<0>(bgpt), bg::get<1>(bgpt) };
-                        }
-                    ) | r::to_vector;
-                }
-        ) | r::to_vector;
-    }
-
-    std::vector<ch::polyline> clip_strokes_with_boost_geometry(const std::vector<ch::polyline>& strokes, const polygon_with_holes& poly) {
-        auto bg_strokes = polylines_to_boost_geometry(strokes);
-        auto bg_poly = poly_with_holes_to_boost_geometry(poly);
-        bg_polylines result;
-        bg::intersection(bg_poly, bg_strokes, result);
-        return boost_geometry_to_polylines(result);
-    }
-
-
-    std::vector<ch::polyline> clip_swatch_to_poly(const ch::crosshatching_swatch& swatch, const polygon_with_holes& poly, double scale = 100.0) {
-        auto bbox = ch::bounding_rectangle(poly.border);
+    ch::polylines clip_swatch_to_poly(const ch::crosshatching_swatch& swatch, const ch::polygon& poly) {
+        auto bbox = ch::bounding_rectangle(poly.outer());
         auto cross_hatching_segments = clip_crosshatching_to_bbox(swatch.content, bbox);
-        return clip_strokes_with_boost_geometry(cross_hatching_segments, poly);
+        return ch::clip_lines_to_poly(cross_hatching_segments, poly);
     }
 
     ch::polyline int_polyline_to_polyline(const int_polyline& ip) {
@@ -650,7 +561,7 @@ namespace {
         return images | rv::reverse | r::to_vector;
     }
 
-    using blobs_per_gray_t = std::tuple<uchar, std::vector<polygon_with_holes>>;
+    using blobs_per_gray_t = std::tuple<uchar, std::vector<ch::polygon>>;
     std::vector<blob> blobs_per_gray_to_layer(const std::vector<blobs_per_gray_t>& blobs_per_gray) {
         return rv::join(
             blobs_per_gray |
@@ -664,7 +575,7 @@ namespace {
                     const auto& [gray, polygons] = bpg;
                     return polygons |
                         rv::transform(
-                            [gray](const polygon_with_holes& poly)->blob {
+                            [gray](const auto& poly)->blob {
                                 return {
                                     gray,
                                     poly
@@ -712,21 +623,21 @@ namespace {
 
         struct ink_layer_blob {
             uchar value;
-            polygon_with_holes poly;
+            ch::polygon poly;
             int layer_id;
             int blob_id;
             ink_layer_blob* parent;
 
             size_t vert_count() const {
-                size_t n = poly.border.size();
-                for (const auto& hole : poly.holes) {
+                size_t n = poly.outer().size();
+                for (const auto& hole : poly.inners()) {
                     n += hole.size();
                 }
                 return n;
             }
 
             cv::Point2i point_in_blob() const {
-                return poly.border.front();
+                return poly.outer().front();
             }
 
             brush_token tokenize() const {
@@ -746,7 +657,7 @@ namespace {
             }
 
             void scale(double scale_factor) {
-                poly = scale_poly(poly, scale_factor);
+                poly = ch::scale(poly, scale_factor);
             }
         };
 
@@ -911,10 +822,10 @@ namespace {
         };
     }
 
-    std::vector<ch::polyline> crosshatched_poly_with_holes(const polygon_with_holes& input, double color, ch::brush_ptr brush) {
-        auto [x1, y1, x2, y2] = ch::bounding_rectangle(input.border);
+    std::vector<ch::polyline> crosshatch_polygon(const ch::polygon& input, double color, ch::brush_ptr brush) {
+        auto [x1, y1, x2, y2] = ch::bounding_rectangle(input.outer());
         cv::Point2d center = { (x1 + x2) / 2.0,(y1 + y2) / 2.0 };
-        auto poly = ::transform(input, ch::translation_matrix(-center));
+        auto poly = ch::transform(input, ch::translation_matrix(-center));
         auto swatch = brush->get_hatching(color, { x2 - x1,y2 - y1 });
         auto strokes = clip_swatch_to_poly(swatch, poly);
         return ch::transform(strokes, ch::translation_matrix(center));
@@ -969,7 +880,7 @@ namespace {
             }
 
             auto value = gray_byte_to_value(blob.value);
-            auto strokes = crosshatched_poly_with_holes(blob.poly, value, current_brush);
+            auto strokes = crosshatch_polygon(blob.poly, value, current_brush);
             std::copy(strokes.begin(), strokes.end(), std::back_inserter(output));
 
             auto tok = blob.tokenize();
