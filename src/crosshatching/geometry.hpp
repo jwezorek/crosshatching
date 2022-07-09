@@ -15,10 +15,7 @@
 #include <boost/geometry/geometries/register/linestring.hpp>
 #include <boost/geometry/geometries/register/multi_linestring.hpp>
 
-namespace ch {
-    using point = cv::Point2d;
-}
-
+namespace ch { using point = cv::Point2d; }
 BOOST_GEOMETRY_REGISTER_POINT_2D(ch::point, double, boost::geometry::cs::cartesian, x, y);
 
 namespace ch {
@@ -29,7 +26,6 @@ namespace ch {
     using polylines = boost::geometry::model::multi_linestring<polyline>;
     using line_segment = std::tuple<point, point>;
     using rectangle = std::tuple<double, double, double, double>;
-    using vec = Eigen::Matrix<double, 3, 1>;
     using matrix = Eigen::Matrix<double, 3, 3>;
 
     polyline make_polyline(size_t sz);
@@ -38,7 +34,7 @@ namespace ch {
     matrix rotation_matrix(double theta);
     matrix rotation_matrix(double cos_theta, double sin_theta);
     matrix translation_matrix(double x, double y);
-    matrix translation_matrix(const cv::Point2d& pt);
+    matrix translation_matrix(const point& pt);
     matrix scale_matrix(double x_scale, double y_scale);
     ranges::any_view<polyline> transform(ranges::any_view<polyline> polys, const matrix& mat);
     std::vector<polyline> transform(const std::vector<polyline>& poly, const matrix& mat);
@@ -50,7 +46,6 @@ namespace ch {
     void paint_polyline(cv::Mat& mat, const polyline& p, double thickness, int color, point offset = { 0,0 });
     void paint_polyline_aa(cv::Mat& mat, const polyline& p, double thickness, int color, point offset = { 0,0 });
     double euclidean_distance(const point& pt1, const point& pt2);
-
     polylines clip_lines_to_poly(const polylines& strokes, const polygon& poly);
     ring scale(const ring& r, double scale);
     polyline scale(const polyline& poly, double scale);

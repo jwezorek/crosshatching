@@ -13,6 +13,8 @@ namespace bg = boost::geometry;
 
 namespace {
 
+	using vec = Eigen::Matrix<double, 3, 1>;
+
 	template<typename T>
 	T scale_geometry(const T& poly, double scale)
 	{
@@ -204,7 +206,7 @@ ch::matrix ch::translation_matrix(double x, double y) {
 	return translation;
 }
 
-ch::matrix ch::translation_matrix(const cv::Point2d& pt)
+ch::matrix ch::translation_matrix(const point& pt)
 {
 	return translation_matrix(pt.x, pt.y);
 }
