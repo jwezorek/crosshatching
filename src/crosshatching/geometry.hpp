@@ -56,27 +56,4 @@ namespace ch {
     cv::Rect union_rect_and_pt(const cv::Rect& r, cv::Point2i pt);
     std::optional<line_segment> linesegment_rectangle_intersection(const line_segment& line_seg, const rectangle& rect);
 
-    template<typename P>
-    std::string poly_to_string(const std::vector<P>& polyline) {
-        std::stringstream ss;
-        ss << "[ ";
-        for (const auto& pt : polyline) {
-            ss << pt.x << "," << pt.y << " ";
-        }
-        ss << "]";
-        return ss.str();
-    }
-
-    template<typename T>
-    cv::Point_<T> normalize_offset(const cv::Point_<T>& pt) {
-        auto offset = pt;
-        offset /= std::max(std::abs(pt.x), std::abs(pt.y));
-        return offset;
-    }
-
-    struct point_hasher
-    {
-        std::size_t operator()(const cv::Point& p) const;
-    };
-
 }

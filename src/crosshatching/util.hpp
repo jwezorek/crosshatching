@@ -22,7 +22,6 @@ namespace ch {
     int uniform_rnd_int(int low, int high);
     rnd_fn normal_rnd_fn(double mean, double stddev);
     ch::rnd_fn const_rnd_fn(double val);
-    double ramp(double t, double k, bool right, bool up);
 
     // image processing
     cv::Mat apply_contrast(cv::Mat img, double beta, double sigma);
@@ -32,19 +31,13 @@ namespace ch {
     cv::Mat coherence_filter(cv::Mat img, int sigma, int str_sigma, float blend, int iter);
     cv::Mat anisotropic_diffusion(cv::Mat img, double alpha, double k, int iters);
     std::tuple<cv::Mat,cv::Mat> meanshift_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize);
-    double degrees_to_radians(double degrees);
     std::vector<uchar> unique_gray_values(const cv::Mat& input);
     int max_val_in_mat(cv::Mat mat);
     void write_label_map_visualization(cv::Mat img, const std::string& output_file);
 
     // etc.
-    template<typename R>
-    auto rotate_view(R rng, int pivot) {
-        return ranges::views::concat(
-            rng | ranges::views::drop(pivot),
-            rng | ranges::views::take(pivot)
-        );
-    }
     std::string to_string(double val, int precision);
+    double degrees_to_radians(double degrees);
+    double ramp(double t, double k, bool right, bool up);
 
 }

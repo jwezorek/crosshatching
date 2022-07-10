@@ -2,17 +2,18 @@
 #include "geometry.hpp"
 #include "brush_language.hpp"
 #include "segmentation.hpp"
+#include "qdebug.h"
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <range/v3/all.hpp>
+#include <boost/functional/hash.hpp>
 #include <stdexcept>
 #include <unordered_set>
 #include <array>
 #include <chrono>
 #include <memory>
 #include <fstream>
-#include "qdebug.h"
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -159,8 +160,26 @@ namespace {
         return { pc.loc, dir_to_next_dir[pc.head] };
     }
 
+    cv::Point normalize_offset(const cv::Point& pt) {
+        auto offset = pt;
+        offset /= std::max(std::abs(pt.x), std::abs(pt.y));
+        return offset;
+    }
+
+    struct point_hasher
+    {
+        size_t operator()(const cv::Point& p) const
+        {
+            std::size_t seed = 0;
+            boost::hash_combine(seed, p.x);
+            boost::hash_combine(seed, p.y);
+
+            return seed;
+        }
+    };
+
     direction direction_to(const cv::Point& from_pt, const cv::Point& to_pt) {
-        static std::unordered_map<cv::Point, direction, ch::point_hasher> offset_to_direction = {
+        static std::unordered_map<cv::Point, direction, point_hasher> offset_to_direction = {
             {{0,-1}, direction::N },
             {{1,-1}, direction::NE},
             {{1,0},  direction::E },
@@ -171,7 +190,7 @@ namespace {
             {{-1,-1},direction::NW}
         };
 
-        return offset_to_direction[ch::normalize_offset(to_pt - from_pt)];
+        return offset_to_direction[normalize_offset(to_pt - from_pt)];
     }
 
     cv::Point2d get_vertex(const pixel_crawler& pc) {
@@ -269,10 +288,18 @@ namespace {
         poly.push_back(pt);
     }
 
+    template<typename R>
+    auto rotate_view(R rng, int pivot) {
+        return ranges::views::concat(
+            rng | ranges::views::drop(pivot),
+            rng | ranges::views::take(pivot)
+        );
+    }
+
     auto canonicalized_cyclic_contour_view(const int_polyline& ip) {
         int start_index = find_northwest_index(ip);
         auto start_point = ip.at(start_index);
-        return ch::rotate_view(rv::all(ip), start_index) | rv::cycle;
+        return rotate_view(rv::all(ip), start_index) | rv::cycle;
     }
 
     template<typename T>
