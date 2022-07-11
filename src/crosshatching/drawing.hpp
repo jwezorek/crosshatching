@@ -11,7 +11,7 @@ namespace ch {
 
     struct drawing {
         std::vector<polyline> strokes;
-        dimensions sz;
+        dimensions<double> sz;
         double stroke_wd;
     };
 

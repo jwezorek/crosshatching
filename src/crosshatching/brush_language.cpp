@@ -299,7 +299,6 @@ void ch::brush_expr::replace_child(brush_expr_ptr old_child, brush_expr_ptr new_
         }
     );
     if (iter != children_.end()) {
-        qDebug() << "child replaced";
         *iter = new_child;
     }
 }

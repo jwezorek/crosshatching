@@ -648,23 +648,23 @@ namespace {
 
     private:
 
-        struct ink_layer_blob {
+        struct blob_properties {
             uchar value;
-            ch::polygon poly;
+            ch::polygon* poly;
             int layer_id;
             int blob_id;
-            ink_layer_blob* parent;
+            blob_properties* parent;
 
             size_t vert_count() const {
-                size_t n = poly.outer().size();
-                for (const auto& hole : poly.inners()) {
+                size_t n = poly->outer().size();
+                for (const auto& hole : poly->inners()) {
                     n += hole.size();
                 }
                 return n;
             }
 
             cv::Point2i point_in_blob() const {
-                return poly.outer().front();
+                return poly->outer().front();
             }
 
             brush_token tokenize() const {
@@ -683,14 +683,18 @@ namespace {
                     255;
             }
 
-            void scale(double scale_factor) {
-                poly = ch::scale(poly, scale_factor);
-            }
         };
 
         struct ink_layer {
             ch::brush_fn brush;
-            std::vector<ink_layer_blob> blobs;
+            std::vector<ch::polygon> polygons;
+            std::vector<blob_properties> blobs;
+
+            void scale(double scale_factor) {
+                for (auto& poly : polygons) {
+                    poly = ch::scale(poly, scale_factor);
+                }
+            }
         };
 
         class blob_map {
@@ -700,7 +704,7 @@ namespace {
             std::unordered_map<int, int> label_to_blob_id_;
 
         public:
-            blob_map(cv::Mat ink_layer_img, const std::vector<ink_layer_blob>& blobs) {
+            blob_map(cv::Mat ink_layer_img, const std::vector<blob_properties>& blobs) {
                 labels_ = ch::grayscale_to_label_image(ink_layer_img);
                 for (const auto& [id, blob] : rv::enumerate(blobs)) {
                     auto label = labels_.at<int>(blob.point_in_blob());
@@ -720,33 +724,30 @@ namespace {
                     return {};
                 }
             }
+            
         };
 
         std::vector<ink_layer> layers_;
 
-        static ink_layer_blob to_ink_layer_blob(const blob& b, int layer, int index) {
-            return {
-                b.value,
-                b.poly,
-                layer,
-                index,
-                nullptr
-            };
-        }
-
         static ink_layer to_ink_layer(const std::vector<blob>& blobs, int layer_index, ch::brush_fn brush) {
-            return {
+            ink_layer il{
                 brush,
+                blobs | rv::transform([](const auto& b) { return b.poly; } ) | r::to_vector,
                 rv::enumerate(blobs) |
-                    rv::transform([&](const auto& tup) {
+                    rv::transform([&](const auto& tup)->blob_properties {
                         const auto& [index, b] = tup;
-                        return to_ink_layer_blob(b, layer_index, index);
+                        int blob_index = static_cast<int>(index);
+                        return { b.value, nullptr, layer_index, blob_index, nullptr };
                     }) |
                     r::to_vector
             };
+            for (size_t i = 0; i < il.blobs.size(); ++i) {
+                il.blobs[i].poly = &il.polygons[i];
+            }
+            return il;
         }
 
-        std::tuple<int, int> find_blob_parent(const ink_layer_blob& blob, const std::vector<blob_map>& blob_maps) {
+        std::tuple<int, int> find_blob_parent(const blob_properties& blob, const std::vector<blob_map>& blob_maps) {
             for (int parent_layer_id = blob.layer_id - 1; parent_layer_id >= 0; --parent_layer_id) {
                 auto parent_blob_id = blob_maps.at(parent_layer_id).id_from_point(blob.point_in_blob());
                 if (parent_blob_id) {
@@ -803,7 +804,7 @@ namespace {
             scale(scale_factor);
         }
 
-        using blob_range = r::any_view<std::tuple<ch::brush_fn, ink_layer_blob>>;
+        using blob_range = r::any_view<std::tuple<ch::brush_fn, blob_properties>>;
 
         std::tuple<size_t,size_t> blob_stats() const {
             size_t blob_count = 0;
@@ -824,7 +825,7 @@ namespace {
                         const auto& brush = layer.brush;
                         return layer.blobs |
                             rv::transform(
-                                [&brush](const ink_layer_blob& blob)->std::tuple<ch::brush_fn, ink_layer_blob> {
+                                [&brush](const blob_properties& blob)->std::tuple<ch::brush_fn, blob_properties> {
                                     return { brush, blob };
                                 }
                         );
@@ -834,9 +835,7 @@ namespace {
 
         void scale(double scale_factor) {
             for (auto& layer : layers_) {
-                for (auto& blob : layer.blobs) {
-                    blob.scale(scale_factor);
-                }
+                layer.scale(scale_factor);
             }
         }
        
@@ -859,13 +858,6 @@ namespace {
     }
 
     using swatch_table = std::unordered_map<ink_layer_stack::brush_token, ch::bkgd_swatches>;
-
-    ch::dimensions scaled_dimensions(cv::Mat mat, double scale) {
-        return {
-            mat.cols * scale,
-            mat.rows * scale
-        };
-    }
 
     swatch_table create_swatch_table() {
         swatch_table tbl;
@@ -907,7 +899,7 @@ namespace {
             }
 
             auto value = gray_byte_to_value(blob.value);
-            auto strokes = crosshatch_polygon(blob.poly, value, current_brush);
+            auto strokes = crosshatch_polygon( *blob.poly, value, current_brush);
             std::copy(strokes.begin(), strokes.end(), std::back_inserter(output));
 
             auto tok = blob.tokenize();
@@ -965,7 +957,7 @@ namespace {
 
         return ch::drawing{
             layer_strokes | rv::join | r::to_vector,
-            scaled_dimensions(layers.front(), params.scale),
+             params.scale * ch::dimensions<double>(ch::mat_dimensions(layers.front())),
             static_cast<double>(params.stroke_width)
         };
     }

@@ -28,6 +28,34 @@ namespace ch {
     using rectangle = std::tuple<double, double, double, double>;
     using matrix = Eigen::Matrix<double, 3, 3>;
 
+    template <typename T>
+    struct dimensions {
+        T wd;
+        T hgt;
+
+        dimensions(T d = {}) : wd(d), hgt(d) {}
+        dimensions(T w, T h) : wd(w), hgt(h) {}
+
+        template<typename U>
+        dimensions(U w, U h) : 
+            wd( static_cast<T>(w)), hgt(static_cast<T>(h))
+        {}
+
+        template<typename U>
+        dimensions(const dimensions<U>& d) :
+            wd(static_cast<T>(d.wd)), hgt(static_cast<T>(d.hgt))
+        {}
+
+        T area() const {
+            return wd * hgt;
+        }
+    };
+
+    template <typename T>
+    dimensions<T> operator*(T left, const dimensions<T>& right) {
+        return { left * right.wd, left * right.hgt };
+    }
+
     polyline make_polyline(size_t sz);
     ring make_ring(size_t);
     polygon make_polygon(const ring& outer, const std::vector<ring>& inners);
@@ -55,5 +83,6 @@ namespace ch {
     rectangle bounding_rectangle(const ring& poly);
     cv::Rect union_rect_and_pt(const cv::Rect& r, cv::Point2i pt);
     std::optional<line_segment> linesegment_rectangle_intersection(const line_segment& line_seg, const rectangle& rect);
-
+    std::vector<ch::polygon> simplify_rectangle_dissection(const std::vector<ch::polygon>& dissection, 
+        const dimensions<double>& rect, double param);
 }

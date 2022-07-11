@@ -14,23 +14,13 @@ namespace ch {
 
     using crosshatching_range = ranges::any_view<polyline>;
 
-    struct dimensions {
-        double wd;
-        double hgt;
-
-        dimensions(double d = 0.0);
-        dimensions(double w, double h);
-
-        double area() const;
-    };
-
     struct crosshatching_swatch {
         crosshatching_range content;
-        dimensions sz;
+        dimensions<double> sz;
         double stroke_wd;
     };
 
-    using brush_fn = std::function<ch::crosshatching_swatch(double, ch::dimensions, double)>;
+    using brush_fn = std::function<ch::crosshatching_swatch(double, ch::dimensions<double>, double)>;
     using param_adapter_fn = std::function<double(double t)>;
     using brush_adapter_fn = std::function<ch::crosshatching_swatch(ch::crosshatching_swatch, double t)>;
     using brush_pipeline_item = std::variant<brush_fn, param_adapter_fn, brush_adapter_fn>;
@@ -44,9 +34,9 @@ namespace ch {
     unit_of_hatching_fn make_brick_stroke();
     crosshatching_range one_horz_stroke(double x1, double x2, double y, double hgt);
 
-    crosshatching_swatch scatter_crosshatching(int count, rnd_fn line_len, dimensions sz = { 512,512 }, double stroke_wd = 1);
+    crosshatching_swatch scatter_crosshatching(int count, rnd_fn line_len, dimensions<double> sz = { 512,512 }, double stroke_wd = 1);
     crosshatching_swatch linear_crosshatching(rnd_fn run_length, rnd_fn space_length, rnd_fn vert_space,
-        unit_of_hatching_fn h_fn = one_horz_stroke, dimensions sz = { 512,512 }, double stroke_wd = 1);
+        unit_of_hatching_fn h_fn = one_horz_stroke, dimensions<double> sz = { 512,512 }, double stroke_wd = 1);
     crosshatching_swatch fragment(crosshatching_swatch rng, ch::rnd_fn frag);
     crosshatching_swatch jitter(crosshatching_swatch rng, ch::rnd_fn jitter);
     crosshatching_swatch jiggle(crosshatching_swatch rng, ch::rnd_fn jiggle);
@@ -61,7 +51,8 @@ namespace ch {
     constexpr int k_swatch_sz = 512;
     constexpr double k_epsilon = 0.001;
 
-    ch::crosshatching_swatch run_brush_pipeline(const brush_pipeline& pipeline, double thickness, dimensions sz, double t);
+    ch::crosshatching_swatch run_brush_pipeline(const brush_pipeline& pipeline, double thickness, 
+            dimensions<double> sz, double t);
 
     param_adapter_fn make_constant_fn(double k);
     param_adapter_fn make_lerp_fn(param_adapter_fn v1, param_adapter_fn v2);
@@ -89,7 +80,7 @@ namespace ch {
         std::unordered_map<double, double> param_to_gray_;
         brush_fn brush_fn_;
         int line_thickness_;
-        dimensions swatch_sz_;
+        dimensions<double> swatch_sz_;
         double eps_;
         bkgd_swatches bkgds_;
 
@@ -101,13 +92,13 @@ namespace ch {
     public:
         brush() {};
         brush(brush_fn fn, int line_thickness = 1, double epsilon = k_epsilon, 
-            dimensions swatch_sz = { static_cast<double>(k_swatch_sz) }, const bkgd_swatches& bkgds = {});
+            dimensions<double> swatch_sz = { static_cast<double>(k_swatch_sz) }, const bkgd_swatches& bkgds = {});
 
         void build();
         void build_n(int n);
         double stroke_width() const;
         double gray_value_to_param(double gray_val);
-        crosshatching_swatch get_hatching(double gray_val, dimensions sz);
+        crosshatching_swatch get_hatching(double gray_val, dimensions<double> sz);
         bkgd_swatches render_swatches(double gray_level);
         cv::Mat swatch(double gray_level);
         double min_gray_level() const;
@@ -116,7 +107,5 @@ namespace ch {
     };
 
     using brush_ptr = std::shared_ptr<brush>;
-
-    dimensions operator*(double left, const dimensions& right);
 
 }

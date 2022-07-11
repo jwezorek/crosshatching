@@ -282,6 +282,10 @@ void ch::write_label_map_visualization(cv::Mat img, const std::string& output_fi
 	cv::imwrite(output_file, mat);
 }
 
+ch::dimensions<int> ch::mat_dimensions(cv::Mat mat) {
+	return { mat.cols, mat.rows };
+}
+
 std::vector<uchar> ch::unique_gray_values(const cv::Mat& input) {
 	if (input.channels() != 1) {
 		throw std::runtime_error("called get_gray_levels on color image");

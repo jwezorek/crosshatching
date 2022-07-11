@@ -160,6 +160,53 @@ namespace {
 			}
 		}
 	}
+
+	template<int P = 4>
+	class fp_point
+	{
+		static constexpr double calc_scaling_factor(int digits_of_precision) {
+			return (digits_of_precision == 1) ? 10.0 : 10.0 * calc_scaling_factor(digits_of_precision - 1);
+		}
+
+		static constexpr double scaling_factor = calc_scaling_factor(P);
+
+		template<int P>
+		friend struct fp_point_hash;
+
+	public:
+		fp_point(double x, double y) :
+			x_(static_cast<int64_t>(std::llround(scaling_factor * x))),
+			y_(static_cast<int64_t>(std::llround(scaling_factor * y)))
+		{}
+
+		bool operator==(const fp_point<P>& fpv) const
+		{
+			return x_ == fpv.x_ && y_ == fpv.y_;
+		}
+
+		ch::point to_point() const
+		{
+			return {
+				static_cast<double> (x_ / scaling_factor),
+				static_cast<double> (y_ / scaling_factor)
+			};
+		}
+
+	private:
+		int64_t x_;
+		int64_t y_;
+	};
+
+	template<int P = 4>
+	struct fp_point_hash
+	{
+		std::size_t operator()(const fp_point<P>& key) const {
+			std::size_t seed = 0;
+			boost::hash_combine(seed, key.x_);
+			boost::hash_combine(seed, key.y_);
+			return seed;
+		}
+	};
 }
 
 ch::polyline ch::make_polyline(size_t sz)
@@ -381,4 +428,9 @@ cv::Rect ch::union_rect_and_pt(const cv::Rect& r, cv::Point2i pt) {
 		x2 - x1 + 1,
 		y2 - y1 + 1
 	};
+}
+
+std::vector<ch::polygon> simplify_rectangle_dissection(const std::vector<ch::polygon>& dissection,
+		const ch::dimensions<double>& rect, double param) {
+	return dissection;
 }

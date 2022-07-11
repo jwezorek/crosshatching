@@ -24,7 +24,7 @@ namespace {
         double x;
     };
 
-    ch::polyline random_line_segment(const ch::dimensions& sz, ch::rnd_fn line_len) {
+    ch::polyline random_line_segment(const ch::dimensions<double>& sz, ch::rnd_fn line_len) {
         auto half_wd = sz.wd / 2.0;
         auto half_hgt = sz.hgt / 2.0;
         auto half_len = line_len() / 2.0;
@@ -180,11 +180,11 @@ namespace {
     class pipeline_visitor {
     private:
         double stroke_wd_;
-        ch::dimensions sz_;
+        ch::dimensions<double> sz_;
         double t_;
         ch::crosshatching_swatch hatching_;
     public:
-        pipeline_visitor(double thickness, ch::dimensions sz, double t) : stroke_wd_(thickness), sz_(sz), t_(t) {
+        pipeline_visitor(double thickness, ch::dimensions<double> sz, double t) : stroke_wd_(thickness), sz_(sz), t_(t) {
         }
 
         void operator()(const ch::param_adapter_fn& param_adapter) {
@@ -247,18 +247,11 @@ ch::unit_of_hatching_fn ch::make_shading_stroke(double sz_pcnt, double stddev, b
     };
 }
 
-ch::dimensions operator*(const ch::dimensions& sz, double k) {
-    return {
-        sz.wd * k,
-        sz.hgt * k
-    };
-}
-
 ch::crosshatching_range ch::one_horz_stroke(double x1, double x2, double y, double hgt) {
     return rv::single(ch::polyline{ {x1,y} , {x2,y} });
 }
 
-ch::crosshatching_swatch ch::scatter_crosshatching(int n, ch::rnd_fn line_len, ch::dimensions sz, double stroke_wd)
+ch::crosshatching_swatch ch::scatter_crosshatching(int n, ch::rnd_fn line_len, ch::dimensions<double> sz, double stroke_wd)
 {
     return {
         rv::iota(0,n) |
@@ -273,9 +266,9 @@ ch::crosshatching_swatch ch::scatter_crosshatching(int n, ch::rnd_fn line_len, c
 }
 
 ch::crosshatching_swatch ch::linear_crosshatching(rnd_fn run_length, rnd_fn space_length, rnd_fn vert_space,
-    unit_of_hatching_fn h_fn, ch::dimensions viewable_swatch_sz, double stroke_wd) {
+        unit_of_hatching_fn h_fn, ch::dimensions<double> viewable_swatch_sz, double stroke_wd) {
     auto dim = std::sqrt(2.0) * (std::max(viewable_swatch_sz.wd , viewable_swatch_sz.hgt));
-    auto swatch_sz = dimensions(dim);
+    auto swatch_sz = dimensions<double>(dim);
     return {
         rv::join(
             running_sum(vert_space, -swatch_sz.hgt / 2.0) |
@@ -393,19 +386,8 @@ void ch::to_svg(const std::string& filename, crosshatching_swatch swatch)
     outfile.close();
 }
 
-ch::dimensions::dimensions(double d) : wd(d), hgt(d)
-{
-}
-
-ch::dimensions::dimensions(double w, double h) : wd(w), hgt(h)
-{
-}
-
-double ch::dimensions::area() const {
-    return wd * hgt;
-}
-
-ch::crosshatching_swatch ch::run_brush_pipeline(const brush_pipeline& pipeline, double thickness, dimensions sz, double t)
+ch::crosshatching_swatch ch::run_brush_pipeline(const brush_pipeline& pipeline, double thickness, 
+    dimensions<double> sz, double t)
 {
     pipeline_visitor visitor(thickness,sz,t);
     for (const auto& item : pipeline) {
@@ -457,7 +439,7 @@ ch::param_adapter_fn ch::make_one_parameter_param_adapter(ch::param_adapter_fn f
 
 ch::brush_fn ch::make_scatter_hatching_brush_fn(const param_adapter_fn& line_len)
 {
-    return [line_len](double stroke, ch::dimensions sz, double t)->crosshatching_swatch {
+    return [line_len](double stroke, ch::dimensions<double> sz, double t)->crosshatching_swatch {
         int n = static_cast<int>( t * t * sz.area() );
         auto random_line_len = [line_len, t]()->double { return line_len(t); };
         return scatter_crosshatching( n, random_line_len, sz, stroke );
@@ -467,7 +449,7 @@ ch::brush_fn ch::make_scatter_hatching_brush_fn(const param_adapter_fn& line_len
 ch::brush_fn ch::make_linear_hatching_brush_fn(const param_adapter_fn& run_length, const param_adapter_fn& space_length,
     const param_adapter_fn& vert_space, const param_unit_of_hatching_fn& h_fn)
 {
-    return [=](double stroke, ch::dimensions sz, double t)->crosshatching_swatch {
+    return [=](double stroke, ch::dimensions<double> sz, double t)->crosshatching_swatch {
         return linear_crosshatching(
             [run_length, t]()->double {return run_length(t); },
             [space_length, t]()->double {return space_length(t); },
@@ -480,13 +462,13 @@ ch::brush_fn ch::make_linear_hatching_brush_fn(const param_adapter_fn& run_lengt
 }
 
 ch::brush_fn ch::make_run_pipeline_fn(const ch::brush_pipeline& pipeline) {
-    return [pipeline](double stroke_wd, ch::dimensions sz, double t)->crosshatching_swatch {
+    return [pipeline](double stroke_wd, ch::dimensions<double> sz, double t)->crosshatching_swatch {
         return run_brush_pipeline(pipeline, stroke_wd, sz, t);
     };
 }
 
 ch::brush_fn ch::make_merge_fn(const std::vector<ch::brush_fn>& brushes) {
-    return [brushes](double stroke_wd, dimensions sz, double t)->crosshatching_swatch {
+    return [brushes](double stroke_wd, dimensions<double> sz, double t)->crosshatching_swatch {
         return {
             rv::join(
                 brushes |
@@ -503,7 +485,8 @@ ch::param_adapter_fn ch::make_ramp_fn(param_adapter_fn k, bool right, bool up)
     return [k, up, right](double t) {return ch::ramp(t, k(t), right, up); };
 }
 
-ch::brush::brush(brush_fn fn, int line_thickness, double epsilon, dimensions sz, const std::vector<cv::Mat>& bkgds) :
+ch::brush::brush(brush_fn fn, int line_thickness, double epsilon, 
+        dimensions<double> sz, const std::vector<cv::Mat>& bkgds) :
     brush_fn_(fn),
     line_thickness_(line_thickness),
     swatch_sz_{ sz },
@@ -521,7 +504,7 @@ struct range_queue_item {
 static int NUM_SAMPLES = 0;
 static double SAMPLE_TIME = 0;
 
-double sample(ch::dimensions sz, ch::brush_fn fn, double t, int n, int thickness, const std::vector<cv::Mat>& bkgds) {
+double sample(ch::dimensions<double> sz, ch::brush_fn fn, double t, int n, int thickness, const std::vector<cv::Mat>& bkgds) {
     NUM_SAMPLES++;
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -549,11 +532,6 @@ double sample(ch::dimensions sz, ch::brush_fn fn, double t, int n, int thickness
     SAMPLE_TIME += elapsed.count();
 
     return gray;
-}
-
-ch::dimensions ch::operator*(double k, const dimensions& d)
-{
-    return dimensions(k * d.wd, k * d.hgt);
 }
 
 bool compare_items(const range_queue_item& v1, const range_queue_item& v2) {
@@ -672,7 +650,7 @@ double ch::brush::build_to_gray_level(double gray_level) {
     return build_between(gray_level, left, right);
 }
     
-ch::crosshatching_swatch ch::brush::get_hatching(double gray_level, dimensions sz) {
+ch::crosshatching_swatch ch::brush::get_hatching(double gray_level, dimensions<double> sz) {
     if (is_uinitiailized()) {
         throw std::runtime_error("brush is not built");
     }
