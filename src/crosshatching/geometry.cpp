@@ -70,133 +70,135 @@ namespace {
 		typedef int out_code;
 
 		const int INSIDE = 0; // 0000
-const int LEFT = 1;   // 0001
-const int RIGHT = 2;  // 0010
-const int BOTTOM = 4; // 0100
-const int TOP = 8;    // 1000
+		const int LEFT = 1;   // 0001
+		const int RIGHT = 2;  // 0010
+		const int BOTTOM = 4; // 0100
+		const int TOP = 8;    // 1000
 
-// Compute the bit code for a point (x, y) using the clip
-// bounded diagonally by (xmin, ymin), and (xmax, ymax)
+		// Compute the bit code for a point (x, y) using the clip
+		// bounded diagonally by (xmin, ymin), and (xmax, ymax)
 
-// ASSUME THAT xmax, xmin, ymax and ymin are global constants.
+		// ASSUME THAT xmax, xmin, ymax and ymin are global constants.
 
-out_code compute_out_code(double x, double y, double xmin, double ymin, double xmax, double ymax)
-{
-	out_code code;
+		out_code compute_out_code(double x, double y, double xmin, double ymin, double xmax, double ymax)
+		{
+			out_code code;
 
-	code = INSIDE;          // initialised as being inside of [[clip window]]
+			code = INSIDE;          // initialised as being inside of [[clip window]]
 
-	if (x < xmin)           // to the left of clip window
-		code |= LEFT;
-	else if (x > xmax)      // to the right of clip window
-		code |= RIGHT;
-	if (y < ymin)           // below the clip window
-		code |= BOTTOM;
-	else if (y > ymax)      // above the clip window
-		code |= TOP;
+			if (x < xmin)           // to the left of clip window
+				code |= LEFT;
+			else if (x > xmax)      // to the right of clip window
+				code |= RIGHT;
+			if (y < ymin)           // below the clip window
+				code |= BOTTOM;
+			else if (y > ymax)      // above the clip window
+				code |= TOP;
 
-	return code;
-}
+			return code;
+		}
 
-// Cohen-Sutherland clipping algorithm clips a line from
-// P0 = (x0, y0) to P1 = (x1, y1) against a rectangle with 
-// diagonal from (xmin, ymin) to (xmax, ymax).
-std::optional<ch::line_segment>  clip(double x0, double y0, double x1, double y1,
-	double xmin, double ymin, double xmax, double ymax)
-{
-	// compute outcodes for P0, P1, and whatever point lies outside the clip rectangle
-	out_code outcode0 = compute_out_code(x0, y0, xmin, ymin, xmax, ymax);
-	out_code outcode1 = compute_out_code(x1, y1, xmin, ymin, xmax, ymax);
-	bool accept = false;
+		// Cohen-Sutherland clipping algorithm clips a line from
+		// P0 = (x0, y0) to P1 = (x1, y1) against a rectangle with 
+		// diagonal from (xmin, ymin) to (xmax, ymax).
+		std::optional<ch::line_segment>  clip(double x0, double y0, double x1, double y1,
+			double xmin, double ymin, double xmax, double ymax)
+		{
+			// compute outcodes for P0, P1, and whatever point lies outside the clip rectangle
+			out_code outcode0 = compute_out_code(x0, y0, xmin, ymin, xmax, ymax);
+			out_code outcode1 = compute_out_code(x1, y1, xmin, ymin, xmax, ymax);
+			bool accept = false;
 
-	while (true) {
-		if (!(outcode0 | outcode1)) {
-			// bitwise OR is 0: both points inside window; trivially accept and exit loop
-			using p = ch::point;
-			return ch::line_segment(p{ x0, y0 }, p{ x1, y1 });
-		} else if (outcode0 & outcode1) {
-			// bitwise AND is not 0: both points share an outside zone (LEFT, RIGHT, TOP,
-			// or BOTTOM), so both must be outside window; exit loop (accept is false)
-			return {};
-		} else {
-			// failed both tests, so calculate the line segment to clip
-			// from an outside point to an intersection with clip edge
-			double x, y;
+			while (true) {
+				if (!(outcode0 | outcode1)) {
+					// bitwise OR is 0: both points inside window; trivially accept and exit loop
+					using p = ch::point;
+					return ch::line_segment(p{ x0, y0 }, p{ x1, y1 });
+				} else if (outcode0 & outcode1) {
+					// bitwise AND is not 0: both points share an outside zone (LEFT, RIGHT, TOP,
+					// or BOTTOM), so both must be outside window; exit loop (accept is false)
+					return {};
+				} else {
+					// failed both tests, so calculate the line segment to clip
+					// from an outside point to an intersection with clip edge
+					double x, y;
 
-			// At least one endpoint is outside the clip rectangle; pick it.
-			out_code outcodeOut = outcode1 > outcode0 ? outcode1 : outcode0;
+					// At least one endpoint is outside the clip rectangle; pick it.
+					out_code outcodeOut = outcode1 > outcode0 ? outcode1 : outcode0;
 
-			// Now find the intersection point;
-			// use formulas:
-			//   slope = (y1 - y0) / (x1 - x0)
-			//   x = x0 + (1 / slope) * (ym - y0), where ym is ymin or ymax
-			//   y = y0 + slope * (xm - x0), where xm is xmin or xmax
-			// No need to worry about divide-by-zero because, in each case, the
-			// outcode bit being tested guarantees the denominator is non-zero
-			if (outcodeOut & TOP) {           // point is above the clip window
-				x = x0 + (x1 - x0) * (ymax - y0) / (y1 - y0);
-				y = ymax;
-			} else if (outcodeOut & BOTTOM) { // point is below the clip window
-				x = x0 + (x1 - x0) * (ymin - y0) / (y1 - y0);
-				y = ymin;
-			} else if (outcodeOut & RIGHT) {  // point is to the right of clip window
-				y = y0 + (y1 - y0) * (xmax - x0) / (x1 - x0);
-				x = xmax;
-			} else if (outcodeOut & LEFT) {   // point is to the left of clip window
-				y = y0 + (y1 - y0) * (xmin - x0) / (x1 - x0);
-				x = xmin;
-			}
+					// Now find the intersection point;
+					// use formulas:
+					//   slope = (y1 - y0) / (x1 - x0)
+					//   x = x0 + (1 / slope) * (ym - y0), where ym is ymin or ymax
+					//   y = y0 + slope * (xm - x0), where xm is xmin or xmax
+					// No need to worry about divide-by-zero because, in each case, the
+					// outcode bit being tested guarantees the denominator is non-zero
+					if (outcodeOut & TOP) {           // point is above the clip window
+						x = x0 + (x1 - x0) * (ymax - y0) / (y1 - y0);
+						y = ymax;
+					} else if (outcodeOut & BOTTOM) { // point is below the clip window
+						x = x0 + (x1 - x0) * (ymin - y0) / (y1 - y0);
+						y = ymin;
+					} else if (outcodeOut & RIGHT) {  // point is to the right of clip window
+						y = y0 + (y1 - y0) * (xmax - x0) / (x1 - x0);
+						x = xmax;
+					} else if (outcodeOut & LEFT) {   // point is to the left of clip window
+						y = y0 + (y1 - y0) * (xmin - x0) / (x1 - x0);
+						x = xmin;
+					}
 
-			// Now we move outside point to intersection point to clip
-			// and get ready for next pass.
-			if (outcodeOut == outcode0) {
-				x0 = x;
-				y0 = y;
-				outcode0 = compute_out_code(x0, y0, xmin, ymin, xmax, ymax);
-			} else {
-				x1 = x;
-				y1 = y;
-				outcode1 = compute_out_code(x1, y1, xmin, ymin, xmax, ymax);
+					// Now we move outside point to intersection point to clip
+					// and get ready for next pass.
+					if (outcodeOut == outcode0) {
+						x0 = x;
+						y0 = y;
+						outcode0 = compute_out_code(x0, y0, xmin, ymin, xmax, ymax);
+					} else {
+						x1 = x;
+						y1 = y;
+						outcode1 = compute_out_code(x1, y1, xmin, ymin, xmax, ymax);
+					}
+				}
 			}
 		}
-	}
-}
 	}
 
 	using critical_points_table = ch::point_map<std::vector<std::vector<ch::int_point>>>;
 
 	int update_vertex_usage_count(ch::point_map<int>& vertex_count, const ch::int_point& pt,
 		const ch::dimensions<int>& dims) {
-		if (pt.x == 0 || pt.x == dims.wd) {
+		bool not_in_table = vertex_count.find(pt) == vertex_count.end();
+		if (not_in_table && (pt.x == 0 || pt.x == dims.wd)) {
 			++vertex_count[pt];
 		}
-		if (pt.y == 0 || pt.y == dims.hgt) {
+		if (not_in_table && (pt.y == 0 || pt.y == dims.hgt)) {
 			++vertex_count[pt];
 		}
 		return ++vertex_count[pt];
 	}
 
-	r::any_view<int> int_sequence_open_left(int from, int to) {
+	r::any_view<int> int_sequence_open_right(int from, int to) {
 		if (from == to) {
 			return {};
 		}
-		auto left = (from < to) ?
-			r::any_view<int>{ rv::iota(from + 1, to) } : 
-			r::any_view<int>{ rv::iota(1, from - to) | rv::transform([from](int i) {return -1 * i + from; })};
-
-		return rv::concat(left, rv::single(to));
+		if (from < to) {
+			return rv::iota(from, to);
+		} else {
+			return rv::iota(0, from - to) | 
+				rv::transform([from](int i) {return from - i; });
+		}
 	}
 
-	r::any_view<ch::int_point> point_sequence_open_left(const ch::int_point& from, const ch::int_point& to) {
+	r::any_view<ch::int_point> point_sequence_open_right(const ch::int_point& from, const ch::int_point& to) {
 		if (from.x == to.x) {
-			return int_sequence_open_left(from.y, to.y) |
+			return int_sequence_open_right(from.y, to.y) |
 				rv::transform(
 					[from](int y)->ch::int_point {
 						return { from.x, y };
 					}
 				);
 		} else {
-			return int_sequence_open_left(from.x, to.x) |
+			return int_sequence_open_right(from.x, to.x) |
 				rv::transform(
 					[from](int x)->ch::int_point {
 						return { x, from.y };
@@ -206,16 +208,16 @@ std::optional<ch::line_segment>  clip(double x0, double y0, double x1, double y1
 	}
 
 	r::any_view<ch::int_point> all_points_on_ring(const ch::ring& ring) {
-		return rv::concat(
-			rv::single(ch::int_point(ring[0])),
-			ring |
-				rv::sliding(2) |
-				rv::transform( 
-					[](const auto& pair) {
-						return point_sequence_open_left(pair[0], pair[1]);
-					}
-				) | rv::join
-		);
+		return ring |
+			rv::cycle |
+			rv::sliding(2) |
+			rv::take(ring.size()) |
+			rv::transform(
+				[](const auto& pair) {
+					return point_sequence_open_right(pair[0], pair[1]);
+				}
+			) | 
+			rv::join;
 	}
 
 	r::any_view<ch::int_point> update_vertex_usage_counts(const ch::ring& ring,
@@ -241,6 +243,31 @@ std::optional<ch::line_segment>  clip(double x0, double y0, double x1, double y1
 		) | rv::join;
 	}
 
+	bool is_critical_point_free(const critical_points_table& tbl, const ch::ring& r) {
+		for ( ch::int_point pt : all_points_on_ring(r)) {
+			if (tbl.find(pt) != tbl.end()) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	void insert_island_critical_points(critical_points_table& tbl, const ch::ring& r) {
+		if (is_critical_point_free(tbl, r)) {
+			tbl[r[0]] = {};
+		}
+	}
+
+	void insert_island_critical_points(critical_points_table& tbl, 
+			const std::vector<ch::polygon>& polygons) {
+		for (const auto& poly : polygons) {
+			insert_island_critical_points(tbl, poly.outer());
+			for (const auto& hole : poly.inners()) {
+				insert_island_critical_points(tbl, hole);
+			}
+		}
+	}
+
 	critical_points_table generate_critical_points_table( 
 			const std::vector<ch::polygon>& polygons, const ch::dimensions<double>& rect) 
 	{
@@ -248,7 +275,7 @@ std::optional<ch::line_segment>  clip(double x0, double y0, double x1, double y1
 		ch::point_map<int> vertex_usage_counts;
 		vertex_usage_counts.reserve(polygons.size() * 10);
 
-		return polygons |
+		auto tbl = polygons |
 			rv::transform(
 				[&vertex_usage_counts, &dims](const auto& poly) {
 					return update_vertex_usage_counts(poly, vertex_usage_counts, dims);
@@ -261,6 +288,10 @@ std::optional<ch::line_segment>  clip(double x0, double y0, double x1, double y1
 				}
 			) |
 			r::to_< critical_points_table>();
+
+		insert_island_critical_points(tbl, polygons);
+
+		return tbl;
 	}
 
 }
@@ -496,7 +527,7 @@ std::vector<ch::polygon> ch::simplify_rectangle_dissection(const std::vector<ch:
 
 void ch::debug_geom(cv::Mat mat, const std::vector<polygon>& polygons) {
 
-	auto nums = int_sequence_open_left(42, 34) | r::to_vector;
+	auto nums = int_sequence_open_right(42, 34) | r::to_vector;
 
 	auto dims = ch::mat_dimensions(mat);
 	auto critical_points = generate_critical_points_table(polygons, dims);
@@ -506,5 +537,5 @@ void ch::debug_geom(cv::Mat mat, const std::vector<polygon>& polygons) {
 			rv::transform([](const auto& p) {return p.first; })) {
 		debug_img.at<cv::Vec3b>(pt) = cv::Vec3b(0, 0, 255);
 	}
-	cv::imwrite("C:\\test\\debug_geom.png", debug_img);
+	cv::imwrite("C:\\test\\debug_cp.png", debug_img);
 }
