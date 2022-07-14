@@ -53,6 +53,6 @@ namespace ch {
         std::function<void(double)> update_progress_cb = {});
     drawing scale(const drawing& d, double scale);
     cv::Mat paint_drawing(const drawing& d, std::function<void(double)> update_progress_cb = {});
-
+    std::vector<polygon> segmented_image_to_polygons(cv::Mat img);
     void debug();
 }

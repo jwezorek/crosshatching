@@ -7,7 +7,6 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <range/v3/all.hpp>
-#include <boost/functional/hash.hpp>
 #include <stdexcept>
 #include <unordered_set>
 #include <array>
@@ -166,20 +165,8 @@ namespace {
         return offset;
     }
 
-    struct point_hasher
-    {
-        size_t operator()(const cv::Point& p) const
-        {
-            std::size_t seed = 0;
-            boost::hash_combine(seed, p.x);
-            boost::hash_combine(seed, p.y);
-
-            return seed;
-        }
-    };
-
     direction direction_to(const cv::Point& from_pt, const cv::Point& to_pt) {
-        static std::unordered_map<cv::Point, direction, point_hasher> offset_to_direction = {
+        static ch::point_map<direction> offset_to_direction = {
             {{0,-1}, direction::N },
             {{1,-1}, direction::NE},
             {{1,0},  direction::E },
@@ -592,11 +579,11 @@ namespace {
     std::vector<blob> blobs_per_gray_to_layer(const std::vector<blobs_per_gray_t>& blobs_per_gray) {
         return rv::join(
             blobs_per_gray |
-            rv::remove_if(
+           /* rv::remove_if(
                 [](const blobs_per_gray_t& bpg)->bool {
                     return std::get<0>(bpg) == 255;
                 }
-            ) |
+            ) | */
             rv::transform(
                 [](const blobs_per_gray_t& bpg) {
                     const auto& [gray, polygons] = bpg;
@@ -681,6 +668,10 @@ namespace {
                 return (parent) ?
                     parent->tokenize() :
                     255;
+            }
+
+            bool is_white() const {
+                return value == 255;
             }
 
         };
@@ -881,6 +872,9 @@ namespace {
 
         size_t count = 0;
         for (const auto& [brush_func, blob] : layer) {
+            if (blob.is_white()) {
+                continue;
+            }
             auto parent_tok = blob.parent_token();
             auto iter = brush_table.find(parent_tok);
             ch::brush_ptr current_brush;
@@ -1026,7 +1020,17 @@ cv::Mat ch::paint_drawing(const drawing& d, std::function<void(double)> update_p
     return mat;
 }
 
-void ch::debug()
-{
+std::vector<ch::polygon> ch::segmented_image_to_polygons(cv::Mat img) {
+    auto blobs = ink_layer_img_to_blobs(img);
+    return blobs |
+        rv::transform([](const blob& b) {return b.poly; }) |
+        r::to_vector;
+}
+
+void ch::debug() {
+    cv::Mat img = cv::imread("C:\\test\\test_img.png");
+    cv::Mat bw = ch::convert_to_1channel_gray(img);
+    auto polys = segmented_image_to_polygons(bw);
+    debug_geom(img, polys);
 }
 

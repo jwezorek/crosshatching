@@ -75,9 +75,9 @@ namespace {
 		parent->connect(action_save, &QAction::triggered, parent, &ui::main_window::save_processed_image);
 		file_menu->addAction(action_save);
 
-		//QAction* action_debug = new QAction(tr("Debug"), parent);
-		//parent->connect(action_debug, &QAction::triggered, parent, &ui::main_window::debug);
-		//file_menu->addAction(action_debug);
+		QAction* action_debug = new QAction(tr("Debug"), parent);
+		parent->connect(action_debug, &QAction::triggered, parent, &ui::main_window::debug);
+		file_menu->addAction(action_debug);
 
 		file_menu->addSeparator();
 
@@ -229,6 +229,10 @@ void ui::main_window::edit_settings() {
 	if (result) {
 		crosshatching_.params_ = result.value();
 	}
+}
+
+void ui::main_window::debug() {
+	ch::debug();
 }
 
 void ui::main_window::create_main_menu()

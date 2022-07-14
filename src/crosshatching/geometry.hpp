@@ -1,11 +1,14 @@
 #pragma once
 
-#include <opencv2/core.hpp>
-#include <Eigen/Dense>
 #include <vector>
-#include <range/v3/all.hpp>
 #include <sstream>
 #include <optional>
+#include <unordered_map>
+#include <unordered_set>
+#include <opencv2/core.hpp>
+#include <Eigen/Dense>
+#include <range/v3/all.hpp>
+#include <boost/functional/hash.hpp>
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/geometries/linestring.hpp>
@@ -27,6 +30,7 @@ namespace ch {
     using line_segment = std::tuple<point, point>;
     using rectangle = std::tuple<double, double, double, double>;
     using matrix = Eigen::Matrix<double, 3, 3>;
+    using int_point = cv::Point;
 
     template <typename T>
     struct dimensions {
@@ -85,4 +89,23 @@ namespace ch {
     std::optional<line_segment> linesegment_rectangle_intersection(const line_segment& line_seg, const rectangle& rect);
     std::vector<ch::polygon> simplify_rectangle_dissection(const std::vector<ch::polygon>& dissection, 
         const dimensions<double>& rect, double param);
+
+    namespace detail {
+        struct point_hasher
+        {
+            size_t operator()(const int_point& p) const
+            {
+                std::size_t seed = 0;
+                boost::hash_combine(seed, p.x);
+                boost::hash_combine(seed, p.y);
+
+                return seed;
+            }
+        };
+    }
+    template<typename V>
+    using point_map = std::unordered_map<int_point, V, detail::point_hasher>;
+    using point_set = std::unordered_set<int_point, detail::point_hasher>;
+
+    void debug_geom(cv::Mat mat, const std::vector<polygon>& polygons);
 }
