@@ -85,6 +85,9 @@ namespace ch {
     ch::ring simplify_rectilinear_ring(const ring& poly);
     rectangle bounding_rectangle(const polyline& poly);
     rectangle bounding_rectangle(const ring& poly);
+    rectangle bounding_rectangle(const polygon& poly);
+    rectangle bounding_rectangle(const std::vector<polygon>& polys);
+    rectangle union_rect(const rectangle& r1, const rectangle& r2);
     cv::Rect union_rect_and_pt(const cv::Rect& r, cv::Point2i pt);
     std::optional<line_segment> linesegment_rectangle_intersection(const line_segment& line_seg, const rectangle& rect);
     std::vector<ch::polygon> simplify_rectangle_dissection(const std::vector<ch::polygon>& dissection, 

@@ -1028,7 +1028,7 @@ std::vector<ch::polygon> ch::segmented_image_to_polygons(cv::Mat img) {
 }
 
 void ch::debug() {
-    cv::Mat img = cv::imread("C:\\test\\test_img.png");
+    cv::Mat img = cv::imread("C:\\test\\test-blobs.png");
     cv::Mat bw = ch::convert_to_1channel_gray(img);
     auto polys = segmented_image_to_polygons(bw);
     debug_geom(img, polys);

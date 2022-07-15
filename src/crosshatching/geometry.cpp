@@ -7,6 +7,8 @@
 #include <cmath>
 #include <algorithm>
 #include <stdexcept>
+#include <array>
+#include <numeric>
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -498,6 +500,31 @@ ch::rectangle ch::bounding_rectangle(const ch::ring& poly) {
 	return bounding_rect_of_geometry(poly);
 }
 
+ch::rectangle ch::bounding_rectangle(const ch::polygon& poly) {
+	return bounding_rectangle(poly.outer());
+}
+
+ch::rectangle ch::bounding_rectangle(const std::vector<polygon>& polys) {
+	return  std::accumulate(polys.begin(), polys.end(), bounding_rectangle(polys.front()),
+		[](const rectangle& r, const polygon& poly)->rectangle {
+			return union_rect(bounding_rectangle(poly), r);
+		}
+	);
+}
+
+ch::rectangle ch::union_rect(const ch::rectangle & r1, const ch::rectangle& r2) {
+
+	std::array<double, 4> x_vals = { std::get<0>(r1), std::get<2>(r1),
+		std::get<0>(r2), std::get<2>(r2) };
+	std::array<double, 4> y_vals = { std::get<1>(r1), std::get<3>(r1),
+		std::get<1>(r2), std::get<3>(r2) };
+
+	auto [x1, x2] = std::minmax(x_vals.begin(), x_vals.end());
+	auto [y1, y2] = std::minmax(y_vals.begin(), y_vals.end());
+
+	return { *x1,*y1,*x2,*y2 };
+}
+
 cv::Rect ch::union_rect_and_pt(const cv::Rect& r, cv::Point2i pt) {
 	int x1 = r.x;
 	int y1 = r.y;
@@ -537,5 +564,5 @@ void ch::debug_geom(cv::Mat mat, const std::vector<polygon>& polygons) {
 			rv::transform([](const auto& p) {return p.first; })) {
 		debug_img.at<cv::Vec3b>(pt) = cv::Vec3b(0, 0, 255);
 	}
-	cv::imwrite("C:\\test\\debug_cp.png", debug_img);
+	cv::imwrite("C:\\test\\test_blobs_cp.png", debug_img);
 }

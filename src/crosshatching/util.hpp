@@ -34,8 +34,9 @@ namespace ch {
     std::vector<uchar> unique_gray_values(const cv::Mat& input);
     int max_val_in_mat(cv::Mat mat);
     void write_label_map_visualization(cv::Mat img, const std::string& output_file);
+    void write_polygons_visualization(const std::vector<polygon>& polys, 
+        const std::string& output_file);
     dimensions<int> mat_dimensions(cv::Mat mat);
-
     // etc.
     std::string to_string(double val, int precision);
     double degrees_to_radians(double degrees);

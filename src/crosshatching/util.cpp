@@ -282,6 +282,12 @@ void ch::write_label_map_visualization(cv::Mat img, const std::string& output_fi
 	cv::imwrite(output_file, mat);
 }
 
+void ch::write_polygons_visualization(const std::vector<ch::polygon>& polys,
+		const std::string& output_file) {
+	auto [x1,y1,x2,y2] = ch::bounding_rectangle(polys);
+	cv::Mat mat(x2, y2, CV_8UC3, cv::Scalar(255, 255, 255));
+}
+
 ch::dimensions<int> ch::mat_dimensions(cv::Mat mat) {
 	return { mat.cols, mat.rows };
 }
@@ -308,3 +314,5 @@ int ch::max_val_in_mat(cv::Mat mat) {
 	cv::minMaxLoc(mat, &min_val, &max_val, &minLoc, &maxLoc);
 	return static_cast<int>(max_val);
 }
+
+
