@@ -7,6 +7,7 @@
 #include <random>
 #include <iomanip>
 #include <numbers>
+#include <fstream>
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -43,6 +44,28 @@ namespace {
 			) | 
 			r::to_vector;
 	}
+
+
+
+	std::string loop_to_path_commands(const ch::ring& poly, double scale) {
+		std::stringstream ss;
+		ss << "M " << scale * poly[0].x << "," << scale * poly[0].y << " L";
+		for (const auto& pt : rv::tail(poly)) {
+			ss << " " << scale * pt.x << "," << scale * pt.y;
+		}
+		ss << " Z";
+		return ss.str();
+	}
+
+	std::string svg_path_commands(const ch::polygon& poly, double scale) {
+		std::stringstream ss;
+		ss << loop_to_path_commands(poly.outer(), scale);
+		for (const auto& hole : poly.inners()) {
+			ss << " " << loop_to_path_commands(hole, scale);
+		}
+		return ss.str();
+	}
+
 }
 
 std::string ch::svg_header(int wd, int hgt, bool bkgd_rect)
@@ -68,6 +91,13 @@ std::string ch::gray_to_svg_color(unsigned char gray)
 	auto hex_val = uchar_to_hex(gray);
 	std::stringstream ss;
 	ss << "#" << hex_val << hex_val << hex_val;
+	return ss.str();
+}
+
+std::string ch::to_svg_color(const color& c) {
+	auto [red, green, blue] = c;
+	std::stringstream ss;
+	ss << "#" << uchar_to_hex(red) << uchar_to_hex(green) << uchar_to_hex(blue);
 	return ss.str();
 }
 
@@ -135,6 +165,15 @@ std::string ch::polyline_to_svg(const ch::polyline& poly, double thickness, bool
 		ss << " " << pt.x << "," << pt.y;
 	}
 	ss << "\" style=\"fill:none;stroke:black;stroke-width:" << thickness << "px\" />";
+	return ss.str();
+}
+
+std::string ch::polygon_to_svg(const ch::polygon& poly, const ch::color& color, double scale) {
+	std::stringstream ss;
+	ss << "<path fill-rule=\"evenodd\" stroke=\"none\" fill=\"";
+	ss << ch::to_svg_color(color) << "\" d=\"";
+	ss << svg_path_commands(poly, scale);
+	ss << "\" />";
 	return ss.str();
 }
 
@@ -237,7 +276,8 @@ cv::Mat ch::anisotropic_diffusion(cv::Mat img, double alpha, double k, int iters
 	return output;
 }
 
-std::tuple<cv::Mat, cv::Mat> ch::meanshift_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize) {
+std::tuple<cv::Mat, cv::Mat> ch::meanshift_segmentation(const cv::Mat& input, int sigmaS, 
+		float sigmaR, int minSize) {
 	cv::Mat output;
 	cv::Mat labels;
 	auto mss = createMeanShiftSegmentation(sigmaS, sigmaR, minSize, 4, true);
@@ -256,11 +296,15 @@ double ch::degrees_to_radians(double degrees)
 	return (std::numbers::pi * degrees) / 180.0;
 }
 
-void ch::write_label_map_visualization(cv::Mat img, const std::string& output_file) {
+void ch::label_map_to_visualization_img(cv::Mat img, const std::string& output_file) {
 
 	using pixel = cv::Point3_<uint8_t>;
 	static auto random_color = []()->pixel {
-		return pixel(ch::uniform_rnd_int(0, 255), ch::uniform_rnd_int(0, 255), ch::uniform_rnd_int(0, 255));
+		return pixel(
+			ch::uniform_rnd_int(0, 255), 
+			ch::uniform_rnd_int(0, 255), 
+			ch::uniform_rnd_int(0, 255)
+		);
 	};
 
 	cv::Mat mat(img.rows, img.cols, CV_8UC3);
@@ -282,10 +326,23 @@ void ch::write_label_map_visualization(cv::Mat img, const std::string& output_fi
 	cv::imwrite(output_file, mat);
 }
 
-void ch::write_polygons_visualization(const std::vector<ch::polygon>& polys,
-		const std::string& output_file) {
-	auto [x1,y1,x2,y2] = ch::bounding_rectangle(polys);
-	cv::Mat mat(x2, y2, CV_8UC3, cv::Scalar(255, 255, 255));
+void ch::polygons_to_svg(const std::string& output_file, 
+		const std::vector<std::tuple<polygon, color>>& polys,
+		double scale) {
+
+	auto [x1,y1,wd,hgt] = ch::bounding_rectangle(
+		polys | 
+		rv::transform([](const auto& tup) {return std::get<0>(tup); })|
+		r::to_vector
+	);
+
+	std::ofstream outfile(output_file);
+	outfile << svg_header(static_cast<int>(wd), static_cast<int>(hgt));
+	for (const auto& [poly,color] :polys) {
+		outfile << polygon_to_svg(poly, color, scale) << std::endl;
+	}
+	outfile << "</svg>" << std::endl;
+	outfile.close();
 }
 
 ch::dimensions<int> ch::mat_dimensions(cv::Mat mat) {

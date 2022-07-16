@@ -6,14 +6,21 @@
 #include <opencv2/core.hpp>
 #include <tuple>
 #include <optional>
+#include <optional>
 #include "geometry.hpp"
 
 namespace ch {
 
+    using color = std::tuple<uchar, uchar, uchar>;
+
     // SVG
     std::string svg_header(int wd, int hgt, bool bkgd_rect = false);
     std::string polyline_to_svg(const ch::polyline& poly, double thickness, bool closed = false);
+    std::string polygon_to_svg(const ch::polygon& poly, const color& col, double scale = 1.0);
     std::string gray_to_svg_color(unsigned char gray);
+    std::string to_svg_color(const color& c);
+    void polygons_to_svg(const std::string& output_file, const std::vector<std::tuple<polygon, color>>& polys,
+        double scale = 1.0);
 
     // random numbers
     using rnd_fn = std::function<double()>;
@@ -33,13 +40,13 @@ namespace ch {
     std::tuple<cv::Mat,cv::Mat> meanshift_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize);
     std::vector<uchar> unique_gray_values(const cv::Mat& input);
     int max_val_in_mat(cv::Mat mat);
-    void write_label_map_visualization(cv::Mat img, const std::string& output_file);
-    void write_polygons_visualization(const std::vector<polygon>& polys, 
-        const std::string& output_file);
+    void label_map_to_visualization_img(cv::Mat img, const std::string& output_file);
+    
     dimensions<int> mat_dimensions(cv::Mat mat);
     // etc.
     std::string to_string(double val, int precision);
     double degrees_to_radians(double degrees);
     double ramp(double t, double k, bool right, bool up);
+
 
 }

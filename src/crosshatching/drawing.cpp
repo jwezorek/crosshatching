@@ -348,34 +348,6 @@ namespace {
         return blobs;
     }
 
-    std::string loop_to_path_commands(const ch::ring& poly, double scale) {
-        std::stringstream ss;
-        ss << "M " << scale * poly[0].x << "," << scale * poly[0].y << " L";
-        for (const auto& pt : rv::tail(poly)) {
-            ss << " " << scale * pt.x << "," << scale * pt.y;
-        }
-        ss << " Z";
-        return ss.str();
-    }
-
-    std::string svg_path_commands(const ch::polygon& poly, double scale) {
-        std::stringstream ss;
-        ss << loop_to_path_commands(poly.outer(), scale);
-        for (const auto& hole : poly.inners()) {
-            ss << " " << loop_to_path_commands(hole, scale);
-        }
-        return ss.str();
-    }
-
-    std::string poly_with_holes_to_svg(uchar gray, const ch::polygon& poly, double scale) {
-        std::stringstream ss;
-        ss << "<path fill-rule=\"evenodd\" stroke=\"none\" fill=\"";
-        ss << ch::gray_to_svg_color(gray) << "\" d=\"";
-        ss << svg_path_commands(poly, scale);
-        ss << "\" />";
-        return ss.str();
-    }
-
     ch::polylines clip_crosshatching_to_bbox(ch::crosshatching_range swatch, const ch::rectangle& bbox) {
         auto input = swatch | r::to_vector;
         size_t n = 0;
