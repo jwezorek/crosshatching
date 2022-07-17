@@ -9,10 +9,10 @@
 namespace r = ranges;
 namespace rv = ranges::views;
 
-/*--------------------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------*/
 // edge_set
 
-class ch::segmentation::edge_set {
+class ch::detail::edge_set {
 private:
 
     struct hasher {
@@ -50,7 +50,7 @@ struct ch::segmentation::connected_component {
     {}
 };
 
-/*--------------------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------*/
 // segmentation
 
 void ch::segmentation::get_neighbors(int x, int y, std::array<int, 4>& ary) {
@@ -72,7 +72,7 @@ void ch::segmentation::get_neighbors(int x, int y, std::array<int, 4>& ary) {
     }
 }
 
-void ch::segmentation::insert_edges(int label, int x, int y, edge_set& edges) {
+void ch::segmentation::insert_edges(int label, int x, int y, detail::edge_set& edges) {
     std::array<int, 4> neighbors;
     get_neighbors(x, y, neighbors);
     for (auto neigh : neighbors) {
@@ -87,7 +87,8 @@ void ch::segmentation::insert_edges(int label, int x, int y, edge_set& edges) {
     }
 }
 
-void ch::segmentation::init_new_connected_component(int label, uchar val, int x, int y, edge_set& edges) {
+void ch::segmentation::init_new_connected_component(int label, uchar val, int x, int y, 
+        detail::edge_set& edges) {
     auto& c = connected_components_[label];
     c.index = label;
     c.value = val;
@@ -97,7 +98,8 @@ void ch::segmentation::init_new_connected_component(int label, uchar val, int x,
     insert_edges(label, x, y, edges);
 }
 
-void ch::segmentation::update_connected_component(int label, int x, int y, edge_set& edges) {
+void ch::segmentation::update_connected_component(int label, int x, int y, 
+        detail::edge_set& edges) {
     auto& c = connected_components_[label];
     c.index = label;
     c.area++;
@@ -111,7 +113,7 @@ bool ch::segmentation::is_uninitialized(int index) {
 
 ch::segmentation::segmentation(cv::Mat img, cv::Mat label_image) :
     label_mat_(label_image) {
-    edge_set edges;
+    detail::edge_set edges;
     int n = max_val_in_mat(label_image) + 1;
     connected_components_.resize(n);
     for (int y = 0; y < img.rows; y++) {
@@ -222,7 +224,7 @@ cv::Mat ch::segmentation::paint_components() const {
 
 ch::segmentation::~segmentation() = default;
 
-/*--------------------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------*/
 
 cv::Mat ch::grayscale_to_label_image(cv::Mat input) {
     auto values = ch::unique_gray_values(input);

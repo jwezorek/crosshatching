@@ -11,7 +11,7 @@
 
 namespace ch {
 
-    using color = std::tuple<uchar, uchar, uchar>;
+    using color = cv::Vec3b;
 
     // SVG
     std::string svg_header(int wd, int hgt, bool bkgd_rect = false);

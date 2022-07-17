@@ -95,9 +95,8 @@ std::string ch::gray_to_svg_color(unsigned char gray)
 }
 
 std::string ch::to_svg_color(const color& c) {
-	auto [red, green, blue] = c;
 	std::stringstream ss;
-	ss << "#" << uchar_to_hex(red) << uchar_to_hex(green) << uchar_to_hex(blue);
+	ss << "#" << uchar_to_hex(c[2]) << uchar_to_hex(c[1]) << uchar_to_hex(c[0]);
 	return ss.str();
 }
 

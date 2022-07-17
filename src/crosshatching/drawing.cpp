@@ -844,9 +844,6 @@ namespace {
 
         size_t count = 0;
         for (const auto& [brush_func, blob] : layer) {
-            if (blob.is_white()) {
-                continue;
-            }
             auto parent_tok = blob.parent_token();
             auto iter = brush_table.find(parent_tok);
             ch::brush_ptr current_brush;

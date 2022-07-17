@@ -7,19 +7,22 @@
 
 namespace ch {
 
+    namespace detail {
+        class edge_set;
+    }
+
     class segmentation {
     private:
-
-        class edge_set;
+        
         struct connected_component;
 
         cv::Mat label_mat_;
         std::vector<connected_component> connected_components_;
 
         void get_neighbors(int x, int y, std::array<int, 4>& ary);
-        void insert_edges(int label, int x, int y, edge_set& edges);
-        void init_new_connected_component(int label, uchar val, int x, int y, edge_set& edges);
-        void update_connected_component(int label, int x, int y, edge_set& edges);
+        void insert_edges(int label, int x, int y, detail::edge_set& edges);
+        void init_new_connected_component(int label, uchar val, int x, int y, detail::edge_set& edges);
+        void update_connected_component(int label, int x, int y, detail::edge_set& edges);
         bool is_uninitialized(int index);
 
     public:
