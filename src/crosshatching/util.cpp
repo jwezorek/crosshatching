@@ -348,7 +348,7 @@ ch::dimensions<int> ch::mat_dimensions(cv::Mat mat) {
 	return { mat.cols, mat.rows };
 }
 
-std::vector<uchar> ch::unique_gray_values(const cv::Mat& input) {
+std::vector<uchar> ch::unique_1channel_values(const cv::Mat& input) {
 	if (input.channels() != 1) {
 		throw std::runtime_error("called get_gray_levels on color image");
 	}
@@ -359,6 +359,10 @@ std::vector<uchar> ch::unique_gray_values(const cv::Mat& input) {
 		rv::filter([&grays](int g) {return grays[g]; }) |
 		r::to<std::vector<uchar>>() |
 		r::action::reverse;
+}
+
+std::vector<ch::color> ch::unique_3channel_values(const cv::Mat& input) {
+	return {};
 }
 
 int ch::max_val_in_mat(cv::Mat mat) {

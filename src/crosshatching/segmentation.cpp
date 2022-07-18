@@ -227,7 +227,7 @@ ch::segmentation::~segmentation() = default;
 /*-------------------------------------------------------------------------------------*/
 
 cv::Mat ch::grayscale_to_label_image(cv::Mat input) {
-    auto values = ch::unique_gray_values(input);
+    auto values = ch::unique_values<uchar>(input);
     cv::Mat output(input.size(), CV_32SC1, cv::Scalar(-1));
     int label = 0;
     for (auto val : values) {

@@ -105,7 +105,7 @@ namespace {
     };
 
     std::vector<std::tuple<uchar, cv::Mat>> gray_masks(const cv::Mat& input) {
-        auto levels = ch::unique_gray_values(input);
+        auto levels = ch::unique_values<uchar>(input);
         return
             levels |
             rv::transform(
@@ -125,7 +125,8 @@ namespace {
         std::vector<cv::Vec4i> hierarchy;
     };
 
-    std::vector<std::tuple<uchar, find_contour_output>> perform_find_contours(const cv::Mat& input) {
+    std::vector<std::tuple<uchar, find_contour_output>> perform_find_contours(
+            const cv::Mat& input) {
         auto planes = gray_masks(input);
         return planes |
             rv::transform(
@@ -551,11 +552,6 @@ namespace {
     std::vector<blob> blobs_per_gray_to_layer(const std::vector<blobs_per_gray_t>& blobs_per_gray) {
         return rv::join(
             blobs_per_gray |
-           /* rv::remove_if(
-                [](const blobs_per_gray_t& bpg)->bool {
-                    return std::get<0>(bpg) == 255;
-                }
-            ) | */
             rv::transform(
                 [](const blobs_per_gray_t& bpg) {
                     const auto& [gray, polygons] = bpg;

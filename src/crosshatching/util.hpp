@@ -34,11 +34,12 @@ namespace ch {
     cv::Mat apply_contrast(cv::Mat img, double beta, double sigma);
     cv::Mat scale(cv::Mat mat, double scale);
     cv::Mat convert_to_3channel_grayscale(cv::Mat img);
-    cv::Mat convert_to_1channel_gray(const cv::Mat& color);
+    cv::Mat convert_to_1channel_gray(const cv::Mat& img);
     cv::Mat coherence_filter(cv::Mat img, int sigma, int str_sigma, float blend, int iter);
     cv::Mat anisotropic_diffusion(cv::Mat img, double alpha, double k, int iters);
     std::tuple<cv::Mat,cv::Mat> meanshift_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize);
-    std::vector<uchar> unique_gray_values(const cv::Mat& input);
+    std::vector<uchar> unique_1channel_values(const cv::Mat& input);
+    std::vector<color> unique_3channel_values(const cv::Mat& input);
     int max_val_in_mat(cv::Mat mat);
     void label_map_to_visualization_img(cv::Mat img, const std::string& output_file);
     
@@ -48,5 +49,12 @@ namespace ch {
     double degrees_to_radians(double degrees);
     double ramp(double t, double k, bool right, bool up);
 
-
+    template<typename T>
+    std::vector<T> unique_values(const cv::Mat& img) {
+        if constexpr (std::is_same<T, uchar>::value) {
+            return unique_1channel_values(img);
+        } else {
+            return unique_3channel_values(img);
+        }
+    }
 }
