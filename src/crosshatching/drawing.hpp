@@ -54,19 +54,13 @@ namespace ch {
     drawing scale(const drawing& d, double scale);
     cv::Mat paint_drawing(const drawing& d, std::function<void(double)> update_progress_cb = {});
 
-    template<typename T>
-    struct blob {
-        T value;
-        ch::polygon poly;
-    };
-
     namespace detail {
-        std::vector<blob<uchar>> to_blobs_from_1channel_image(const cv::Mat& input);
-        std::vector<blob<color>> to_blobs_from_3channel_image(const cv::Mat& input);
+        std::vector<std::tuple<uchar,polygon>> to_blobs_from_1channel_image(const cv::Mat& input);
+        std::vector<std::tuple<color, polygon>> to_blobs_from_3channel_image(const cv::Mat& input);
     }
 
     template<typename T>
-    std::vector<blob<T>> to_blobs(const cv::Mat& img) {
+    std::vector<std::tuple<T, polygon>> to_blobs(const cv::Mat& img) {
         if constexpr (std::is_same<T, uchar>::value) {
             return detail::to_blobs_from_1channel_image(img);
         } else {

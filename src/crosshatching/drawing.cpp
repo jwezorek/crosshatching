@@ -543,8 +543,9 @@ namespace {
     using blobs_per_gray_t = std::tuple<T, std::vector<ch::polygon>>;
 
     template<typename T>
-    std::vector<ch::blob<T>> blobs_per_gray_to_layer(
+    std::vector<std::tuple<T, ch::polygon>> blobs_per_gray_to_layer(
             const std::vector<blobs_per_gray_t<T>>& blobs_per_gray) {
+        using blob = std::tuple< T, ch::polygon>;
         return rv::join(
             blobs_per_gray |
             rv::transform(
@@ -552,7 +553,7 @@ namespace {
                     const auto& [value, polygons] = bpg;
                     return polygons |
                         rv::transform(
-                            [value](const auto& poly)->ch::blob<T> {
+                            [value](const auto& poly)->blob {
                                 return {
                                     value,
                                     poly
@@ -565,7 +566,7 @@ namespace {
     }
 
     template<typename T>
-    std::vector<ch::blob<T>> ink_layer_img_to_blobs(const cv::Mat& img) {
+    std::vector<std::tuple<T, ch::polygon>> ink_layer_img_to_blobs(const cv::Mat& img) {
 
         auto contours = perform_find_contours<T>(img);
         std::vector<blobs_per_gray_t<T>> blobs_per_gray = contours |
@@ -581,7 +582,7 @@ namespace {
          return blobs_per_gray_to_layer(blobs_per_gray);
     }
 
-    std::vector<std::vector<ch::blob<uchar>>> ink_layer_images_to_blobs(const std::vector<cv::Mat>& ink_layer_imgs) {
+    std::vector<std::vector<std::tuple<uchar, ch::polygon>>> ink_layer_images_to_blobs(const std::vector<cv::Mat>& ink_layer_imgs) {
         return ink_layer_imgs | rv::transform(ink_layer_img_to_blobs<uchar>) | r::to_vector;
     }
 
@@ -684,17 +685,21 @@ namespace {
 
         std::vector<ink_layer> layers_;
 
-        static ink_layer to_ink_layer(const std::vector<ch::blob<uchar>>& blobs, int layer_index, ch::brush_fn brush) {
+        static ink_layer to_ink_layer(
+                const std::vector<std::tuple<uchar, ch::polygon>>& blobs,
+                int layer_index, ch::brush_fn brush) {
             ink_layer il{
                 brush,
-                blobs | rv::transform([](const auto& b) { return b.poly; } ) | r::to_vector,
+                blobs | 
+                    rv::transform(
+                        [](const auto& tup) { return std::get<1>(tup); } 
+                    ) | r::to_vector,
                 rv::enumerate(blobs) |
                     rv::transform([&](const auto& tup)->blob_properties {
-                        const auto& [index, b] = tup;
+                        const auto& [index, blob] = tup;
                         int blob_index = static_cast<int>(index);
-                        return { b.value, nullptr, layer_index, blob_index, nullptr };
-                    }) |
-                    r::to_vector
+                        return { std::get<0>(blob), nullptr, layer_index, blob_index, nullptr };
+                    }) | r::to_vector
             };
             for (size_t i = 0; i < il.blobs.size(); ++i) {
                 il.blobs[i].poly = &il.polygons[i];
@@ -981,12 +986,12 @@ cv::Mat ch::paint_drawing(const drawing& d, std::function<void(double)> update_p
     return mat;
 }
 
-std::vector<ch::blob<uchar>> ch::detail::to_blobs_from_1channel_image(
+std::vector<std::tuple<uchar,ch::polygon>> ch::detail::to_blobs_from_1channel_image(
     const cv::Mat& input) {
     return ink_layer_img_to_blobs<uchar>(input);
 }
 
-std::vector<ch::blob<ch::color>> ch::detail::to_blobs_from_3channel_image(
+std::vector<std::tuple<ch::color, ch::polygon>> ch::detail::to_blobs_from_3channel_image(
     const cv::Mat& input) {
     return ink_layer_img_to_blobs<ch::color>(input);
 }
