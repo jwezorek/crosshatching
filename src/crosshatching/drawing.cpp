@@ -95,27 +95,18 @@ namespace {
         }
     };
 
-    struct blob {
-        uchar value;
-        ch::polygon poly;
-
-        blob(uchar v, const ch::polygon& p) :
-            value(v), poly(p)
-        {}
-    };
-
-    std::vector<std::tuple<uchar, cv::Mat>> gray_masks(const cv::Mat& input) {
-        auto levels = ch::unique_values<uchar>(input);
+    template<typename T>
+    std::vector<std::tuple<T, cv::Mat>> color_masks(const cv::Mat& input) {
+        auto levels = ch::unique_values<T>(input);
         return
             levels |
             rv::transform(
-                [&input](auto val)->std::map<uchar, cv::Mat>::value_type {
+                [&input](auto val)->std::tuple<T, cv::Mat> {
                     cv::Mat output;
                     cv::inRange(input, val, val, output);
                     return { val, output };
                 }
-            ) |
-            r::to<std::vector<std::tuple<uchar, cv::Mat>>>();
+        ) | r::to_vector;
     }
 
     using int_polyline = std::vector<cv::Point>;
@@ -125,20 +116,20 @@ namespace {
         std::vector<cv::Vec4i> hierarchy;
     };
 
-    std::vector<std::tuple<uchar, find_contour_output>> perform_find_contours(
+    template<typename T>
+    std::vector<std::tuple<T, find_contour_output>> perform_find_contours(
             const cv::Mat& input) {
-        auto planes = gray_masks(input);
+        auto planes = color_masks<T>(input);
         return planes |
             rv::transform(
-                [](const auto& pair)->std::tuple<uchar, find_contour_output> {
-                    const auto& [gray, mat] = pair;
+                [](const auto& pair)->std::tuple<T, find_contour_output> {
+                    const auto& [value, mat] = pair;
                     find_contour_output output;
                     cv::findContours(mat, output.contours, output.hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_NONE);
 
-                    return { gray, std::move(output) };
+                    return { value, std::move(output) };
                 }
-            ) |
-            r::to<std::vector<std::tuple<uchar, find_contour_output>>>();
+            ) | r::to_vector;
     }
 
     enum class direction {
@@ -548,18 +539,22 @@ namespace {
         return images | rv::reverse | r::to_vector;
     }
 
-    using blobs_per_gray_t = std::tuple<uchar, std::vector<ch::polygon>>;
-    std::vector<blob> blobs_per_gray_to_layer(const std::vector<blobs_per_gray_t>& blobs_per_gray) {
+    template<typename T>
+    using blobs_per_gray_t = std::tuple<T, std::vector<ch::polygon>>;
+
+    template<typename T>
+    std::vector<ch::blob<T>> blobs_per_gray_to_layer(
+            const std::vector<blobs_per_gray_t<T>>& blobs_per_gray) {
         return rv::join(
             blobs_per_gray |
             rv::transform(
-                [](const blobs_per_gray_t& bpg) {
-                    const auto& [gray, polygons] = bpg;
+                [](const auto& bpg) {
+                    const auto& [value, polygons] = bpg;
                     return polygons |
                         rv::transform(
-                            [gray](const auto& poly)->blob {
+                            [value](const auto& poly)->ch::blob<T> {
                                 return {
-                                    gray,
+                                    value,
                                     poly
                                 };
                             }
@@ -569,15 +564,16 @@ namespace {
           ) | r::to_vector;
     }
 
-    std::vector<blob> ink_layer_img_to_blobs(const cv::Mat& img) {
+    template<typename T>
+    std::vector<ch::blob<T>> ink_layer_img_to_blobs(const cv::Mat& img) {
 
-        auto contours = perform_find_contours(img);
-        std::vector<blobs_per_gray_t> blobs_per_gray = contours |
+        auto contours = perform_find_contours<T>(img);
+        std::vector<blobs_per_gray_t<T>> blobs_per_gray = contours |
             rv::transform(
-                [](const auto& tup)->blobs_per_gray_t {
-                    const auto& [gray, contour_info] = tup;
+                [](const auto& tup)->blobs_per_gray_t<T> {
+                    const auto& [value, contour_info] = tup;
                     auto polygons = contour_info_to_polygons(contour_info);
-                    return { gray, std::move(polygons) };
+                    return { value, std::move(polygons) };
                 }
             ) |
             r::to_vector;
@@ -585,8 +581,8 @@ namespace {
          return blobs_per_gray_to_layer(blobs_per_gray);
     }
 
-    std::vector<std::vector<blob>> ink_layer_images_to_blobs(const std::vector<cv::Mat>& ink_layer_imgs) {
-        return ink_layer_imgs | rv::transform(ink_layer_img_to_blobs) | r::to_vector;
+    std::vector<std::vector<ch::blob<uchar>>> ink_layer_images_to_blobs(const std::vector<cv::Mat>& ink_layer_imgs) {
+        return ink_layer_imgs | rv::transform(ink_layer_img_to_blobs<uchar>) | r::to_vector;
     }
 
     std::vector<cv::Mat> ink_layer_images(const cv::Mat& gray_scale_img, const cv::Mat& label_img, const std::vector<double>& thresholds) {
@@ -688,7 +684,7 @@ namespace {
 
         std::vector<ink_layer> layers_;
 
-        static ink_layer to_ink_layer(const std::vector<blob>& blobs, int layer_index, ch::brush_fn brush) {
+        static ink_layer to_ink_layer(const std::vector<ch::blob<uchar>>& blobs, int layer_index, ch::brush_fn brush) {
             ink_layer il{
                 brush,
                 blobs | rv::transform([](const auto& b) { return b.poly; } ) | r::to_vector,
@@ -985,17 +981,19 @@ cv::Mat ch::paint_drawing(const drawing& d, std::function<void(double)> update_p
     return mat;
 }
 
-std::vector<ch::polygon> ch::segmented_image_to_polygons(cv::Mat img) {
-    auto blobs = ink_layer_img_to_blobs(img);
-    return blobs |
-        rv::transform([](const blob& b) {return b.poly; }) |
-        r::to_vector;
+std::vector<ch::blob<uchar>> ch::detail::to_blobs_from_1channel_image(
+    const cv::Mat& input) {
+    return ink_layer_img_to_blobs<uchar>(input);
+}
+
+std::vector<ch::blob<ch::color>> ch::detail::to_blobs_from_3channel_image(
+    const cv::Mat& input) {
+    return ink_layer_img_to_blobs<ch::color>(input);
 }
 
 void ch::debug() {
     cv::Mat img = cv::imread("C:\\test\\test-blobs.png");
     cv::Mat bw = ch::convert_to_1channel_gray(img);
-    auto polys = segmented_image_to_polygons(bw);
-    debug_geom(img, polys);
+    auto blobs = to_blobs<uchar>(bw);
 }
 

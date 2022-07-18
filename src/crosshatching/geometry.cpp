@@ -552,6 +552,7 @@ std::vector<ch::polygon> ch::simplify_rectangle_dissection(const std::vector<ch:
 	return dissection;
 }
 
+/*
 void ch::debug_geom(cv::Mat mat, const std::vector<polygon>& polygons) {
 
 	auto nums = int_sequence_open_right(42, 34) | r::to_vector;
@@ -566,3 +567,4 @@ void ch::debug_geom(cv::Mat mat, const std::vector<polygon>& polygons) {
 	}
 	cv::imwrite("C:\\test\\test_blobs_cp.png", debug_img);
 }
+*/

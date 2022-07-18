@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <numbers>
 #include <fstream>
+#include <unordered_set>
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -15,6 +16,20 @@ namespace rv = ranges::views;
 namespace {
 	std::random_device rd;
 	std::mt19937 random(rd());
+
+	struct color_hasher {
+		size_t operator()(const ch::color& c) const
+		{
+			std::size_t seed = 0;
+			boost::hash_combine(seed, c[0]);
+			boost::hash_combine(seed, c[1]);
+			boost::hash_combine(seed, c[2]);
+
+			return seed;
+		}
+	};
+
+	using color_set = std::unordered_set<ch::color, color_hasher>;
 
 	double ramp_up_right(double t, double k) {
 		return (t <= k) ? 0.0 : (t - k) / (1.0 - k);
@@ -348,9 +363,9 @@ ch::dimensions<int> ch::mat_dimensions(cv::Mat mat) {
 	return { mat.cols, mat.rows };
 }
 
-std::vector<uchar> ch::unique_1channel_values(const cv::Mat& input) {
+std::vector<uchar> ch::detail::unique_1channel_values(const cv::Mat& input) {
 	if (input.channels() != 1) {
-		throw std::runtime_error("called get_gray_levels on color image");
+		throw std::runtime_error("called unique_1channel_values on color image");
 	}
 	std::array<bool, 256> grays = {};
 	input.forEach<uchar>([&grays](uchar gray, const int* pos) { grays[gray] = true;  });
@@ -361,8 +376,15 @@ std::vector<uchar> ch::unique_1channel_values(const cv::Mat& input) {
 		r::action::reverse;
 }
 
-std::vector<ch::color> ch::unique_3channel_values(const cv::Mat& input) {
-	return {};
+std::vector<ch::color> ch::detail::unique_3channel_values(const cv::Mat& input) {
+	if (input.channels() != 3) {
+		throw std::runtime_error("called unique_3channel_values on color image");
+	}
+	color_set colors;
+	input.forEach<ch::color>(
+		[&colors](const ch::color& c, const int* pos) { colors.insert(c); }
+	);
+	return colors | r::to_vector;
 }
 
 int ch::max_val_in_mat(cv::Mat mat) {
