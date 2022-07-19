@@ -9,6 +9,7 @@
 #include <numbers>
 #include <fstream>
 #include <unordered_set>
+#include <qdebug.h>
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -35,11 +36,6 @@ namespace {
 		return (t <= k) ? 0.0 : (t - k) / (1.0 - k);
 	}
 
-	double sigmoidal_contrast(double u, double contrast, double thresh)
-	{
-		
-	}
-
 	uchar sigmoidal_contrast(uchar u, double contrast, double thresh) {
 		auto sigmoidal_contrast = [contrast, thresh](double u) {
 			return (1.0 / (1.0 + std::exp(contrast * (thresh - u))) - 1.0 / (1.0 + std::exp(contrast * thresh))) /
@@ -60,8 +56,6 @@ namespace {
 			r::to_vector;
 	}
 
-
-
 	std::string loop_to_path_commands(const ch::ring& poly, double scale) {
 		std::stringstream ss;
 		ss << "M " << scale * poly[0].x << "," << scale * poly[0].y << " L";
@@ -81,18 +75,35 @@ namespace {
 		return ss.str();
 	}
 
-}
-
-std::string ch::svg_header(int wd, int hgt, bool bkgd_rect)
-{
-    std::stringstream ss;
-
-    ss << "<?xml version=\"1.0\" standalone=\"no\"?>\n";
-    ss << "<svg width=\"" + std::to_string(wd) + "px\" height=\"" + std::to_string(hgt) + "px\"  xmlns = \"http://www.w3.org/2000/svg\" version = \"1.1\">\n";
-	if (bkgd_rect) {
-		ss << "<rect width=\"" + std::to_string(wd) + "\" height=\"" + std::to_string(hgt) + "\"  fill=\"white\"/>\n";
+	template<typename T>
+	std::string polygon_to_svg(const ch::polygon& poly, T color, double scale) {
+		std::stringstream ss;
+		ss << "<path fill-rule=\"evenodd\" stroke=\"none\" fill=\"";
+		ss << ch::to_svg_color(color) << "\" d=\"";
+		ss << svg_path_commands(poly, scale);
+		ss << "\" />";
+		return ss.str();
 	}
-    return ss.str();
+
+	template<typename T>
+	void polygons_to_svg(const std::string& output_file,
+			const std::vector<std::tuple<T, ch::polygon>>& polys,
+			double scale) {
+
+		auto [x1, y1, wd, hgt] = ch::bounding_rectangle(
+			polys |
+			rv::transform([](const auto& tup) {return std::get<1>(tup); }) |
+			r::to_vector
+		);
+
+		std::ofstream outfile(output_file);
+		outfile << ch::svg_header(static_cast<int>(wd), static_cast<int>(hgt));
+		for (const auto& [color, poly] : polys) {
+			outfile << polygon_to_svg(poly, color, scale) << std::endl;
+		}
+		outfile << "</svg>" << std::endl;
+		outfile.close();
+	}
 }
 
 std::string uchar_to_hex(unsigned char uc) {
@@ -101,7 +112,7 @@ std::string uchar_to_hex(unsigned char uc) {
 	return ss.str();
 }
 
-std::string ch::gray_to_svg_color(unsigned char gray)
+std::string ch::to_svg_color(uchar gray)
 {
 	auto hex_val = uchar_to_hex(gray);
 	std::stringstream ss;
@@ -152,7 +163,6 @@ double ch::ramp(double t, double k, bool right, bool up) {
 	}
 }
 
-
 cv::Mat ch::apply_contrast(cv::Mat img, double beta, double sigma) {
 	using hsv_pixel = cv::Point3_<uchar>;
 	auto lookup_table = make_contrast_lookup_table(beta, sigma);
@@ -170,6 +180,32 @@ cv::Mat ch::apply_contrast(cv::Mat img, double beta, double sigma) {
 	return output;
 }
 
+void ch::detail::polygons_to_svg_aux(const std::string& output_file,
+		const std::vector<std::tuple<color, polygon>>& polys,
+		double scale) {
+	::polygons_to_svg<color>(output_file, polys, scale);
+}
+
+void ch::detail::polygons_to_svg_aux(const std::string& output_file,
+	const std::vector<std::tuple<uchar, polygon>>& polys,
+	double scale) {
+	::polygons_to_svg<uchar>(output_file, polys, scale);
+}
+
+std::string ch::svg_header(int wd, int hgt, bool bkgd_rect)
+{
+	std::stringstream ss;
+
+	ss << "<?xml version=\"1.0\" standalone=\"no\"?>\n";
+	ss << "<svg width=\"" + std::to_string(wd) + "px\" height=\"" + 
+		std::to_string(hgt) + "px\"  xmlns = \"http://www.w3.org/2000/svg\" version = \"1.1\">\n";
+	if (bkgd_rect) {
+		ss << "<rect width=\"" + std::to_string(wd) + "\" height=\"" + 
+			std::to_string(hgt) + "\"  fill=\"white\"/>\n";
+	}
+	return ss.str();
+}
+
 std::string ch::polyline_to_svg(const ch::polyline& poly, double thickness, bool closed) {
 	std::stringstream ss;
 	std::string cmd = (closed) ? "polygon" : "polyline";
@@ -179,15 +215,6 @@ std::string ch::polyline_to_svg(const ch::polyline& poly, double thickness, bool
 		ss << " " << pt.x << "," << pt.y;
 	}
 	ss << "\" style=\"fill:none;stroke:black;stroke-width:" << thickness << "px\" />";
-	return ss.str();
-}
-
-std::string ch::polygon_to_svg(const ch::polygon& poly, const ch::color& color, double scale) {
-	std::stringstream ss;
-	ss << "<path fill-rule=\"evenodd\" stroke=\"none\" fill=\"";
-	ss << ch::to_svg_color(color) << "\" d=\"";
-	ss << svg_path_commands(poly, scale);
-	ss << "\" />";
 	return ss.str();
 }
 
@@ -340,24 +367,7 @@ void ch::label_map_to_visualization_img(cv::Mat img, const std::string& output_f
 	cv::imwrite(output_file, mat);
 }
 
-void ch::polygons_to_svg(const std::string& output_file, 
-		const std::vector<std::tuple<polygon, color>>& polys,
-		double scale) {
 
-	auto [x1,y1,wd,hgt] = ch::bounding_rectangle(
-		polys | 
-		rv::transform([](const auto& tup) {return std::get<0>(tup); })|
-		r::to_vector
-	);
-
-	std::ofstream outfile(output_file);
-	outfile << svg_header(static_cast<int>(wd), static_cast<int>(hgt));
-	for (const auto& [poly,color] :polys) {
-		outfile << polygon_to_svg(poly, color, scale) << std::endl;
-	}
-	outfile << "</svg>" << std::endl;
-	outfile.close();
-}
 
 ch::dimensions<int> ch::mat_dimensions(cv::Mat mat) {
 	return { mat.cols, mat.rows };
@@ -381,9 +391,12 @@ std::vector<ch::color> ch::detail::unique_3channel_values(const cv::Mat& input) 
 		throw std::runtime_error("called unique_3channel_values on color image");
 	}
 	color_set colors;
-	input.forEach<ch::color>(
-		[&colors](const ch::color& c, const int* pos) { colors.insert(c); }
-	);
+	for (int y = 0; y < input.rows; ++y) {
+		for (int x = 0; x < input.cols; ++x) {
+			auto pixel = input.at<ch::color>(y, x);
+			colors.insert(pixel);
+		}
+	}
 	return colors | r::to_vector;
 }
 

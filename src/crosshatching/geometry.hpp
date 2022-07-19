@@ -110,4 +110,5 @@ namespace ch {
     using point_map = std::unordered_map<int_point, V, detail::point_hasher>;
     using point_set = std::unordered_set<int_point, detail::point_hasher>;
 
+    void debug_geometry(const cv::Mat& mat);
 }

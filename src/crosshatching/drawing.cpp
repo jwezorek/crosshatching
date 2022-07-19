@@ -996,9 +996,8 @@ std::vector<std::tuple<ch::color, ch::polygon>> ch::detail::to_blobs_from_3chann
     return ink_layer_img_to_blobs<ch::color>(input);
 }
 
-void ch::debug() {
-    cv::Mat img = cv::imread("C:\\test\\test-blobs.png");
-    cv::Mat bw = ch::convert_to_1channel_gray(img);
-    auto blobs = to_blobs<uchar>(bw);
+void ch::debug(const cv::Mat& mat) {
+    auto blobs = to_blobs<color>(mat);
+    polygons_to_svg("C:\\test\\foobar.svg", blobs, 1.0);
 }
 

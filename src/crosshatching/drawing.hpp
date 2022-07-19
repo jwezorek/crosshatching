@@ -68,5 +68,5 @@ namespace ch {
         }
     }
 
-    void debug();
+    void debug(const cv::Mat& mat);
 }

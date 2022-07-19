@@ -519,10 +519,10 @@ ch::rectangle ch::union_rect(const ch::rectangle & r1, const ch::rectangle& r2) 
 	std::array<double, 4> y_vals = { std::get<1>(r1), std::get<3>(r1),
 		std::get<1>(r2), std::get<3>(r2) };
 
-	auto [x1, x2] = std::minmax(x_vals.begin(), x_vals.end());
-	auto [y1, y2] = std::minmax(y_vals.begin(), y_vals.end());
+	auto x_pair = std::minmax_element(x_vals.begin(), x_vals.end());
+	auto y_pair = std::minmax_element(y_vals.begin(), y_vals.end());
 
-	return { *x1,*y1,*x2,*y2 };
+	return { *x_pair.first, *y_pair.first, *x_pair.second, *y_pair.second};
 }
 
 cv::Rect ch::union_rect_and_pt(const cv::Rect& r, cv::Point2i pt) {
@@ -550,6 +550,10 @@ std::vector<ch::polygon> ch::simplify_rectangle_dissection(const std::vector<ch:
 	auto critical_points = generate_critical_points_table(dissection, rect);
 
 	return dissection;
+}
+
+void ch::debug_geometry(const cv::Mat& mat) {
+
 }
 
 /*

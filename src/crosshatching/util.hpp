@@ -13,14 +13,30 @@ namespace ch {
 
     using color = cv::Vec3b;
 
+    namespace detail {
+        std::vector<uchar> unique_1channel_values(const cv::Mat& input);
+        std::vector<color> unique_3channel_values(const cv::Mat& input);
+        void polygons_to_svg_aux(const std::string& output_file,
+            const std::vector<std::tuple<color, polygon>>& polys,
+            double scale);
+        void polygons_to_svg_aux(const std::string& output_file,
+            const std::vector<std::tuple<uchar, polygon>>& polys,
+            double scale);
+    }
+
     // SVG
     std::string svg_header(int wd, int hgt, bool bkgd_rect = false);
-    std::string polyline_to_svg(const ch::polyline& poly, double thickness, bool closed = false);
-    std::string polygon_to_svg(const ch::polygon& poly, const color& col, double scale = 1.0);
-    std::string gray_to_svg_color(unsigned char gray);
+    std::string polyline_to_svg(const ch::polyline& poly, double thickness, 
+            bool closed = false);
+    std::string to_svg_color(uchar gray);
     std::string to_svg_color(const color& c);
-    void polygons_to_svg(const std::string& output_file, const std::vector<std::tuple<polygon, color>>& polys,
-        double scale = 1.0);
+
+    template<typename T>
+    void polygons_to_svg(const std::string& output_file,
+            const std::vector<std::tuple<T, polygon>>& polys,
+            double scale = 1.0) {
+        detail::polygons_to_svg_aux(output_file, polys, scale);
+    }
 
     // random numbers
     using rnd_fn = std::function<double()>;
@@ -40,17 +56,7 @@ namespace ch {
     std::tuple<cv::Mat,cv::Mat> meanshift_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize);
     int max_val_in_mat(cv::Mat mat);
     void label_map_to_visualization_img(cv::Mat img, const std::string& output_file);
-    
     dimensions<int> mat_dimensions(cv::Mat mat);
-    // etc.
-    std::string to_string(double val, int precision);
-    double degrees_to_radians(double degrees);
-    double ramp(double t, double k, bool right, bool up);
-
-    namespace detail {
-        std::vector<uchar> unique_1channel_values(const cv::Mat& input);
-        std::vector<color> unique_3channel_values(const cv::Mat& input);
-    }
 
     template<typename T>
     std::vector<T> unique_values(const cv::Mat& img) {
@@ -60,4 +66,11 @@ namespace ch {
             return detail::unique_3channel_values(img);
         }
     }
+
+    // etc.
+    std::string to_string(double val, int precision);
+    double degrees_to_radians(double degrees);
+    double ramp(double t, double k, bool right, bool up);
+
+    
 }
