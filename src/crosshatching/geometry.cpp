@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <array>
 #include <numeric>
+#include <qdebug.h>
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -165,7 +166,31 @@ namespace {
 		}
 	}
 
-	using critical_points_table = ch::point_map<std::vector<std::vector<ch::int_point>>>;
+	using path_table = ch::point_map<std::vector<std::vector<ch::int_point>>>;
+
+	void insert_path(path_table& tbl, const std::vector<ch::int_point>& path) {
+		auto start = path.front();
+		tbl[start].push_back(path);
+	}
+
+	const std::vector<ch::int_point>* find_path(const path_table& tbl,
+			const ch::int_point& u, const ch::int_point& v) {
+		auto i = tbl.find(u);
+		if (i == tbl.end()) {
+			return nullptr;
+		}
+		const auto& paths_from_u = i->second;
+		auto j = std::find_if(paths_from_u.begin(), paths_from_u.end(),
+			[&v](const auto& path_from_u) {
+				return path_from_u.back() == v;
+			}
+		);
+		if (j != paths_from_u.end()) {
+			return &(*j);
+		} else {
+			return nullptr;
+		}
+	}
 
 	int update_vertex_usage_count(ch::point_map<int>& vertex_count, const ch::int_point& pt,
 		const ch::dimensions<int>& dims) {
@@ -245,7 +270,7 @@ namespace {
 		) | rv::join;
 	}
 
-	bool is_critical_point_free(const critical_points_table& tbl, const ch::ring& r) {
+	bool is_critical_point_free(const path_table& tbl, const ch::ring& r) {
 		for ( ch::int_point pt : all_points_on_ring(r)) {
 			if (tbl.find(pt) != tbl.end()) {
 				return false;
@@ -254,13 +279,13 @@ namespace {
 		return true;
 	}
 
-	void insert_island_critical_points(critical_points_table& tbl, const ch::ring& r) {
+	void insert_island_critical_points(path_table& tbl, const ch::ring& r) {
 		if (is_critical_point_free(tbl, r)) {
 			tbl[r[0]] = {};
 		}
 	}
 
-	void insert_island_critical_points(critical_points_table& tbl, 
+	void insert_island_critical_points(path_table& tbl, 
 			const std::vector<ch::polygon>& polygons) {
 		for (const auto& poly : polygons) {
 			insert_island_critical_points(tbl, poly.outer());
@@ -270,7 +295,7 @@ namespace {
 		}
 	}
 
-	critical_points_table generate_critical_points_table( 
+	path_table generate_critical_points_table( 
 			const std::vector<ch::polygon>& polygons, const ch::dimensions<double>& rect) 
 	{
 		ch::dimensions<int> dims(rect);
@@ -285,11 +310,11 @@ namespace {
 			) | 
 			rv::join |
 			rv::transform(
-				[](const ch::int_point& pt)->critical_points_table::value_type {
+				[](const ch::int_point& pt)->path_table::value_type {
 					return { pt, {} };
 				}
 			) |
-			r::to_< critical_points_table>();
+			r::to_< path_table>();
 
 		insert_island_critical_points(tbl, polygons);
 
@@ -355,12 +380,12 @@ ch::matrix ch::scale_matrix(double x_scale, double y_scale) {
 	return scale;
 }
 
-ranges::any_view<ch::polyline> ch::transform(ranges::any_view<polyline> polys, const matrix& mat)
+ranges::any_view<ch::polyline> ch::transform_view(ranges::any_view<polyline> polys, const matrix& mat)
 {
 	return polys | rv::transform([=](const auto& poly) { return ch::transform(poly, mat); });
 }
 
-std::vector<ch::polyline> ch::transform(const std::vector<polyline>& polys, const matrix& mat)
+std::vector<ch::polyline> ch::transform( std::span<const polyline> polys, const matrix& mat)
 {
 	std::vector<ch::polyline> output(polys.size());
 	std::transform(polys.begin(), polys.end(), output.begin(),
@@ -371,21 +396,21 @@ std::vector<ch::polyline> ch::transform(const std::vector<polyline>& polys, cons
 	return output;
 }
 
-ch::point ch::mean_point(const polyline& poly)
+ch::point ch::mean_point(std::span<const point> points)
 {
 	auto x = 0.0;
 	auto y = 0.0;
-	for (const auto& pt : poly) {
+	for (const auto& pt : points) {
 		x += pt.x;
 		y += pt.y;
 	}
 	return {
-		x / poly.size(),
-		y / poly.size()
+		x / points.size(),
+		y / points.size()
 	};
 }
 
-ch::polyline ch::transform(const polyline& poly, const matrix& mat)
+ch::polyline ch::transform(std::span<const point> poly, const matrix& mat)
 {
 	ch::polyline output = make_polyline(poly.size());
 	std::transform(poly.begin(), poly.end(), output.begin(),
@@ -504,7 +529,7 @@ ch::rectangle ch::bounding_rectangle(const ch::polygon& poly) {
 	return bounding_rectangle(poly.outer());
 }
 
-ch::rectangle ch::bounding_rectangle(const std::vector<polygon>& polys) {
+ch::rectangle ch::bounding_rectangle(std::span<const polygon> polys) {
 	return  std::accumulate(polys.begin(), polys.end(), bounding_rectangle(polys.front()),
 		[](const rectangle& r, const polygon& poly)->rectangle {
 			return union_rect(bounding_rectangle(poly), r);
@@ -544,16 +569,67 @@ cv::Rect ch::union_rect_and_pt(const cv::Rect& r, cv::Point2i pt) {
 	};
 }
 
+using edge = std::tuple<ch::ring::const_iterator, ch::ring::const_iterator>;
+
+std::vector<edge> get_shared_edges(
+		const ch::ring& verts, const path_table& tbl) {
+
+	auto iter_list = rv::iota(0, static_cast<int>(verts.size())) |
+		rv::transform(
+			[&verts](int index)->ch::ring::const_iterator {
+				return verts.cbegin() + index;
+			}
+		) | r::to_vector;
+
+	auto critical_pts = iter_list | rv::remove_if(
+			[&tbl](const auto& i) {
+				return tbl.find(*i) == tbl.end();
+			}
+		) | r::to_vector;
+
+	return critical_pts |
+		rv::cycle |
+		rv::sliding(2) |
+		rv::take(critical_pts.size()) |
+		rv::transform(
+			[](auto pair)->edge {
+				return { pair[0] , pair[1] };
+			}
+		) | r::to_vector;
+}
+
+std::vector<std::vector<ch::point>> get_paths( const ch::ring& ring, 
+		const path_table& tbl) {
+
+	return {};
+}
+
+ch::ring simplify_ring(const ch::ring& ring, path_table& paths, double param) {
+	return {};
+}
+
+ch::polygon simplify_polygon(const ch::polygon& poly, path_table& paths, double param) {
+	return {};
+}
+
 std::vector<ch::polygon> ch::simplify_rectangle_dissection(const std::vector<ch::polygon>& dissection,
 		const ch::dimensions<double>& rect, double param) {
 
-	auto critical_points = generate_critical_points_table(dissection, rect);
+	auto path_tbl = generate_critical_points_table(dissection, rect);
 
 	return dissection;
 }
 
-void ch::debug_geometry(const cv::Mat& mat) {
-
+void ch::debug_geometry() {
+	ch::ring r = { {34,15},{7,7},{16,1},{18,12}, {100,100}, {3,3}, {14,14} , {34,21} };
+	path_table tbl;
+	tbl[{7, 7}] = {};
+	tbl[{100, 100}] = {};
+	tbl[{14, 14}] = {};
+	auto foo = get_shared_edges(r, tbl);
+	for (auto [p1, p2] : foo) {
+		qDebug() << "(" << p1->x << "," << p1->y << ") (" << p2->x << "," << p2->y << ")";
+	}
 }
 
 /*

@@ -4,6 +4,7 @@
 #include <sstream>
 #include <optional>
 #include <unordered_map>
+#include <span>
 #include <unordered_set>
 #include <opencv2/core.hpp>
 #include <Eigen/Dense>
@@ -68,10 +69,10 @@ namespace ch {
     matrix translation_matrix(double x, double y);
     matrix translation_matrix(const point& pt);
     matrix scale_matrix(double x_scale, double y_scale);
-    ranges::any_view<polyline> transform(ranges::any_view<polyline> polys, const matrix& mat);
-    std::vector<polyline> transform(const std::vector<polyline>& poly, const matrix& mat);
-    point mean_point(const polyline& poly);
-    polyline transform(const polyline& poly, const matrix& mat);
+    ranges::any_view<polyline> transform_view(ranges::any_view<polyline> polys, const matrix& mat);
+    std::vector<polyline> transform( std::span<const polyline> polys, const matrix& mat);
+    point mean_point(std::span<const point> points);
+    polyline transform(std::span<const point>, const matrix& mat);
     ring transform(const ring& r, const matrix& mat);
     point transform(const point& pt, const matrix& mat);
     polygon transform(const polygon& poly, const matrix& mat);
@@ -86,10 +87,12 @@ namespace ch {
     rectangle bounding_rectangle(const polyline& poly);
     rectangle bounding_rectangle(const ring& poly);
     rectangle bounding_rectangle(const polygon& poly);
-    rectangle bounding_rectangle(const std::vector<polygon>& polys);
+    rectangle bounding_rectangle(std::span<const polygon> polys);
     rectangle union_rect(const rectangle& r1, const rectangle& r2);
     cv::Rect union_rect_and_pt(const cv::Rect& r, cv::Point2i pt);
-    std::optional<line_segment> linesegment_rectangle_intersection(const line_segment& line_seg, const rectangle& rect);
+    std::optional<line_segment> linesegment_rectangle_intersection(
+        const line_segment& line_seg, const rectangle& rect);
+    
     std::vector<ch::polygon> simplify_rectangle_dissection(const std::vector<ch::polygon>& dissection, 
         const dimensions<double>& rect, double param);
 
@@ -110,5 +113,5 @@ namespace ch {
     using point_map = std::unordered_map<int_point, V, detail::point_hasher>;
     using point_set = std::unordered_set<int_point, detail::point_hasher>;
 
-    void debug_geometry(const cv::Mat& mat);
+    void debug_geometry();
 }

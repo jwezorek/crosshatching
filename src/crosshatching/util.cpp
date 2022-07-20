@@ -87,7 +87,7 @@ namespace {
 
 	template<typename T>
 	void polygons_to_svg(const std::string& output_file,
-			const std::vector<std::tuple<T, ch::polygon>>& polys,
+			std::span<std::tuple<T, ch::polygon>> polys,
 			double scale) {
 
 		auto [x1, y1, wd, hgt] = ch::bounding_rectangle(
@@ -181,14 +181,14 @@ cv::Mat ch::apply_contrast(cv::Mat img, double beta, double sigma) {
 }
 
 void ch::detail::polygons_to_svg_aux(const std::string& output_file,
-		const std::vector<std::tuple<color, polygon>>& polys,
+		std::span<std::tuple<color, polygon>> polys,
 		double scale) {
 	::polygons_to_svg<color>(output_file, polys, scale);
 }
 
 void ch::detail::polygons_to_svg_aux(const std::string& output_file,
-	const std::vector<std::tuple<uchar, polygon>>& polys,
-	double scale) {
+		std::span<std::tuple<uchar, polygon>> polys,
+		double scale) {
 	::polygons_to_svg<uchar>(output_file, polys, scale);
 }
 
@@ -206,7 +206,7 @@ std::string ch::svg_header(int wd, int hgt, bool bkgd_rect)
 	return ss.str();
 }
 
-std::string ch::polyline_to_svg(const ch::polyline& poly, double thickness, bool closed) {
+std::string ch::polyline_to_svg(std::span<const point> poly, double thickness, bool closed) {
 	std::stringstream ss;
 	std::string cmd = (closed) ? "polygon" : "polyline";
 	ss << "<" << cmd << " points = \"";

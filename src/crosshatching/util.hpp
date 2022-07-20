@@ -7,6 +7,7 @@
 #include <tuple>
 #include <optional>
 #include <optional>
+#include <span>
 #include "geometry.hpp"
 
 namespace ch {
@@ -17,23 +18,23 @@ namespace ch {
         std::vector<uchar> unique_1channel_values(const cv::Mat& input);
         std::vector<color> unique_3channel_values(const cv::Mat& input);
         void polygons_to_svg_aux(const std::string& output_file,
-            const std::vector<std::tuple<color, polygon>>& polys,
+            std::span<std::tuple<color, polygon>> polys,
             double scale);
         void polygons_to_svg_aux(const std::string& output_file,
-            const std::vector<std::tuple<uchar, polygon>>& polys,
+            std::span<std::tuple<uchar, polygon>> polys,
             double scale);
     }
 
     // SVG
     std::string svg_header(int wd, int hgt, bool bkgd_rect = false);
-    std::string polyline_to_svg(const ch::polyline& poly, double thickness, 
+    std::string polyline_to_svg(std::span<const point> poly, double thickness, 
             bool closed = false);
     std::string to_svg_color(uchar gray);
     std::string to_svg_color(const color& c);
 
     template<typename T>
     void polygons_to_svg(const std::string& output_file,
-            const std::vector<std::tuple<T, polygon>>& polys,
+            std::span<std::tuple<T, polygon>> polys,
             double scale = 1.0) {
         detail::polygons_to_svg_aux(output_file, polys, scale);
     }

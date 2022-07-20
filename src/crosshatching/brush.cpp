@@ -323,7 +323,7 @@ ch::crosshatching_swatch ch::jiggle(ch::crosshatching_swatch swatch, ch::rnd_fn 
 ch::crosshatching_swatch ch::rotate(ch::crosshatching_swatch swatch, double theta) {
     matrix rotation = rotation_matrix(theta);
     return {
-        ch::transform(swatch.content, rotation),
+        ch::transform_view(swatch.content, rotation),
         swatch.sz,
         swatch.stroke_wd
     };

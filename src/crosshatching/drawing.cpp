@@ -313,7 +313,7 @@ namespace {
         } while (get_vertex(crawler) != poly.front());
 
         poly.shrink_to_fit();
-        return ch::simplify_rectilinear_ring(poly);
+        return poly;
     }
 
     std::vector<ch::polygon> contour_info_to_polygons(const find_contour_output& contours) {
@@ -997,7 +997,8 @@ std::vector<std::tuple<ch::color, ch::polygon>> ch::detail::to_blobs_from_3chann
 }
 
 void ch::debug(const cv::Mat& mat) {
-    auto blobs = to_blobs<color>(mat);
-    polygons_to_svg("C:\\test\\foobar.svg", blobs, 1.0);
+    //auto blobs = to_blobs<color>(mat);
+    //polygons_to_svg("C:\\test\\foobar.svg", blobs, 1.0);
+    debug_geometry();
 }
 
