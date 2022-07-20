@@ -317,6 +317,7 @@ namespace {
     }
 
     std::vector<ch::polygon> contour_info_to_polygons(const find_contour_output& contours) {
+
         std::unordered_map<int, int> contour_index_to_poly_index;
         std::vector<ch::polygon> blobs;
         for (int i = 0; i < contours.hierarchy.size(); ++i) {
@@ -340,7 +341,9 @@ namespace {
         return blobs;
     }
 
-    ch::polylines clip_crosshatching_to_bbox(ch::crosshatching_range swatch, const ch::rectangle& bbox) {
+    ch::polylines clip_crosshatching_to_bbox(
+            ch::crosshatching_range swatch, const ch::rectangle& bbox) {
+
         auto input = swatch | r::to_vector;
         size_t n = 0;
         for (const auto& poly : input) {
@@ -362,7 +365,9 @@ namespace {
         return output;
     }
 
-    ch::polylines clip_swatch_to_poly(const ch::crosshatching_swatch& swatch, const ch::polygon& poly) {
+    ch::polylines clip_swatch_to_poly(
+            const ch::crosshatching_swatch& swatch, const ch::polygon& poly) {
+
         auto bbox = ch::bounding_rectangle(poly.outer());
         auto cross_hatching_segments = clip_crosshatching_to_bbox(swatch.content, bbox);
         return ch::clip_lines_to_poly(cross_hatching_segments, poly);
@@ -381,7 +386,7 @@ namespace {
             r::to<ch::polyline>();
     }
 
-    std::vector<std::tuple<uchar, uchar>> layer_ranges(const std::vector<double>& thresholds) {
+    std::vector<std::tuple<uchar, uchar>> layer_ranges(std::span<const double> thresholds) {
         auto start_of_ranges = thresholds |
             rv::transform(
                 [](double val)->uchar {
@@ -410,7 +415,8 @@ namespace {
                 r::to_vector;
     }
 
-    std::unordered_map<int, std::vector<int>> build_local_id_to_gobal_id_tbl(const ch::segmentation& global_seg, const ch::segmentation& local_seg) {
+    std::unordered_map<int, std::vector<int>> build_local_id_to_gobal_id_tbl(
+            const ch::segmentation& global_seg, const ch::segmentation& local_seg) {
         std::unordered_map<int, std::vector<int>> local_id_to_global_id;
         for (int global_index = 0; global_index < global_seg.count(); ++global_index) {
             auto pt_in_global_seg = global_seg.component_to_point(global_index);
@@ -428,7 +434,11 @@ namespace {
         return local_id_to_global_id;
     }
 
-    std::vector<int> get_blob_neighbors_global_indices(int local_blob, uchar from, uchar to, const std::unordered_map<int, std::vector<int>>& local_id_to_global_id, const ch::segmentation& global_seg) {
+    std::vector<int> get_blob_neighbors_global_indices(
+            int local_blob, uchar from, uchar to, 
+            const std::unordered_map<int, std::vector<int>>& local_id_to_global_id, 
+            const ch::segmentation& global_seg) {
+
         const auto& global_blob_components = local_id_to_global_id.at(local_blob);
         std::unordered_set<int> neighbors;
         for (auto gbc : global_blob_components) {
@@ -443,7 +453,7 @@ namespace {
         return neighbors | r::to_vector;
     }
 
-    uchar color_of_greatest_area_comp(const std::vector<ch::segmentation::cc_properties>& props) {
+    uchar color_of_greatest_area_comp(std::span<ch::segmentation::cc_properties> props) {
         uchar color_of_max;
         int max_area = -1;
         for (const auto& p : props) {
@@ -455,7 +465,8 @@ namespace {
         return color_of_max;
     }
 
-    uchar choose_color_for_inherited_blob(const ch::segmentation& global_seg, const std::vector<int>& neighbors) {
+    uchar choose_color_for_inherited_blob(
+            const ch::segmentation& global_seg, std::span<int> neighbors) {
 
         //if there is only one neighbor, use its color...
         if (neighbors.size() == 1) {
@@ -489,7 +500,8 @@ namespace {
         return color_with_max_area;
     }
 
-    std::tuple<cv::Mat, cv::Mat> blobs_in_range_and_mask(const ch::segmentation& seg, uchar from, uchar to) {
+    std::tuple<cv::Mat, cv::Mat> blobs_in_range_and_mask(
+            const ch::segmentation& seg, uchar from, uchar to) {
         cv::Mat ink_layer_img(seg.dimensions(), CV_8UC1, cv::Scalar(255));
         cv::Mat mask(seg.dimensions(), CV_8UC1, cv::Scalar(0));
         for (int i = 0; i < seg.count(); ++i) {
@@ -503,7 +515,8 @@ namespace {
         return { ink_layer_img, mask };
     }
 
-    std::tuple<cv::Mat, cv::Mat> ink_layer_image_and_mask(const ch::segmentation& seg, cv::Mat prev_level_mask, uchar from, uchar to) {
+    std::tuple<cv::Mat, cv::Mat> ink_layer_image_and_mask(
+            const ch::segmentation& seg, cv::Mat prev_level_mask, uchar from, uchar to) {
 
         auto [ink_layer_img, mask] = blobs_in_range_and_mask(seg, from, to);
         if (prev_level_mask.empty()) {
@@ -527,7 +540,9 @@ namespace {
         return { ink_layer_img, mask };
     }
 
-    std::vector<cv::Mat> generate_ink_layer_images(const ch::segmentation& global_segmentation, const std::vector<std::tuple<uchar, uchar>>& ranges_of_gray) {
+    std::vector<cv::Mat> generate_ink_layer_images(
+            const ch::segmentation& global_segmentation, 
+            std::span<std::tuple<uchar, uchar>> ranges_of_gray) {
         std::vector<cv::Mat> images;
         images.reserve(ranges_of_gray.size());
         cv::Mat prev_mask;
@@ -544,7 +559,7 @@ namespace {
 
     template<typename T>
     std::vector<std::tuple<T, ch::polygon>> blobs_per_gray_to_layer(
-            const std::vector<blobs_per_gray_t<T>>& blobs_per_gray) {
+            const std::vector< blobs_per_gray_t<T>>& blobs_per_gray) {
         using blob = std::tuple< T, ch::polygon>;
         return rv::join(
             blobs_per_gray |
@@ -582,7 +597,8 @@ namespace {
          return blobs_per_gray_to_layer(blobs_per_gray);
     }
 
-    std::vector<std::vector<std::tuple<uchar, ch::polygon>>> ink_layer_images_to_blobs(const std::vector<cv::Mat>& ink_layer_imgs) {
+    std::vector<std::vector<std::tuple<uchar, ch::polygon>>> ink_layer_images_to_blobs(
+            std::span<const cv::Mat> ink_layer_imgs) {
         return ink_layer_imgs | rv::transform(ink_layer_img_to_blobs<uchar>) | r::to_vector;
     }
 
@@ -717,7 +733,7 @@ namespace {
             return { -1,-1 };
         }
 
-        void populate_blob_parents(const std::vector<cv::Mat>& layer_images) {
+        void populate_blob_parents( std::span<const cv::Mat> layer_images) {
             auto blob_maps = rv::zip(layer_images, layers_) |
                 rv::transform(
                     [](const auto& tup) {
@@ -751,7 +767,9 @@ namespace {
 
     public:
 
-        ink_layer_stack(const std::vector<cv::Mat>& layers, std::vector<ch::brush_fn> brushes, double scale_factor) {
+        ink_layer_stack(
+                std::span<const cv::Mat> layers, std::vector<ch::brush_fn> brushes, 
+                double scale_factor) {
             auto blobs = ink_layer_images_to_blobs(layers);
             layers_ = rv::enumerate(blobs) |
                 rv::transform(
@@ -801,14 +819,18 @@ namespace {
        
     };
 
-    std::tuple<std::vector<ch::brush_fn>, std::vector<double>> split_brush_thresholds(const std::vector<std::tuple<ch::brush_fn, double>>& brush_thresholds) {
+    std::tuple<std::vector<ch::brush_fn>, std::vector<double>> split_brush_thresholds(
+            const std::vector<std::tuple<ch::brush_fn, double>>& brush_thresholds) {
         return {
-            brush_thresholds | rv::transform([](const auto& tup) {return std::get<0>(tup); }) | r::to_vector,
-            brush_thresholds | rv::transform([](const auto& tup) {return std::get<1>(tup); }) | r::to_vector
+            brush_thresholds | 
+                rv::transform([](const auto& tup) {return std::get<0>(tup); }) | r::to_vector,
+            brush_thresholds | 
+                rv::transform([](const auto& tup) {return std::get<1>(tup); }) | r::to_vector
         };
     }
 
-    std::vector<ch::polyline> crosshatch_polygon(const ch::polygon& input, double color, ch::brush_ptr brush) {
+    std::vector<ch::polyline> crosshatch_polygon(
+            const ch::polygon& input, double color, ch::brush_ptr brush) {
         auto [x1, y1, x2, y2] = ch::bounding_rectangle(input.outer());
         cv::Point2d center = { (x1 + x2) / 2.0,(y1 + y2) / 2.0 };
         auto poly = ch::transform(input, ch::translation_matrix(-center));
@@ -829,7 +851,8 @@ namespace {
         return 1.0 - static_cast<double>(gray) / 255.0;
     }
 
-    std::tuple<std::vector<ch::polyline>, swatch_table> paint_ink_layer(ink_layer_stack::blob_range layer, const swatch_table& tbl, 
+    std::tuple<std::vector<ch::polyline>, swatch_table> paint_ink_layer(
+            ink_layer_stack::blob_range layer, const swatch_table& tbl, 
             const ch::parameters& params, progress_logger& prog) {
         size_t n = r::distance(layer);
         prog.start_new_layer(n);
@@ -888,14 +911,16 @@ namespace {
     }
 
     std::tuple<std::vector<ch::brush_fn>, std::vector<cv::Mat>> split_layers_and_brushes(
-        const std::vector<std::tuple<ch::brush_fn, cv::Mat>>& brushes_and_imgs) {
+            std::span<const std::tuple<ch::brush_fn, cv::Mat>> brushes_and_imgs) {
         return {
-            brushes_and_imgs | rv::transform([](const auto& p) {return std::get<0>(p); }) | r::to_vector,
-            brushes_and_imgs | rv::transform([](const auto& p) {return std::get<1>(p); }) | r::to_vector
+            brushes_and_imgs | 
+                rv::transform([](const auto& p) {return std::get<0>(p); }) | r::to_vector,
+            brushes_and_imgs | 
+                rv::transform([](const auto& p) {return std::get<1>(p); }) | r::to_vector
         };
     }
 
-    ch::drawing draw_layers( const std::vector<std::tuple<ch::brush_fn, cv::Mat>>& layers_and_brushes, 
+    ch::drawing draw_layers( std::span<const std::tuple<ch::brush_fn, cv::Mat>> layers_and_brushes, 
             const ch::parameters& params, progress_logger& ps) {
 
         auto [brushes, layers] = split_layers_and_brushes(layers_and_brushes);
@@ -904,7 +929,8 @@ namespace {
         ink_layer_stack stack(layers, brushes, params.scale);
 
         auto [blob_count, vert_count]  = stack.blob_stats();
-        ps.log("  (job contains " + std::to_string(blob_count) + " polygons with " + std::to_string(vert_count) + " total vertices");
+        ps.log("  (job contains " + std::to_string(blob_count) + " polygons with " + 
+            std::to_string(vert_count) + " total vertices");
         ps.set_total_blobs(blob_count);
 
         std::vector<std::vector<ch::polyline>> layer_strokes(layers.size());
@@ -912,7 +938,8 @@ namespace {
 
         for (auto [index, layer] : rv::enumerate(stack.blobs())) {
             ps.log(std::string("  - layer ") + std::to_string(index));
-            std::tie(layer_strokes[index], tok_to_bkgd) = paint_ink_layer(layer, tok_to_bkgd, params, ps);
+            std::tie(layer_strokes[index], tok_to_bkgd) = paint_ink_layer(
+                    layer,  tok_to_bkgd, params, ps);
         }
 
         return ch::drawing{
@@ -923,15 +950,18 @@ namespace {
     }
 }
 
-std::vector<std::tuple<ch::brush_fn, cv::Mat>> ch::generate_ink_layer_images(cv::Mat img, cv::Mat label_img,
+std::vector<std::tuple<ch::brush_fn, cv::Mat>> ch::generate_ink_layer_images(cv::Mat img, 
+        cv::Mat label_img,  
         const std::vector<std::tuple<ch::brush_fn, double>>& brush_intervals) {
     sanitize_input_images(&img, &label_img);
     auto [brushes, thresholds] = split_brush_thresholds(brush_intervals);
     auto layer_images = ink_layer_images(img, label_img, thresholds);
-    return rv::zip(brushes, layer_images) | r::to<std::vector<std::tuple<ch::brush_fn,cv::Mat>>>();
+    return rv::zip(brushes, layer_images) | 
+        r::to<std::vector<std::tuple<ch::brush_fn,cv::Mat>>>();
 }
 
-ch::drawing ch::generate_crosshatched_drawing(const ch::crosshatching_job& job, const ch::callbacks& cbs) {
+ch::drawing ch::generate_crosshatched_drawing(const ch::crosshatching_job& job, 
+    const ch::callbacks& cbs) {
     
     progress_logger ps(job.title, cbs);
 
