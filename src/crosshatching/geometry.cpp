@@ -1,5 +1,7 @@
 #include "geometry.hpp"
+#include "segmentation.hpp"
 #include "util.hpp"
+#include "point_set.hpp"
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
@@ -10,6 +12,7 @@
 #include <array>
 #include <numeric>
 #include <qdebug.h>
+#include "drawing.hpp"
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -166,34 +169,8 @@ namespace {
 		}
 	}
 
-	using path_table = ch::point_map<std::vector<std::vector<ch::int_point>>>;
-
-	void insert_path(path_table& tbl, const std::vector<ch::int_point>& path) {
-		auto start = path.front();
-		tbl[start].push_back(path);
-	}
-
-	const std::vector<ch::int_point>* find_path(const path_table& tbl,
-			const ch::int_point& u, const ch::int_point& v) {
-		auto i = tbl.find(u);
-		if (i == tbl.end()) {
-			return nullptr;
-		}
-		const auto& paths_from_u = i->second;
-		auto j = std::find_if(paths_from_u.begin(), paths_from_u.end(),
-			[&v](const auto& path_from_u) {
-				return path_from_u.back() == v;
-			}
-		);
-		if (j != paths_from_u.end()) {
-			return &(*j);
-		} else {
-			return nullptr;
-		}
-	}
-
-	int update_vertex_usage_count(ch::point_map<int>& vertex_count, const ch::int_point& pt,
-		const ch::dimensions<int>& dims) {
+	int update_vertex_usage_count(ch::point_map<int>& vertex_count, const ch::point& pt,
+			const ch::dimensions<int>& dims) {
 		bool not_in_table = vertex_count.find(pt) == vertex_count.end();
 		if (not_in_table && (pt.x == 0 || pt.x == dims.wd)) {
 			++vertex_count[pt];
@@ -204,60 +181,17 @@ namespace {
 		return ++vertex_count[pt];
 	}
 
-	r::any_view<int> int_sequence_open_right(int from, int to) {
-		if (from == to) {
-			return {};
-		}
-		if (from < to) {
-			return rv::iota(from, to);
-		} else {
-			return rv::iota(0, from - to) | 
-				rv::transform([from](int i) {return from - i; });
-		}
-	}
-
-	r::any_view<ch::int_point> point_sequence_open_right(const ch::int_point& from, const ch::int_point& to) {
-		if (from.x == to.x) {
-			return int_sequence_open_right(from.y, to.y) |
-				rv::transform(
-					[from](int y)->ch::int_point {
-						return { from.x, y };
-					}
-				);
-		} else {
-			return int_sequence_open_right(from.x, to.x) |
-				rv::transform(
-					[from](int x)->ch::int_point {
-						return { x, from.y };
-					}
-			);
-		}
-	}
-
-	r::any_view<ch::int_point> all_points_on_ring(const ch::ring& ring) {
-		return ring |
-			rv::cycle |
-			rv::sliding(2) |
-			rv::take(ring.size()) |
-			rv::transform(
-				[](const auto& pair) {
-					return point_sequence_open_right(pair[0], pair[1]);
-				}
-			) | 
-			rv::join;
-	}
-
-	r::any_view<ch::int_point> update_vertex_usage_counts(const ch::ring& ring,
+	r::any_view<ch::point> update_vertex_usage_counts(const ch::ring& ring,
 			ch::point_map<int>& vertex_count, const ch::dimensions<int>& dims) {
-		return all_points_on_ring(ring) | rv::remove_if(
-				[&](const ch::int_point& pt)->bool {
+		return ring | rv::remove_if(
+				[&](const ch::point& pt)->bool {
 					int count = update_vertex_usage_count(vertex_count, pt, dims);
 					return count != 3;
 				}
 			);
 	}
 
-	r::any_view<ch::int_point> update_vertex_usage_counts(const ch::polygon& poly,
+	r::any_view<ch::point> update_vertex_usage_counts(const ch::polygon& poly,
 			ch::point_map<int>& vertex_count, const ch::dimensions<int>& dims) {
 		return rv::concat(
 			rv::single(update_vertex_usage_counts(poly.outer(), vertex_count, dims)),
@@ -269,56 +203,51 @@ namespace {
 			)
 		) | rv::join;
 	}
-
-	bool is_critical_point_free(const path_table& tbl, const ch::ring& r) {
-		for ( ch::int_point pt : all_points_on_ring(r)) {
-			if (tbl.find(pt) != tbl.end()) {
+	
+	bool is_critical_point_free(const ch::point_set& set, std::span<const ch::point> pts) {
+		for (ch::point pt : pts) {
+			if (set.find(pt) != set.end()) {
 				return false;
 			}
 		}
 		return true;
 	}
 
-	void insert_island_critical_points(path_table& tbl, const ch::ring& r) {
-		if (is_critical_point_free(tbl, r)) {
-			tbl[r[0]] = {};
+	void insert_island_critical_points(ch::point_set& set, const ch::ring& r) {
+		if (is_critical_point_free(set, r)) {
+			set.insert(r.front());
 		}
 	}
 
-	void insert_island_critical_points(path_table& tbl, 
-			const std::vector<ch::polygon>& polygons) {
+	void insert_island_critical_points(
+			ch::point_set& set, std::span<const ch::polygon> polygons) {
 		for (const auto& poly : polygons) {
-			insert_island_critical_points(tbl, poly.outer());
+			insert_island_critical_points(set, poly.outer());
 			for (const auto& hole : poly.inners()) {
-				insert_island_critical_points(tbl, hole);
+				insert_island_critical_points(set, hole);
 			}
 		}
 	}
-
-	path_table generate_critical_points_table( 
-			const std::vector<ch::polygon>& polygons, const ch::dimensions<double>& rect) 
+	
+	ch::point_set generate_critical_points_set( 
+			std::span<const ch::polygon> polygons, const ch::dimensions<double>& rect) 
 	{
 		ch::dimensions<int> dims(rect);
 		ch::point_map<int> vertex_usage_counts;
 		vertex_usage_counts.reserve(polygons.size() * 10);
 
-		auto tbl = polygons |
+		auto set = polygons |
 			rv::transform(
 				[&vertex_usage_counts, &dims](const auto& poly) {
 					return update_vertex_usage_counts(poly, vertex_usage_counts, dims);
 				}
 			) | 
 			rv::join |
-			rv::transform(
-				[](const ch::int_point& pt)->path_table::value_type {
-					return { pt, {} };
-				}
-			) |
-			r::to_< path_table>();
+			r::to_<ch::point_set>();
 
-		insert_island_critical_points(tbl, polygons);
+		insert_island_critical_points(set, polygons);
 
-		return tbl;
+		return set;
 	}
 
 }
@@ -570,9 +499,9 @@ cv::Rect ch::union_rect_and_pt(const cv::Rect& r, cv::Point2i pt) {
 }
 
 using edge = std::tuple<ch::ring::const_iterator, ch::ring::const_iterator>;
-
+/*
 std::vector<edge> get_shared_edges(
-		const ch::ring& verts, const path_table& tbl) {
+		const ch::ring& verts, const ch::path_table& tbl) {
 
 	auto iter_list = rv::iota(0, static_cast<int>(verts.size())) |
 		rv::transform(
@@ -631,20 +560,31 @@ void ch::debug_geometry() {
 		qDebug() << "(" << p1->x << "," << p1->y << ") (" << p2->x << "," << p2->y << ")";
 	}
 }
+*/
 
-/*
-void ch::debug_geom(cv::Mat mat, const std::vector<polygon>& polygons) {
+std::vector<ch::polygon> ch::simplify_rectangle_dissection(const std::vector<ch::polygon>& dissection,
+		const ch::dimensions<double>& rect, double param) {
 
-	auto nums = int_sequence_open_right(42, 34) | r::to_vector;
+	return {};
+}
 
+void ch::debug_geometry() {
+}
+
+
+void ch::debug_geom(cv::Mat mat) {
+
+	auto blobs = ch::to_blobs<ch::color>(mat);
+	auto polygons = blobs |
+		rv::transform([](const auto& tup) {return std::get<1>(tup); }) |
+		r::to_vector;
 	auto dims = ch::mat_dimensions(mat);
-	auto critical_points = generate_critical_points_table(polygons, dims);
+	auto critical_points = generate_critical_points_set(polygons, dims);
 	cv::Mat debug_img(dims.hgt+1, dims.wd+1, CV_8UC3, cv::Scalar(255, 255, 255));
 	mat.copyTo(debug_img(cv::Rect(0, 0, dims.wd, dims.hgt)));
-	for (const int_point& pt : critical_points | 
-			rv::transform([](const auto& p) {return p.first; })) {
-		debug_img.at<cv::Vec3b>(pt) = cv::Vec3b(0, 0, 255);
+	for (const auto& pt : critical_points | 
+		rv::transform([](const auto& p) {return p.to_point(); })) {
+		debug_img.at<cv::Vec3b>(int_point(pt)) = cv::Vec3b(0, 0, 255);
 	}
 	cv::imwrite("C:\\test\\test_blobs_cp.png", debug_img);
 }
-*/

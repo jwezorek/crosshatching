@@ -73,6 +73,9 @@
     <ClCompile Include="src\ui\image_tab_ctrl.cpp">
       <Filter>Source Files\ui</Filter>
     </ClCompile>
+    <ClCompile Include="src\crosshatching\point_set.cpp">
+      <Filter>Source Files\crosshatching</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="src\ui\crosshatching.qrc">
@@ -131,6 +134,9 @@
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
     <ClInclude Include="src\crosshatching\segmentation.hpp">
+      <Filter>Source Files\crosshatching</Filter>
+    </ClInclude>
+    <ClInclude Include="src\crosshatching\point_set.hpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
   </ItemGroup>

@@ -96,22 +96,6 @@ namespace ch {
     std::vector<ch::polygon> simplify_rectangle_dissection(const std::vector<ch::polygon>& dissection, 
         const dimensions<double>& rect, double param);
 
-    namespace detail {
-        struct point_hasher
-        {
-            size_t operator()(const int_point& p) const
-            {
-                std::size_t seed = 0;
-                boost::hash_combine(seed, p.x);
-                boost::hash_combine(seed, p.y);
-
-                return seed;
-            }
-        };
-    }
-    template<typename V>
-    using point_map = std::unordered_map<int_point, V, detail::point_hasher>;
-    using point_set = std::unordered_set<int_point, detail::point_hasher>;
-
     void debug_geometry();
+    void debug_geom(cv::Mat mat);
 }

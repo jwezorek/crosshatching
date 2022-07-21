@@ -1,5 +1,6 @@
 #include "drawing.hpp"
 #include "geometry.hpp"
+#include "point_set.hpp"
 #include "brush_language.hpp"
 #include "segmentation.hpp"
 #include "qdebug.h"
@@ -158,7 +159,7 @@ namespace {
     }
 
     direction direction_to(const cv::Point& from_pt, const cv::Point& to_pt) {
-        static ch::point_map<direction> offset_to_direction = {
+        static ch::int_point_map<direction> offset_to_direction = {
             {{0,-1}, direction::N },
             {{1,-1}, direction::NE},
             {{1,0},  direction::E },
@@ -1029,6 +1030,6 @@ std::vector<std::tuple<ch::color, ch::polygon>> ch::detail::to_blobs_from_3chann
 void ch::debug(const cv::Mat& mat) {
     //auto blobs = to_blobs<color>(mat);
     //polygons_to_svg("C:\\test\\foobar.svg", blobs, 1.0);
-    debug_geometry();
+    debug_geom(mat);
 }
 

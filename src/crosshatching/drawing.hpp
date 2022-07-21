@@ -1,4 +1,5 @@
 #pragma once
+#include "util.hpp"
 #include "brush.hpp"
 #include "geometry.hpp"
 #include <opencv2/core.hpp>

@@ -1,9 +1,13 @@
 #pragma once
 
 #include "util.hpp"
+#include "geometry.hpp"
+
 #include <opencv2/core.hpp>
 #include <unordered_set>
 #include <vector>
+#include <span>
+#include <memory>
 
 namespace ch {
 
