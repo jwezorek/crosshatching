@@ -10,7 +10,7 @@ ch::path_table::path_ref ch::path_table::insert(path_ref path) {
     return path_in_tbl;
 }
 
-ch::path_table::path_ref ch::path_table::find(const path_id& pid) {
+ch::path_table::path_ref ch::path_table::find(const path_id& pid) const {
     path_key key(pid);
     auto iter = impl_.find(key);
     if (iter == impl_.end()) {
@@ -18,4 +18,8 @@ ch::path_table::path_ref ch::path_table::find(const path_id& pid) {
     } else {
         return iter->second;
     }
+}
+
+bool ch::path_table::contains(const path_id& pid) const {
+    return impl_.find(path_key(pid)) != impl_.end();
 }

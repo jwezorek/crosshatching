@@ -168,7 +168,8 @@ namespace ch {
 
         path_table();
         path_ref insert(path_ref path);
-        path_ref find(const path_id& pid);
+        path_ref find(const path_id& pid) const;
+        bool contains(const path_id& pid) const;
     };
 
 }

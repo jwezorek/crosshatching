@@ -93,9 +93,30 @@ namespace ch {
     std::optional<line_segment> linesegment_rectangle_intersection(
         const line_segment& line_seg, const rectangle& rect);
     
-    std::vector<ch::polygon> simplify_rectangle_dissection(const std::vector<ch::polygon>& dissection, 
-        const dimensions<double>& rect, double param);
+    std::vector<ch::polygon> simplify_polygons(
+        std::span<const ch::polygon> dissection, double param);
 
-    void debug_geometry();
+    template<typename T>
+    std::vector<std::tuple<T, polygon>> simplify_colored_polygons(
+            std::span< std::tuple<T, polygon>> blobs, double param) {
+        namespace r = ranges;
+        namespace rv = ranges::views;
+
+        auto polys = blobs |
+            rv::transform([](const auto& tup) {return std::get<1>(tup); }) |
+            r::to_vector;
+
+        polys = simplify_polygons(polys, param);
+
+        return rv::zip(
+                blobs | rv::transform([](const auto& tup) {return std::get<0>(tup); }),
+                polys
+            ) | rv::transform(
+                 [](const auto& pair)->std::tuple<T, polygon> {
+                     return { pair.first, pair.second };
+                 }
+            ) | r::to_vector;
+    }
+
     void debug_geom(cv::Mat mat);
 }

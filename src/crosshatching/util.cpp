@@ -367,10 +367,17 @@ void ch::label_map_to_visualization_img(cv::Mat img, const std::string& output_f
 	cv::imwrite(output_file, mat);
 }
 
-
-
 ch::dimensions<int> ch::mat_dimensions(cv::Mat mat) {
 	return { mat.cols, mat.rows };
+}
+
+std::vector<ch::point> ch::perform_douglas_peucker_simplification(
+		const std::vector<ch::point>& input, double param) {
+
+	auto points = to_float_points(input);
+	std::vector<cv::Point_<float>> output;
+	cv::approxPolyDP(points, output, param, false);
+	return from_float_points(output);
 }
 
 std::vector<uchar> ch::detail::unique_1channel_values(const cv::Mat& input) {
@@ -410,4 +417,15 @@ int ch::max_val_in_mat(cv::Mat mat) {
 	return static_cast<int>(max_val);
 }
 
+std::vector<cv::Point_<float>> ch::to_float_points(std::span<const ch::point> pts) {
+	return pts |
+		rv::transform([](const auto& pt)->cv::Point_<float> { return pt; }) |
+		r::to_vector;
+}
+
+std::vector<ch::point> ch::from_float_points(std::span<const cv::Point_<float>> pts) {
+	return pts |
+		rv::transform([](const auto& pt)->ch::point { return pt; }) |
+		r::to_vector;
+}
 

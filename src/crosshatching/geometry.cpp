@@ -228,11 +228,16 @@ namespace {
 			}
 		}
 	}
+
+	ch::dimensions<int> get_dimensions(std::span<const ch::polygon> polygons) {
+		auto [x1, y1, x2, y2] = ch::bounding_rectangle(polygons);
+		return { x2 - x1 - 1, y2 - y1 - 1};
+	}
 	
 	ch::point_set generate_critical_points_set( 
-			std::span<const ch::polygon> polygons, const ch::dimensions<double>& rect) 
+			std::span<const ch::polygon> polygons) 
 	{
-		ch::dimensions<int> dims(rect);
+		ch::dimensions<int> dims = get_dimensions(polygons);
 		ch::point_map<int> vertex_usage_counts;
 		vertex_usage_counts.reserve(polygons.size() * 10);
 
@@ -250,6 +255,95 @@ namespace {
 		return set;
 	}
 
+	using edge = std::tuple<ch::ring::const_iterator, ch::ring::const_iterator>;
+
+	std::vector<edge> get_shared_edges(
+		const ch::ring& verts, const ch::point_set& critical_points) {
+
+		auto iter_list = rv::iota(0, static_cast<int>(verts.size())) |
+			rv::transform(
+				[&verts](int index)->ch::ring::const_iterator {
+					return verts.cbegin() + index;
+				}
+		) | r::to_vector;
+
+		auto critical_pts_ring = iter_list | rv::remove_if(
+			[&critical_points](const auto& i) {
+				return critical_points.find(*i) == critical_points.end();
+			}
+		) | r::to_vector;
+
+		return critical_pts_ring |
+			rv::cycle |
+			rv::sliding(2) |
+			rv::take(critical_pts_ring.size()) |
+			rv::transform(
+				[](auto pair)->edge {
+					return { pair[0] , pair[1] };
+				}
+		) | r::to_vector;
+	}
+
+	ch::path_table::path_id edge_to_path_id(const edge& e) {
+		return { *std::get<0>(e), *std::get<1>(e) };
+	}
+
+	std::vector<ch::point> expand_edge(const edge& e, const ch::ring& ring) {
+		auto [u, v] = e;
+		std::vector<ch::point> path;
+		if (u < v) {
+			std::copy(u, v, std::back_inserter(path));
+		} else {
+			std::copy(u, ring.end(), std::back_inserter(path));
+			std::copy(ring.begin(), v, std::back_inserter(path));
+		}
+		path.push_back(*v);
+		return path;
+	}
+
+	std::span<const ch::point> lookup_path_or_expand_and_simplify(
+			const edge& e, const ch::ring& ring, const ch::point_set& crit_pts,
+			ch::path_table& paths, double param) {
+		auto pid = edge_to_path_id(e);
+		if (paths.contains(pid)) {
+			return paths.find(pid);
+		}
+		auto edge = expand_edge(e, ring);
+		auto simplified_edge = ch::perform_douglas_peucker_simplification(edge, param);
+		auto path_in_table = paths.insert(simplified_edge);
+		paths.insert(simplified_edge | rv::reverse | r::to_vector);
+		return path_in_table;
+	}
+
+	ch::ring simplify_ring(const ch::ring& ring, const ch::point_set& crit_pts,
+			ch::path_table& paths, double param) {
+		auto edges = get_shared_edges(ring, crit_pts);
+		return edges |
+			rv::transform(
+				[&](const auto& e) {
+					auto simplified_edge = lookup_path_or_expand_and_simplify(
+						e, ring, crit_pts, paths, param
+					);
+					auto n = simplified_edge.size();
+					return simplified_edge | rv::take(n - 1);
+				}
+			) |
+			rv::join |
+			r::to_<ch::ring>;
+	}
+
+	ch::polygon simplify_polygon(const ch::polygon& poly, const ch::point_set& crit_pts,
+			ch::path_table& paths, double param) {
+		return ch::make_polygon(
+			simplify_ring(poly.outer(), crit_pts, paths, param),
+			poly.inners() |
+				rv::transform(
+					[&](const auto& hole) {
+						return simplify_ring(hole, crit_pts, paths, param);
+					}
+				) | r::to_vector
+		);
+	}
 }
 
 ch::polyline ch::make_polyline(size_t sz)
@@ -498,77 +592,17 @@ cv::Rect ch::union_rect_and_pt(const cv::Rect& r, cv::Point2i pt) {
 	};
 }
 
-using edge = std::tuple<ch::ring::const_iterator, ch::ring::const_iterator>;
-/*
-std::vector<edge> get_shared_edges(
-		const ch::ring& verts, const ch::path_table& tbl) {
+std::vector<ch::polygon> ch::simplify_polygons( 
+		std::span<const ch::polygon> dissection,  double param) {
 
-	auto iter_list = rv::iota(0, static_cast<int>(verts.size())) |
+	const auto critical_points = generate_critical_points_set(dissection);
+	ch::path_table paths;
+	return dissection |
 		rv::transform(
-			[&verts](int index)->ch::ring::const_iterator {
-				return verts.cbegin() + index;
+			[&](const ch::polygon& poly) {
+				return simplify_polygon(poly, critical_points, paths, param);
 			}
-		) | r::to_vector;
-
-	auto critical_pts = iter_list | rv::remove_if(
-			[&tbl](const auto& i) {
-				return tbl.find(*i) == tbl.end();
-			}
-		) | r::to_vector;
-
-	return critical_pts |
-		rv::cycle |
-		rv::sliding(2) |
-		rv::take(critical_pts.size()) |
-		rv::transform(
-			[](auto pair)->edge {
-				return { pair[0] , pair[1] };
-			}
-		) | r::to_vector;
-}
-
-std::vector<std::vector<ch::point>> get_paths( const ch::ring& ring, 
-		const path_table& tbl) {
-
-	return {};
-}
-
-ch::ring simplify_ring(const ch::ring& ring, path_table& paths, double param) {
-	return {};
-}
-
-ch::polygon simplify_polygon(const ch::polygon& poly, path_table& paths, double param) {
-	return {};
-}
-
-std::vector<ch::polygon> ch::simplify_rectangle_dissection(const std::vector<ch::polygon>& dissection,
-		const ch::dimensions<double>& rect, double param) {
-
-	auto path_tbl = generate_critical_points_table(dissection, rect);
-
-	return dissection;
-}
-
-void ch::debug_geometry() {
-	ch::ring r = { {34,15},{7,7},{16,1},{18,12}, {100,100}, {3,3}, {14,14} , {34,21} };
-	path_table tbl;
-	tbl[{7, 7}] = {};
-	tbl[{100, 100}] = {};
-	tbl[{14, 14}] = {};
-	auto foo = get_shared_edges(r, tbl);
-	for (auto [p1, p2] : foo) {
-		qDebug() << "(" << p1->x << "," << p1->y << ") (" << p2->x << "," << p2->y << ")";
-	}
-}
-*/
-
-std::vector<ch::polygon> ch::simplify_rectangle_dissection(const std::vector<ch::polygon>& dissection,
-		const ch::dimensions<double>& rect, double param) {
-
-	return {};
-}
-
-void ch::debug_geometry() {
+	) | r::to_vector;
 }
 
 
@@ -579,7 +613,7 @@ void ch::debug_geom(cv::Mat mat) {
 		rv::transform([](const auto& tup) {return std::get<1>(tup); }) |
 		r::to_vector;
 	auto dims = ch::mat_dimensions(mat);
-	auto critical_points = generate_critical_points_set(polygons, dims);
+	auto critical_points = generate_critical_points_set(polygons);
 	cv::Mat debug_img(dims.hgt+1, dims.wd+1, CV_8UC3, cv::Scalar(255, 255, 255));
 	mat.copyTo(debug_img(cv::Rect(0, 0, dims.wd, dims.hgt)));
 	for (const auto& pt : critical_points | 

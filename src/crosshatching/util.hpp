@@ -58,6 +58,8 @@ namespace ch {
     int max_val_in_mat(cv::Mat mat);
     void label_map_to_visualization_img(cv::Mat img, const std::string& output_file);
     dimensions<int> mat_dimensions(cv::Mat mat);
+    std::vector<ch::point> perform_douglas_peucker_simplification(
+        const std::vector<ch::point>& pts, double param);
 
     template<typename T>
     std::vector<T> unique_values(const cv::Mat& img) {
@@ -72,6 +74,6 @@ namespace ch {
     std::string to_string(double val, int precision);
     double degrees_to_radians(double degrees);
     double ramp(double t, double k, bool right, bool up);
-
-    
+    std::vector<cv::Point_<float>> to_float_points(std::span<const ch::point> pts);
+    std::vector<ch::point> from_float_points(std::span<const cv::Point_<float>> pts);
 }
