@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <array>
 #include <numeric>
+#include <limits>
 #include <qdebug.h>
 #include "drawing.hpp"
 
@@ -216,6 +217,7 @@ namespace {
 	void insert_island_critical_points(ch::point_set& set, const ch::ring& r) {
 		if (is_critical_point_free(set, r)) {
 			set.insert(r.front());
+			set.insert(ch::southeast_most_point(r));
 		}
 	}
 
@@ -284,10 +286,6 @@ namespace {
 		) | r::to_vector;
 	}
 
-	ch::path_table::path_id edge_to_path_id(const edge& e) {
-		return { *std::get<0>(e), *std::get<1>(e) };
-	}
-
 	std::vector<ch::point> expand_edge(const edge& e, const ch::ring& ring) {
 		auto [u, v] = e;
 		std::vector<ch::point> path;
@@ -304,14 +302,19 @@ namespace {
 	std::span<const ch::point> lookup_path_or_expand_and_simplify(
 			const edge& e, const ch::ring& ring, const ch::point_set& crit_pts,
 			ch::path_table& paths, double param) {
-		auto pid = edge_to_path_id(e);
+
+		auto edge = expand_edge(e, ring);
+		auto pid = ch::make_path_id(edge);
 		if (paths.contains(pid)) {
 			return paths.find(pid);
 		}
-		auto edge = expand_edge(e, ring);
+		
 		auto simplified_edge = ch::perform_douglas_peucker_simplification(edge, param);
-		auto path_in_table = paths.insert(simplified_edge);
-		paths.insert(simplified_edge | rv::reverse | r::to_vector);
+		auto path_in_table = paths.insert(edge, simplified_edge);
+		paths.insert(
+			edge | rv::reverse | r::to_vector,
+			simplified_edge | rv::reverse | r::to_vector
+		);
 		return path_in_table;
 	}
 
@@ -538,6 +541,21 @@ std::optional<ch::line_segment> ch::linesegment_rectangle_intersection(const ch:
 		p1.x, p1.y, p2.x, p2.y,
 		x1, y1, x2, y2
 	);
+}
+
+ch::point ch::southeast_most_point(std::span<const ch::point> points) {
+	ch::point southeast{
+		-std::numeric_limits<double>::max(),
+		-std::numeric_limits<float>::max()
+	};
+	for (const auto& pt : points) {
+		if (pt.y > southeast.y) {
+			southeast = pt;
+		} else if (pt.y == southeast.y && pt.x > southeast.x) {
+			southeast = pt;
+		}
+	}
+	return southeast;
 }
 
 ch::rectangle ch::bounding_rectangle(const ch::polyline& poly) {

@@ -50,29 +50,28 @@ namespace ch {
 
         public:
 
-            path_key(const ch::point& u, const ch::point& v) :
-                x1_(u.x), y1_(u.y), x2_(v.x), y2_(v.y)
+            path_key(const ch::point& u, const ch::point& m, const ch::point& v) :
+                u_x_(u.x), u_y_(u.y), m_x_(m.x), m_y_(m.y), v_x_(v.x), v_y_(v.y)
             {}
 
-            path_key(const std::tuple<point, point>& pid) :
-                path_key(std::get<0>(pid), std::get<1>(pid))
-            {}
-
-            path_key(const std::span<const point>& path) :
-                path_key(path.front(), path.back())
+            path_key(const std::tuple<point, point, point>& pid) :
+                path_key(std::get<0>(pid), std::get<1>(pid), std::get<2>(pid))
             {}
 
             bool operator==(const path_key<P>& other) const
             {
-                return x1_ == other.x1_ && y1_ == other.y1_ &&
-                    x2_ == other.x2_ && y2_ == other.y2_;
+                return u_x_ == other.u_x_ && u_y_ == other.u_y_ &&
+                    m_x_ == other.m_x_ && m_y_ == other.m_y_ &&
+                    v_x_ == other.v_x_ && v_y_ == other.v_y_;
             }
 
         private:
-            fp_value<P> x1_;
-            fp_value<P> y1_;
-            fp_value<P> x2_;
-            fp_value<P> y2_;
+            fp_value<P> u_x_;
+            fp_value<P> u_y_;
+            fp_value<P> m_x_;
+            fp_value<P> m_y_;
+            fp_value<P> v_x_;
+            fp_value<P> v_y_;
         };
 
         template<int P>
@@ -80,10 +79,14 @@ namespace ch {
         {
             size_t operator()(const path_key<P>& key) const {
                 size_t seed = 0;
-                boost::hash_combine(seed, key.x1_.impl());
-                boost::hash_combine(seed, key.y1_.impl());
-                boost::hash_combine(seed, key.x2_.impl());
-                boost::hash_combine(seed, key.y2_.impl());
+
+                boost::hash_combine(seed, key.u_x_.impl());
+                boost::hash_combine(seed, key.u_y_.impl());
+                boost::hash_combine(seed, key.m_x_.impl());
+                boost::hash_combine(seed, key.m_y_.impl());
+                boost::hash_combine(seed, key.v_x_.impl());
+                boost::hash_combine(seed, key.v_y_.impl());
+
                 return seed;
             }
         };
@@ -118,8 +121,10 @@ namespace ch {
         {
             size_t operator()(const fp_point<P>& key) const {
                 size_t seed = 0;
+
                 boost::hash_combine(seed, key.x_.impl());
                 boost::hash_combine(seed, key.y_.impl());
+
                 return seed;
             }
         };
@@ -164,12 +169,14 @@ namespace ch {
     public:
         using path_key = detail::path_key< k_point_set_prec>;
         using path_ref = std::span<const point>;
-        using path_id = std::tuple<point, point>;
+        using path_id = std::tuple<point, point, point>;
 
         path_table();
-        path_ref insert(path_ref path);
+        path_ref insert(path_ref path, path_ref path_value);
         path_ref find(const path_id& pid) const;
         bool contains(const path_id& pid) const;
     };
+
+    path_table::path_id make_path_id(std::span<const point> path);
 
 }

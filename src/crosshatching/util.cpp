@@ -56,7 +56,7 @@ namespace {
 			r::to_vector;
 	}
 
-	std::string loop_to_path_commands(const ch::ring& poly, double scale) {
+	std::string loop_to_path_commands(std::span<const ch::point> poly, double scale) {
 		std::stringstream ss;
 		ss << "M " << scale * poly[0].x << "," << scale * poly[0].y << " L";
 		for (const auto& pt : rv::tail(poly)) {
@@ -70,7 +70,7 @@ namespace {
 		std::stringstream ss;
 		ss << loop_to_path_commands(poly.outer(), scale);
 		for (const auto& hole : poly.inners()) {
-			ss << " " << loop_to_path_commands(hole, scale);
+			ss << " " << loop_to_path_commands( hole, scale);
 		}
 		return ss.str();
 	}
@@ -78,7 +78,8 @@ namespace {
 	template<typename T>
 	std::string polygon_to_svg(const ch::polygon& poly, T color, double scale) {
 		std::stringstream ss;
-		ss << "<path fill-rule=\"evenodd\" stroke=\"none\" fill=\"";
+		ss << "<path fill-rule=\"evenodd\" stroke=\"";
+		ss << ch::to_svg_color(color) << "\" fill=\""; 
 		ss << ch::to_svg_color(color) << "\" d=\"";
 		ss << svg_path_commands(poly, scale);
 		ss << "\" />";
@@ -376,7 +377,11 @@ std::vector<ch::point> ch::perform_douglas_peucker_simplification(
 
 	auto points = to_float_points(input);
 	std::vector<cv::Point_<float>> output;
+	bool closed = input.front() == input.back();
 	cv::approxPolyDP(points, output, param, false);
+	if (closed && output.front() != output.back()) {
+		output.push_back(output.front());
+	}
 	return from_float_points(output);
 }
 

@@ -298,7 +298,9 @@ namespace {
         poly.reserve(n);
 
         auto contour = canonicalized_cyclic_contour_view(ip);
-        auto crawler = pixel_crawler{ contour[0], counter_clockwise ? direction::NW : direction::SW };
+        auto crawler = pixel_crawler{ 
+            contour[0], counter_clockwise ? direction::NW : direction::SW 
+        };
         auto neighbors = neighbor_view(contour);
         auto iter = neighbors.begin();
 
@@ -317,7 +319,8 @@ namespace {
         return poly;
     }
 
-    std::vector<ch::polygon> contour_info_to_polygons(const find_contour_output& contours) {
+    std::vector<ch::polygon> contour_info_to_polygons(
+            const find_contour_output& contours) {
 
         std::unordered_map<int, int> contour_index_to_poly_index;
         std::vector<ch::polygon> blobs;

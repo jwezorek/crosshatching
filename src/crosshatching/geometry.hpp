@@ -92,9 +92,19 @@ namespace ch {
     cv::Rect union_rect_and_pt(const cv::Rect& r, cv::Point2i pt);
     std::optional<line_segment> linesegment_rectangle_intersection(
         const line_segment& line_seg, const rectangle& rect);
-    
+    ch::point southeast_most_point(std::span<const ch::point> points);
     std::vector<ch::polygon> simplify_polygons(
         std::span<const ch::polygon> dissection, double param);
+
+    template<typename... Args>
+    auto first(const std::tuple<Args...>& tup)->decltype(auto) {
+        return std::get<0>(tup);
+    }
+
+    template<typename... Args>
+    auto second(const std::tuple<Args...>& tup)->decltype(auto) {
+        return std::get<1>(tup);
+    }
 
     template<typename T>
     std::vector<std::tuple<T, polygon>> simplify_colored_polygons(
@@ -103,13 +113,13 @@ namespace ch {
         namespace rv = ranges::views;
 
         auto polys = blobs |
-            rv::transform([](const auto& tup) {return std::get<1>(tup); }) |
+            rv::transform( second<T,polygon> ) |
             r::to_vector;
 
         polys = simplify_polygons(polys, param);
 
         return rv::zip(
-                blobs | rv::transform([](const auto& tup) {return std::get<0>(tup); }),
+                blobs | rv::transform( first<T, polygon> ),
                 polys
             ) | rv::transform(
                  [](const auto& pair)->std::tuple<T, polygon> {
