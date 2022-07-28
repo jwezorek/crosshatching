@@ -623,6 +623,13 @@ std::vector<ch::polygon> ch::simplify_polygons(
 	) | r::to_vector;
 }
 
+size_t ch::vert_count(const ch::polygon& poly) {
+	size_t n = poly.outer().size();
+	for (const auto& hole : poly.inners()) {
+		n += hole.size(); //TODO: use accumulate
+	}
+	return n;
+}
 
 void ch::debug_geom(cv::Mat mat) {
 

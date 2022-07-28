@@ -544,6 +544,13 @@ ui::settings::settings(const ch::parameters& params) {
 
     layout->addSpacing(10);
 
+    layout->addWidget(new QLabel("Polygon simplification parameter"));
+    layout->addWidget(
+        polygon_simplification_param_ = create_double_editor(1.0, 8.0, 4)
+    );
+
+    layout->addSpacing(10);
+
     layout->addWidget(btns_ = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel));
     connect(btns_, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(btns_, &QDialogButtonBox::rejected, this, &QDialog::reject);
@@ -552,6 +559,7 @@ ui::settings::settings(const ch::parameters& params) {
     set_stroke_width(params.stroke_width);
     set_epsilon(params.epsilon);
     set_swatch_sz(params.swatch_sz);
+    set_polygon_simplification_param(params.polygon_simplification_param);
 }
 
 std::optional<ch::parameters> ui::settings::edit_settings(const ch::parameters& params) {
@@ -563,7 +571,8 @@ std::optional<ch::parameters> ui::settings::edit_settings(const ch::parameters& 
             dlg->stroke_wd(),
             dlg->epsilon(),
             dlg->swatch_sz(),
-            false
+            false,
+            dlg->polygon_simplification_param()
         } };
     } else {
         return {};
@@ -605,6 +614,10 @@ void ui::settings::set_swatch_sz(int ss) {
     set_value(swatch_sz_, ss);
 }
 
+void ui::settings::set_polygon_simplification_param(double param) {
+    set_value(polygon_simplification_param_, param);
+}
+
 double ui::settings::scale() const {
     return get_value<double>(scale_);
 }
@@ -619,4 +632,8 @@ double ui::settings::epsilon() const {
 
 int ui::settings::swatch_sz() const {
     return get_value<int>(swatch_sz_);
+}
+
+double ui::settings::polygon_simplification_param() const {
+    return get_value<double>(polygon_simplification_param_);
 }

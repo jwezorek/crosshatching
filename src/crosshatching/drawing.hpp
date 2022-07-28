@@ -22,14 +22,17 @@ namespace ch {
         double epsilon;
         int swatch_sz;
         bool use_true_black;
+        double polygon_simplification_param;
 
-        parameters(double sc = 5.0, int sw = 1, double eps = k_epsilon, 
-                int sz = k_swatch_sz, bool black = false) :
+        parameters(double sc = 5.0, int sw = 1, double eps = k_epsilon,
+                int sz = k_swatch_sz, bool black = false,
+                double psp = 1.0) :
             scale(sc),
             stroke_width(sw),
             epsilon(eps),
             swatch_sz(sz),
-            use_true_black(black)
+            use_true_black(black),
+            polygon_simplification_param(psp)
         {}
     };
 

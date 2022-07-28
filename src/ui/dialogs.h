@@ -157,11 +157,13 @@ namespace ui {
         void set_stroke_width(double sw);
         void set_epsilon(double eps);
         void set_swatch_sz(int ss);
+        void set_polygon_simplification_param(double param);
 
         double scale() const;
         int stroke_wd() const;
         double epsilon() const;
         int swatch_sz() const;
+        double polygon_simplification_param() const;
 
     private:
 
@@ -184,6 +186,7 @@ namespace ui {
         QLineEdit* stroke_width_;
         QLineEdit* epsilon_;
         QLineEdit* swatch_sz_;
+        QLineEdit* polygon_simplification_param_;
         QCheckBox* use_black_;
         QDialogButtonBox* btns_;
     };

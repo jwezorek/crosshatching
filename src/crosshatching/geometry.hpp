@@ -95,6 +95,7 @@ namespace ch {
     ch::point southeast_most_point(std::span<const ch::point> points);
     std::vector<ch::polygon> simplify_polygons(
         std::span<const ch::polygon> dissection, double param);
+    size_t vert_count(const ch::polygon& poly);
 
     template<typename... Args>
     auto first(const std::tuple<Args...>& tup)->decltype(auto) {
