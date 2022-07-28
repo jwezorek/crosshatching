@@ -622,21 +622,21 @@ namespace {
 
         struct blob_properties {
             uchar value;
-            ch::polygon* poly;
+            ch::polygon poly;
             int layer_id;
             int blob_id;
             blob_properties* parent;
 
             size_t vert_count() const {
-                size_t n = poly->outer().size();
-                for (const auto& hole : poly->inners()) {
+                size_t n = poly.outer().size();
+                for (const auto& hole : poly.inners()) {
                     n += hole.size();
                 }
                 return n;
             }
 
             cv::Point2i point_in_blob() const {
-                return poly->outer().front();
+                return poly.outer().front();
             }
 
             brush_token tokenize() const {
@@ -663,11 +663,10 @@ namespace {
 
         struct ink_layer {
             ch::brush_fn brush;
-            std::vector<ch::polygon> polygons;
             std::vector<blob_properties> blobs;
 
             void scale(double scale_factor) {
-                for (auto& poly : polygons) {
+                for (auto& poly : blobs | rv::transform([](auto& b)->ch::polygon& {return b.poly; })){
                     poly = ch::scale(poly, scale_factor);
                 }
             }
@@ -706,24 +705,23 @@ namespace {
         std::vector<ink_layer> layers_;
 
         static ink_layer to_ink_layer(
-                const std::vector<std::tuple<uchar, ch::polygon>>& blobs,
+                const std::vector<std::tuple<uchar, ch::polygon>>& value_poly_pairs,
                 int layer_index, ch::brush_fn brush) {
             ink_layer il{
                 brush,
-                blobs | 
-                    rv::transform(
-                        [](const auto& tup) { return std::get<1>(tup); } 
-                    ) | r::to_vector,
-                rv::enumerate(blobs) |
+                rv::enumerate(value_poly_pairs) |
                     rv::transform([&](const auto& tup)->blob_properties {
-                        const auto& [index, blob] = tup;
+                        const auto& [index, value_poly_pair] = tup;
                         int blob_index = static_cast<int>(index);
-                        return { std::get<0>(blob), nullptr, layer_index, blob_index, nullptr };
+                        return {
+                            std::get<0>(value_poly_pair),
+                            std::get<1>(value_poly_pair),
+                            layer_index,
+                            blob_index,
+                            nullptr
+                        };
                     }) | r::to_vector
             };
-            for (size_t i = 0; i < il.blobs.size(); ++i) {
-                il.blobs[i].poly = &il.polygons[i];
-            }
             return il;
         }
 
@@ -886,7 +884,7 @@ namespace {
             }
 
             auto value = gray_byte_to_value(blob.value);
-            auto strokes = crosshatch_polygon( *blob.poly, value, current_brush);
+            auto strokes = crosshatch_polygon( blob.poly, value, current_brush);
             std::copy(strokes.begin(), strokes.end(), std::back_inserter(output));
 
             auto tok = blob.tokenize();
