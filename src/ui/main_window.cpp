@@ -99,17 +99,20 @@ namespace {
 		ch_menu->addSeparator();
 
 		QAction* action_test = new QAction(tr("&Test"), parent);
-		parent->connect(action_test, &QAction::triggered, parent, &ui::main_window::test);
+		parent->connect(action_test, 
+			&QAction::triggered, parent, &ui::main_window::test);
 		ch_menu->addAction(action_test);
 
 		QAction* redo_test_swatch = new QAction(tr("Change test swatch"), parent);
-		parent->connect(redo_test_swatch, &QAction::triggered, parent, &ui::main_window::redo_test_swatch);
+		parent->connect(redo_test_swatch, 
+			&QAction::triggered, parent, &ui::main_window::redo_test_swatch);
 		ch_menu->addAction(redo_test_swatch);
 
 		ch_menu->addSeparator();
 
 		QAction* action_generate = new QAction(tr("&Generate"), parent);
-		parent->connect(action_generate, &QAction::triggered, parent, &ui::main_window::generate);
+		parent->connect(action_generate, 
+			&QAction::triggered, parent, &ui::main_window::generate);
 		ch_menu->addAction(action_generate);
 
 		return ch_menu;
@@ -137,11 +140,12 @@ void ui::main_window::open()
 	auto image_filename = QFileDialog::getOpenFileName(this,
 		tr("Open image"), "/home", tr("PNG (*.png);; Bitmap (*.bmp);; JPeg (*.jpeg *.jpg)"));
 	auto str = image_filename.toStdString();
-
-	img_proc_ctrls_.src = cv::imread(str.c_str());
-	display( img_proc_ctrls_.src );
-	change_source_image( img_proc_ctrls_.src );
-	img_proc_ctrls_.src_filename = fs::path(str).filename().string();
+	if (!str.empty()) {
+		img_proc_ctrls_.src = cv::imread(str.c_str());
+		display(img_proc_ctrls_.src);
+		change_source_image(img_proc_ctrls_.src);
+		img_proc_ctrls_.src_filename = fs::path(str).filename().string();
+	}
 }
 
 void ui::main_window::test() {
@@ -216,6 +220,9 @@ void ui::main_window::redo_test_swatch() {
 }
 
 void ui::main_window::generate() {
+	if (!crosshatching_.layers->has_content()) {
+		return;
+	}
 	auto progress_box = std::make_unique<ui::drawing_progress>( this, drawing_job() );
 	progress_box->exec();
 }
@@ -380,6 +387,9 @@ std::vector<std::tuple<ch::brush_fn, double>> ui::main_window::brush_per_interva
 }
 
 std::vector<std::tuple<ch::brush_fn, cv::Mat>> ui::main_window::layers() const {
+	if (processed_image().empty()) {
+		return {};
+	}
 	auto brush_and_threshold = brush_per_intervals();
 	return generate_ink_layer_images( processed_image(), segmentation(), brush_and_threshold );
 }
@@ -494,6 +504,10 @@ std::vector<std::tuple<std::string, double>> ui::layer_panel::layers() const {
 				return { name, val };
 			}
 	) | r::to_vector;
+}
+
+bool ui::layer_panel::has_content() const {
+	return !layers_.empty();
 }
 
 std::tuple<std::string, double> ui::layer_panel::row(int n) const {

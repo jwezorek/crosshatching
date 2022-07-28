@@ -37,6 +37,7 @@ namespace ui {
 		layer_panel();
 		void set_brush_names(const std::vector<std::string>& brush_names);
         std::vector<std::tuple<std::string, double>> layers() const;
+        bool has_content() const;
 
     signals:
         void layers_changed();
