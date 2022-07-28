@@ -79,7 +79,7 @@ namespace {
 	std::string polygon_to_svg(const ch::polygon& poly, T color, double scale) {
 		std::stringstream ss;
 		ss << "<path fill-rule=\"evenodd\" stroke=\"";
-		ss << ch::to_svg_color(color) << "\" fill=\""; 
+		ss << "none" << "\" fill=\""; 
 		ss << ch::to_svg_color(color) << "\" d=\"";
 		ss << svg_path_commands(poly, scale);
 		ss << "\" />";

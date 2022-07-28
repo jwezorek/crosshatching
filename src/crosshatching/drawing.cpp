@@ -1032,7 +1032,7 @@ std::vector<std::tuple<ch::color, ch::polygon>> ch::detail::to_blobs_from_3chann
 
 void ch::debug(const cv::Mat& mat) {
     auto blobs = to_blobs<color>(mat);
-    blobs = ch::simplify_colored_polygons<ch::color>(blobs, 1.5);
+    blobs = ch::simplify_colored_polygons<ch::color>(blobs, 5.0);
     polygons_to_svg<ch::color>("c:\\test\\test_DP.svg", blobs, 1.0);
 }
 
