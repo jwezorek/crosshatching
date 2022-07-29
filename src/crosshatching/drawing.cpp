@@ -666,8 +666,22 @@ namespace {
             std::vector<blob_properties> blobs;
 
             void scale(double scale_factor) {
-                for (auto& poly : blobs | rv::transform([](auto& b)->ch::polygon& {return b.poly; })){
+                for (auto& poly : blobs | 
+                        rv::transform([](auto& b)->ch::polygon& {return b.poly;})){
                     poly = ch::scale(poly, scale_factor);
+                }
+            }
+
+            void simplify(double param) {
+                auto polygons = blobs | 
+                    rv::transform( 
+                        [](const auto & blob) {
+                            return blob.poly;
+                        } 
+                    ) | r::to_vector;
+                polygons = ch::simplify_polygons(polygons, param);
+                for (size_t i = 0; i < polygons.size(); ++i) {
+                    blobs[i].poly = std::move(polygons[i]);
                 }
             }
         };
@@ -771,7 +785,7 @@ namespace {
 
         ink_layer_stack(
                 std::span<const cv::Mat> layers, std::vector<ch::brush_fn> brushes, 
-                double scale_factor) {
+                double scale_factor, double simplify_param) {
             auto blobs = ink_layer_images_to_blobs(layers);
             layers_ = rv::enumerate(blobs) |
                 rv::transform(
@@ -816,6 +830,12 @@ namespace {
         void scale(double scale_factor) {
             for (auto& layer : layers_) {
                 layer.scale(scale_factor);
+            }
+        }
+
+        void simplify_polygons(double param) {
+            for (auto& layer : layers_) {
+                layer.simplify(param);
             }
         }
        
@@ -928,7 +948,7 @@ namespace {
         auto [brushes, layers] = split_layers_and_brushes(layers_and_brushes);
 
         ps.log("  constructing ink layer stack...");
-        ink_layer_stack stack(layers, brushes, params.scale);
+        ink_layer_stack stack(layers, brushes, params.scale, params.polygon_simplification_param);
 
         auto [blob_count, vert_count]  = stack.blob_stats();
         ps.log("  (job contains " + std::to_string(blob_count) + " polygons with " + 

@@ -76,8 +76,10 @@ namespace ch {
     ring transform(const ring& r, const matrix& mat);
     point transform(const point& pt, const matrix& mat);
     polygon transform(const polygon& poly, const matrix& mat);
-    void paint_polyline(cv::Mat& mat, const polyline& p, double thickness, int color, point offset = { 0,0 });
-    void paint_polyline_aa(cv::Mat& mat, const polyline& p, double thickness, int color, point offset = { 0,0 });
+    void paint_polyline(cv::Mat& mat, const polyline& p, double thickness, 
+        int color, point offset = { 0,0 });
+    void paint_polyline_aa(cv::Mat& mat, const polyline& p, double thickness, 
+        int color, point offset = { 0,0 });
     double euclidean_distance(const point& pt1, const point& pt2);
     polylines clip_lines_to_poly(const polylines& strokes, const polygon& poly);
     ring scale(const ring& r, double scale);
