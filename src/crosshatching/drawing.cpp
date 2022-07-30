@@ -77,7 +77,9 @@ namespace {
             }
             if (log_fn_) {
                 if (completed_new_quantile(layer_blob, total_layer_blobs, 10)) {
-                    log(std::string("        ") + std::to_string(pcnt_complete(layer_blob, total_layer_blobs)) + "% complete...");
+                    log(std::string("        ") + 
+                        std::to_string(pcnt_complete(layer_blob, total_layer_blobs)) +
+                        "% complete...");
                 }
             }
         }
@@ -675,8 +677,8 @@ namespace {
             void simplify(double param) {
                 auto polygons = blobs | 
                     rv::transform( 
-                        [](const auto & blob) {
-                            return blob.poly;
+                        []( auto&& blob) {
+                            return std::move(blob.poly);
                         } 
                     ) | r::to_vector;
                 polygons = ch::simplify_polygons(polygons, param);
@@ -795,10 +797,13 @@ namespace {
                     }
                 ) | r::to_vector;
             populate_blob_parents(layers);
+            qDebug() << simplify_param;
+            simplify_polygons(simplify_param);
             scale(scale_factor);
         }
 
-        using blob_range = r::any_view<std::tuple<ch::brush_fn, blob_properties>>;
+        using brush_blob = std::tuple<ch::brush_fn, blob_properties>;
+        using blob_range = r::any_view<brush_blob>;
 
         std::tuple<size_t,size_t> blob_stats() const {
             size_t blob_count = 0;
@@ -819,7 +824,7 @@ namespace {
                         const auto& brush = layer.brush;
                         return layer.blobs |
                             rv::transform(
-                                [&brush](const blob_properties& blob)->std::tuple<ch::brush_fn, blob_properties> {
+                                [&brush](const blob_properties& blob)->brush_blob {
                                     return { brush, blob };
                                 }
                         );
@@ -834,6 +839,9 @@ namespace {
         }
 
         void simplify_polygons(double param) {
+            if (param <= 1.0) {
+                return;
+            }
             for (auto& layer : layers_) {
                 layer.simplify(param);
             }
