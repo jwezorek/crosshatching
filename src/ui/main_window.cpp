@@ -239,7 +239,7 @@ void ui::main_window::edit_settings() {
 }
 
 void ui::main_window::debug() {
-	ch::debug( processed_image() );
+	ch::debug_brush( processed_image() );
 }
 
 void ui::main_window::create_main_menu()

@@ -709,3 +709,7 @@ cv::Mat  ch::brush::swatch(double gray_value) {
 int ch::brush::num_samples() {
     return k_num_samples;
 }
+
+void ch::debug_brush(const cv::Mat& mat) {
+
+}

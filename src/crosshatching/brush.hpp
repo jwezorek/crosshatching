@@ -27,7 +27,6 @@ namespace ch {
     using brush_pipeline = std::vector<brush_pipeline_item>;
     using param_unit_of_hatching_fn = std::function<crosshatching_range(double, double, double, double, double)>;
     using random_brush_adaptor_fn = std::function<crosshatching_swatch(crosshatching_swatch rng, ch::rnd_fn)>;
-
     using unit_of_hatching_fn = std::function<crosshatching_range(double, double, double, double)>;
 
     unit_of_hatching_fn make_shading_stroke(double sz_pcnt, double variance, bool centered);
@@ -107,5 +106,6 @@ namespace ch {
     };
 
     using brush_ptr = std::shared_ptr<brush>;
-
+    
+    void debug_brush(const cv::Mat& mat);
 }
