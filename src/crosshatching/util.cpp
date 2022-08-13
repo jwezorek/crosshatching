@@ -193,6 +193,7 @@ void ch::detail::polygons_to_svg_aux(const std::string& output_file,
 	::polygons_to_svg<uchar>(output_file, polys, scale);
 }
 
+
 std::string ch::svg_header(int wd, int hgt, bool bkgd_rect)
 {
 	std::stringstream ss;
@@ -217,6 +218,17 @@ std::string ch::polyline_to_svg(std::span<const point> poly, double thickness, b
 	}
 	ss << "\" style=\"fill:none;stroke:black;stroke-width:" << thickness << "px\" />";
 	return ss.str();
+}
+
+void ch::debug_polygons(const std::string& output_file, std::span<polygon> polys) {
+	auto [x1,y1,wd,hgt] = bounding_rectangle(polys);
+	std::ofstream outfile(output_file);
+	outfile << ch::svg_header(static_cast<int>(wd), static_cast<int>(hgt));
+	for (const auto& poly : polys) {
+		outfile << polyline_to_svg(poly.outer(), 1, true) << std::endl;
+	}
+	outfile << "</svg>" << std::endl;
+	outfile.close();
 }
 
 std::string ch::to_string(double val, int precision) {

@@ -631,6 +631,40 @@ size_t ch::vert_count(const ch::polygon& poly) {
 	return n;
 }
 
+std::vector<ch::polygon> ch::buffer(const ch::polygon& poly, double amt) {
+	namespace bs = bg::strategy::buffer;
+	using dist = bs::distance_symmetric<double>;
+	bs::side_straight  side_strategy;
+	const int points_per_circle = 12;
+	bs::join_round   join_strategy(points_per_circle);
+	bs::end_round    end_strategy(points_per_circle);
+	bs::point_circle point_strategy(points_per_circle);
+
+	boost::geometry::model::multi_polygon<polygon> out;
+	bg::buffer(poly, out, dist(amt), side_strategy, join_strategy, end_strategy, point_strategy);
+
+	return out | r::to_vector;
+}
+
+std::vector<ch::polygon> ch::buffer(std::span<ch::polygon> polys, double amt) {
+	namespace bs = bg::strategy::buffer;
+	using dist = bs::distance_symmetric<double>;
+	bs::side_straight  side_strategy;
+	const int points_per_circle = 12;
+	bs::join_miter   join_strategy(8);
+	bs::end_flat    end_strategy;
+	bs::point_square point_strategy;
+
+	boost::geometry::model::multi_polygon<polygon> in;
+	in.resize(polys.size());
+	std::copy(polys.begin(), polys.end(), in.begin());
+	boost::geometry::model::multi_polygon<polygon> out;
+	bg::buffer(in, out, dist(amt), side_strategy, join_strategy, end_strategy, point_strategy);
+
+	return out | r::to_vector;
+}
+
+
 void ch::debug_geom(cv::Mat mat) {
 
 	auto blobs = ch::to_blobs<ch::color>(mat);
@@ -647,3 +681,4 @@ void ch::debug_geom(cv::Mat mat) {
 	}
 	cv::imwrite("C:\\test\\test_blobs_cp.png", debug_img);
 }
+

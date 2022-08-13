@@ -98,6 +98,8 @@ namespace ch {
     std::vector<ch::polygon> simplify_polygons(
         std::span<const ch::polygon> dissection, double param);
     size_t vert_count(const ch::polygon& poly);
+    std::vector<polygon> buffer(const ch::polygon& poly, double amt);
+    std::vector<polygon> buffer(std::span<ch::polygon> polys, double amt);
 
     template<typename... Args>
     auto first(const std::tuple<Args...>& tup)->decltype(auto) {

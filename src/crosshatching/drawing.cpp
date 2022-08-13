@@ -1062,3 +1062,20 @@ void ch::raster_to_vector(const std::string& fname, const cv::Mat& mat, double s
     polygons_to_svg<ch::color>(fname, blobs, scale);
 }
 
+void ch::debug_drawing(const cv::Mat& mat) {
+    cv::Mat img = cv::imread("C:\\test\\polygon.png");
+    img = ch::convert_to_1channel_gray(img);
+    auto blobs = to_blobs<uchar>(img);
+    blobs = ch::simplify_colored_polygons<uchar>(blobs, 1.5);
+    auto poly = std::get<1>(blobs[1]);
+
+    std::vector<ch::polygon> output = { poly };
+    auto polys = output;
+    while (!polys.empty()) {
+        polys = ch::buffer(polys, -2.0);
+        std::copy(polys.begin(), polys.end(), std::back_inserter(output));
+    }
+
+    debug_polygons("C:\\test\\polygons.svg", output);
+}
+

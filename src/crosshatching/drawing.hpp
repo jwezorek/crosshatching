@@ -73,4 +73,5 @@ namespace ch {
     }
 
     void raster_to_vector(const std::string& fname, const cv::Mat& mat, double scale, double param);
+    void debug_drawing(const cv::Mat& mat);
 }

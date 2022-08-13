@@ -39,6 +39,8 @@ namespace ch {
         detail::polygons_to_svg_aux(output_file, polys, scale);
     }
 
+    void debug_polygons(const std::string& output_file, std::span<polygon> polys);
+
     // random numbers
     using rnd_fn = std::function<double()>;
     double normal_rnd(double mean, double stddev);
