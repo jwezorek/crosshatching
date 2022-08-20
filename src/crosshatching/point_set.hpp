@@ -77,15 +77,15 @@ namespace ch {
         template<int P>
         struct path_key_hasher
         {
-            size_t operator()(const path_key<P>& key_1) const {
+            size_t operator()(const path_key<P>& key) const {
                 size_t seed = 0;
 
-                boost::hash_combine(seed, key_1.u_x_.impl());
-                boost::hash_combine(seed, key_1.u_y_.impl());
-                boost::hash_combine(seed, key_1.m_x_.impl());
-                boost::hash_combine(seed, key_1.m_y_.impl());
-                boost::hash_combine(seed, key_1.v_x_.impl());
-                boost::hash_combine(seed, key_1.v_y_.impl());
+                boost::hash_combine(seed, key.u_x_.impl());
+                boost::hash_combine(seed, key.u_y_.impl());
+                boost::hash_combine(seed, key.m_x_.impl());
+                boost::hash_combine(seed, key.m_y_.impl());
+                boost::hash_combine(seed, key.v_x_.impl());
+                boost::hash_combine(seed, key.v_y_.impl());
 
                 return seed;
             }
@@ -119,11 +119,11 @@ namespace ch {
         template<int P>
         struct fp_point_hasher
         {
-            size_t operator()(const fp_point<P>& key_1) const {
+            size_t operator()(const fp_point<P>& key) const {
                 size_t seed = 0;
 
-                boost::hash_combine(seed, key_1.x_.impl());
-                boost::hash_combine(seed, key_1.y_.impl());
+                boost::hash_combine(seed, key.x_.impl());
+                boost::hash_combine(seed, key.y_.impl());
 
                 return seed;
             }
