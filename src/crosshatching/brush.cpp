@@ -711,5 +711,8 @@ int ch::brush::num_samples() {
 }
 
 void ch::debug_brush(const cv::Mat& mat) {
-
+    std::vector<point> pts = { {5,5}, {10,10}, {1,1}, {1,10}, {10,1} };
+    auto hull = convex_hull(pts);
+    int aaa;
+    aaa = 5;
 }

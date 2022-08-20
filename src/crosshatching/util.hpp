@@ -42,6 +42,24 @@ namespace ch {
     void debug_polygons(const std::string& output_file, std::span<polygon> polys);
 
     // random numbers
+    struct rand_number_state {
+        uint32_t global_key;
+        uint32_t index;
+        uint32_t key_1;
+        uint32_t key_2;
+
+        rand_number_state(uint32_t k1, const rand_number_state& state);
+        rand_number_state(uint32_t k1, uint32_t k2, const rand_number_state& state);
+        rand_number_state(uint32_t gk=0, uint32_t idx=0, uint32_t k1 = 0, uint32_t k2 = 0);
+    };
+
+    using random_func = std::function<double(const rand_number_state&)>;
+    double normal_random(const rand_number_state& rnd, double mean, double stddev);
+    double uniform_rnd(const rand_number_state& rnd, double lower_bound, double upper_bound);
+    int uniform_rnd_int(const rand_number_state& rnd, int low, int high);
+    random_func normal_rnd_func(double mean, double stddev);
+    random_func const_rnd_func(double val);
+
     using rnd_fn = std::function<double()>;
     double normal_rnd(double mean, double stddev);
     double uniform_rnd(double lower_bound, double upper_bound);

@@ -100,6 +100,7 @@ namespace ch {
     size_t vert_count(const ch::polygon& poly);
     std::vector<polygon> buffer(const ch::polygon& poly, double amt);
     std::vector<polygon> buffer(std::span<ch::polygon> polys, double amt);
+    std::vector<ch::point> convex_hull(std::span<ch::point> points);
 
     template<typename... Args>
     auto first(const std::tuple<Args...>& tup)->decltype(auto) {

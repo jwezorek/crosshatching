@@ -148,6 +148,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\crosshatching\brush.cpp" />
+    <ClCompile Include="src\crosshatching\brushes.cpp" />
     <ClCompile Include="src\crosshatching\brush_language.cpp" />
     <ClCompile Include="src\crosshatching\drawing.cpp" />
     <ClCompile Include="src\crosshatching\geometry.cpp" />
@@ -174,6 +175,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\crosshatching\brush.hpp" />
+    <ClInclude Include="src\crosshatching\brushes.hpp" />
     <ClInclude Include="src\crosshatching\brush_language.hpp" />
     <ClInclude Include="src\crosshatching\drawing.hpp" />
     <ClInclude Include="src\crosshatching\geometry.hpp" />

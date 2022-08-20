@@ -664,6 +664,23 @@ std::vector<ch::polygon> ch::buffer(std::span<ch::polygon> polys, double amt) {
 	return out | r::to_vector;
 }
 
+std::vector<ch::point> ch::convex_hull(std::span<ch::point> points) {
+	auto v = points | 
+		rv::transform(
+			[](const auto& pt) {
+				return static_cast<cv::Point_<float>>(pt);
+			}
+		) | r::to_vector;
+
+	std::vector<cv::Point_<float>> hull;
+	cv::convexHull(v, hull, true, true);
+	return hull |
+		rv::transform(
+			[](const auto& pt) {
+				return static_cast<ch::point>(pt);
+			}
+		) | r::to_vector;
+}
 
 void ch::debug_geom(cv::Mat mat) {
 

@@ -15,6 +15,8 @@
 #include <memory>
 #include <fstream>
 
+#include "brushes.hpp"
+
 namespace r = ranges;
 namespace rv = ranges::views;
 
@@ -1062,6 +1064,7 @@ void ch::raster_to_vector(const std::string& fname, const cv::Mat& mat, double s
     polygons_to_svg<ch::color>(fname, blobs, scale);
 }
 
+/*
 void ch::debug_drawing(const cv::Mat& mat) {
     cv::Mat img = cv::imread("C:\\test\\polygon.png");
     img = ch::convert_to_1channel_gray(img);
@@ -1078,4 +1081,8 @@ void ch::debug_drawing(const cv::Mat& mat) {
 
     debug_polygons("C:\\test\\polygons.svg", output);
 }
+*/
 
+void ch::debug_drawing(const cv::Mat& mat) {
+    debug_brushes();
+}

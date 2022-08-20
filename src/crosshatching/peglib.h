@@ -866,8 +866,8 @@ public:
 
     if (cache_registered[idx]) {
       if (cache_success[idx]) {
-        auto key = std::pair(col, def_id);
-        std::tie(len, val) = cache_values[key];
+        auto key_1 = std::pair(col, def_id);
+        std::tie(len, val) = cache_values[key_1];
         return;
       } else {
         len = static_cast<size_t>(-1);
@@ -878,8 +878,8 @@ public:
       cache_registered[idx] = true;
       cache_success[idx] = success(len);
       if (success(len)) {
-        auto key = std::pair(col, def_id);
-        cache_values[key] = std::pair(len, val);
+        auto key_1 = std::pair(col, def_id);
+        cache_values[key_1] = std::pair(len, val);
       }
       return;
     }

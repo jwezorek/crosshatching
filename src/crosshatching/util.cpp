@@ -1,5 +1,7 @@
 ﻿#include "util.hpp"
 #include "meanshift.hpp"
+#include "random/counter_based_engine.hpp"
+#include "random/philox_prf.hpp"
 #include <opencv2/imgproc.hpp>
 #include <opencv2/ximgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -17,6 +19,11 @@ namespace rv = ranges::views;
 namespace {
 	std::random_device rd;
 	std::mt19937 random(rd());
+
+	uint32_t random_uint32() {
+		std::uniform_int_distribution<uint32_t> distr;
+		return distr(random);
+	}
 
 	struct color_hasher {
 		size_t operator()(const ch::color& c) const
@@ -446,3 +453,59 @@ std::vector<ch::point> ch::from_float_points(std::span<const cv::Point_<float>> 
 		r::to_vector;
 }
 
+double ch::normal_random(const rand_number_state& rnd, double mean, double stddev) {
+	std::counter_based_engine<std::philox4x32_prf, 1> philox{ 
+		{rnd.global_key, rnd.key_2, rnd.index, rnd.key_1} 
+	};
+	std::normal_distribution<double> nd(mean, stddev);
+	return nd(philox);
+}
+
+double ch::uniform_rnd(const rand_number_state& rnd, double lower_bound, double upper_bound) {
+	std::counter_based_engine<std::philox4x32_prf, 1> philox{
+		{rnd.global_key, rnd.key_2, rnd.index, rnd.key_1}
+	};
+	std::uniform_real_distribution<double> ud(lower_bound, upper_bound);
+	return ud(philox);
+}
+
+int ch::uniform_rnd_int(const rand_number_state& rnd, int low, int high) {
+	std::counter_based_engine<std::philox4x32_prf, 1> philox{
+		{rnd.global_key, rnd.key_2, rnd.index, rnd.key_1}
+	};
+	std::uniform_int_distribution<> ud(low, high);
+	return ud(philox);
+}
+
+ch::random_func ch::normal_rnd_func(double mean, double stddev) {
+	return [=](const rand_number_state& state) {
+		return normal_random(state, mean, stddev);
+	};
+}
+
+ch::random_func ch::const_rnd_func(double val) {
+	return [=](const rand_number_state& state) {
+		return val;
+	};
+}
+
+ch::rand_number_state::rand_number_state(uint32_t gk, uint32_t idx, uint32_t k1, uint32_t k2) :
+		global_key(gk),
+		index(idx),
+		key_1(k1),
+		key_2(k2) {
+	if (!gk) {
+		global_key = random_uint32();
+	}
+}
+
+ch::rand_number_state::rand_number_state(uint32_t k1, const rand_number_state& rns) :
+		rand_number_state(rns) {
+	key_1 = k1;
+}
+
+ch::rand_number_state::rand_number_state(uint32_t k1, uint32_t k2, const rand_number_state& rns) :
+		rand_number_state(rns) {
+	key_1 = k1;
+	key_2 = k2;
+}
