@@ -260,11 +260,6 @@ namespace {
         return north_west_index;
     }
 
-    std::tuple<pixel_crawler, int> initialize_contour_crawl(const int_polyline& ip, bool counter_clockwise) {
-        int northwest_index = find_northwest_index(ip);
-        return { {ip[northwest_index], counter_clockwise ? direction::NW : direction::SW}, northwest_index };
-    }
-
     void push_if_new(ch::ring& poly, const ch::point& pt) {
         if (!poly.empty() && poly.back() == pt) {
             return;

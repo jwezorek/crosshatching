@@ -646,7 +646,7 @@ std::vector<ch::polygon> ch::buffer(const ch::polygon& poly, double amt) {
 	return out | r::to_vector;
 }
 
-std::vector<ch::polygon> ch::buffer(std::span<ch::polygon> polys, double amt) {
+std::vector<ch::polygon> ch::buffer(std::span<const ch::polygon> polys, double amt) {
 	namespace bs = bg::strategy::buffer;
 	using dist = bs::distance_symmetric<double>;
 	bs::side_straight  side_strategy;
@@ -664,7 +664,7 @@ std::vector<ch::polygon> ch::buffer(std::span<ch::polygon> polys, double amt) {
 	return out | r::to_vector;
 }
 
-std::vector<ch::point> ch::convex_hull(std::span<ch::point> points) {
+std::vector<ch::point> ch::convex_hull(std::span<const ch::point> points) {
 	auto v = points | 
 		rv::transform(
 			[](const auto& pt) {

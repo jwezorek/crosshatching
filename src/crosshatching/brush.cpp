@@ -18,11 +18,7 @@ namespace rv = ranges::views;
 
 namespace {
 
-    struct run_and_space {
-        double run;
-        double space;
-        double x;
-    };
+    
 
     ch::polyline random_line_segment(const ch::dimensions<double>& sz, ch::rnd_fn line_len) {
         auto half_wd = sz.wd / 2.0;
@@ -46,6 +42,12 @@ namespace {
             {x2 , y2}
         };
     }
+
+    struct run_and_space {
+        double run;
+        double space;
+        double x;
+    };
 
     auto row_of_crosshatching(double wd, double hgt, double y, const ch::rnd_fn& run_length, const ch::rnd_fn& space_length, const ch::unit_of_hatching_fn& h_fn) {
         auto half_wd = wd / 2.0;
