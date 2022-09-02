@@ -25,10 +25,10 @@ namespace ch {
         merge
     };
 
-    class brush_expr_base;
-    using brush_expr_ptr = std::shared_ptr<brush_expr_base>;
+    class brush_expression_base;
+    using brush_expression_ptr = std::shared_ptr<brush_expression_base>;
 
-    class brush_expr_base {
+    class brush_expression_base {
     public:
         virtual brush_pipeline_item eval() const = 0;
         virtual std::optional<symbol> sym_type() const = 0;
@@ -36,16 +36,16 @@ namespace ch {
         virtual std::string to_short_string() const = 0;
         virtual std::string to_string() const = 0;
         virtual std::string to_formatted_string(int n = 0) const;
-        virtual const std::vector<brush_expr_ptr>* children() const;
+        virtual const std::vector<brush_expression_ptr>* children() const;
         virtual bool is_expression() const;
     };
 
-    class brush_expr : public brush_expr_base {
+    class brush_expression : public brush_expression_base {
     public:
-        brush_expr( ch::symbol op);
+        brush_expression( ch::symbol op);
 
         template<typename Iter>
-        brush_expr(ch::symbol op, Iter begin, Iter end) : brush_expr(op) {
+        brush_expression(ch::symbol op, Iter begin, Iter end) : brush_expression(op) {
             std::copy(begin, end, std::back_inserter(children_));
         }
 
@@ -55,19 +55,19 @@ namespace ch {
         std::string to_string() const override;
         std::string to_formatted_string(int n) const override;
         std::optional<double>  to_number() const override;
-        const std::vector<brush_expr_ptr>* children() const override;
+        const std::vector<brush_expression_ptr>* children() const override;
 
         bool is_expression() const override;
         bool is_one_liner() const;
-        void replace_child(brush_expr_ptr old_child, brush_expr_ptr new_child);
+        void replace_child(brush_expression_ptr old_child, brush_expression_ptr new_child);
     
     private:
         ch::symbol op_;
-        std::vector<brush_expr_ptr> children_;
+        std::vector<brush_expression_ptr> children_;
     };
 
    
-    class symbol_expr : public brush_expr_base {
+    class symbol_expr : public brush_expression_base {
     public:
         symbol_expr(symbol sym);
         brush_pipeline_item eval() const override;
@@ -80,7 +80,7 @@ namespace ch {
         symbol sym_;
     };
 
-    class num_expr : public brush_expr_base {
+    class num_expr : public brush_expression_base {
     public:
         num_expr(double val);
         brush_pipeline_item eval() const override;
@@ -94,5 +94,5 @@ namespace ch {
     };
 
     std::variant<ch::brush_fn, std::string> brush_language_to_func(const std::string& input);
-    std::variant<ch::brush_expr_ptr, std::string> brush_language_to_expr(const std::string& input);
+    std::variant<ch::brush_expression_ptr, std::string> brush_language_to_expr(const std::string& input);
 };

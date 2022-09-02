@@ -11,7 +11,7 @@ namespace rv = ranges::views;
 
 namespace {
 
-    using expr_args = std::vector<ch::brush_expr_ptr>;
+    using expr_args = std::vector<ch::brush_expression_ptr>;
     using brush_expr_evaluator = std::function< ch::brush_pipeline_item(const expr_args&)>;
 
     bool parser_initialized = false;
@@ -63,39 +63,39 @@ namespace {
     }
 
     void init_parser() {
-        ::parser["Symbol"] = [](const peg::SemanticValues& vs)->ch::brush_expr_ptr {
+        ::parser["Symbol"] = [](const peg::SemanticValues& vs)->ch::brush_expression_ptr {
             auto val = vs.token_to_string();
             return std::make_shared<ch::symbol_expr>(string_to_sym(val));
         };
         
-        ::parser["Number"] = [](const peg::SemanticValues& vs)->ch::brush_expr_ptr {
+        ::parser["Number"] = [](const peg::SemanticValues& vs)->ch::brush_expression_ptr {
             auto val = vs.token_to_number<double>();
             return std::make_shared<ch::num_expr>( val );
         };
         
-        ::parser["Op"] = [](const peg::SemanticValues& vs)->ch::brush_expr_ptr {
+        ::parser["Op"] = [](const peg::SemanticValues& vs)->ch::brush_expression_ptr {
             auto val = vs.token_to_string();
             return std::make_shared<ch::symbol_expr>(string_to_sym(val));
         };
 
-        ::parser["Expr"] = [](const peg::SemanticValues& vs)->ch::brush_expr_ptr {
-            std::vector<ch::brush_expr_ptr> args(vs.size());
+        ::parser["Expr"] = [](const peg::SemanticValues& vs)->ch::brush_expression_ptr {
+            std::vector<ch::brush_expression_ptr> args(vs.size());
             std::transform(vs.begin(), vs.end(), args.begin(),
-                [](auto vsi)->ch::brush_expr_ptr {
-                    return std::any_cast<ch::brush_expr_ptr>(vsi);
+                [](auto vsi)->ch::brush_expression_ptr {
+                    return std::any_cast<ch::brush_expression_ptr>(vsi);
                 }
             );
             auto op = args.front()->sym_type();
             if (!op) {
                 throw std::runtime_error("bad expression: no operation");
             }
-            return std::make_shared<ch::brush_expr>(*op, std::next(args.begin()), args.end());
+            return std::make_shared<ch::brush_expression>(*op, std::next(args.begin()), args.end());
         };
 
         parser_initialized = true;
     }
 
-    ch::param_adapter_fn expr_to_parameter_adapter(ch::brush_expr_ptr expr) {
+    ch::param_adapter_fn expr_to_parameter_adapter(ch::brush_expression_ptr expr) {
         auto numeric_value = expr->to_number();
         if (numeric_value) {
             return ch::make_constant_fn(*numeric_value);
@@ -104,7 +104,7 @@ namespace {
         }
     }
 
-    bool is_symbol(ch::symbol sym, ch::brush_expr_ptr expr) {
+    bool is_symbol(ch::symbol sym, ch::brush_expression_ptr expr) {
         auto sym_val = expr->sym_type();
         return sym_val ? *sym_val == sym : false;
     }
@@ -113,7 +113,7 @@ namespace {
         return ch::make_run_pipeline_fn(
             args |
             rv::transform(
-                [](ch::brush_expr_ptr expr) {
+                [](ch::brush_expression_ptr expr) {
                     return expr->eval();
                 }
             ) |
@@ -155,7 +155,7 @@ namespace {
         return ch::make_merge_fn(
             args |
             rv::transform(
-                [](ch::brush_expr_ptr expr) {
+                [](ch::brush_expression_ptr expr) {
                     return std::get<ch::brush_fn>(expr->eval());
                 }
             ) |
@@ -185,7 +185,7 @@ namespace {
 
 /*----------------------------------------------------------------------------------------------------*/
 
-int brush_expr_depth( const ch::brush_expr_base& expr)
+int brush_expr_depth( const ch::brush_expression_base& expr)
 {
     auto child_exprs = expr.children();
     if (!child_exprs) {
@@ -204,25 +204,25 @@ int brush_expr_depth( const ch::brush_expr_base& expr)
     return deepest + 1;
 }
 
-std::string ch::brush_expr_base::to_formatted_string(int n) const {
+std::string ch::brush_expression_base::to_formatted_string(int n) const {
     return to_string();
 }
 
-const std::vector<ch::brush_expr_ptr>* ch::brush_expr_base::children() const {
+const std::vector<ch::brush_expression_ptr>* ch::brush_expression_base::children() const {
     return nullptr;
 }
 
-bool ch::brush_expr_base::is_expression() const {
+bool ch::brush_expression_base::is_expression() const {
     return false;
 }
 
 /*----------------------------------------------------------------------------------------------------*/
 
-ch::brush_expr::brush_expr(ch::symbol op) :
+ch::brush_expression::brush_expression(ch::symbol op) :
     op_(op)
 {}
 
-ch::brush_pipeline_item ch::brush_expr::eval() const {
+ch::brush_pipeline_item ch::brush_expression::eval() const {
     static std::unordered_map<ch::symbol, brush_expr_evaluator> tbl = {
         {ch::symbol::pipe,          eval_pipe_expr},
         {ch::symbol::norm_rnd,      eval_norm_rnd_expr},
@@ -239,20 +239,20 @@ ch::brush_pipeline_item ch::brush_expr::eval() const {
     return evaluator(children_);
 }
 
-std::optional<ch::symbol> ch::brush_expr::sym_type() const {
+std::optional<ch::symbol> ch::brush_expression::sym_type() const {
     return {};
 }
 
-std::string ch::brush_expr::to_short_string() const
+std::string ch::brush_expression::to_short_string() const
 {
     return sym_to_string(op_);
 }
 
-bool ch::brush_expr::is_one_liner() const {
+bool ch::brush_expression::is_one_liner() const {
     return brush_expr_depth( *this ) <= 2;
 }
 
-std::string ch::brush_expr::to_string() const {
+std::string ch::brush_expression::to_string() const {
     std::stringstream ss;
     ss << "(" << sym_to_string(op_) << " ";
     for (auto iter = children_.begin(); iter != children_.end(); ++iter) {
@@ -265,7 +265,7 @@ std::string ch::brush_expr::to_string() const {
     return ss.str();
 }
 
-std::string ch::brush_expr::to_formatted_string(int n) const {
+std::string ch::brush_expression::to_formatted_string(int n) const {
     std::string indent(4 * n, ' ');
     std::stringstream ss;
     if (is_one_liner()) {
@@ -280,21 +280,21 @@ std::string ch::brush_expr::to_formatted_string(int n) const {
     return ss.str();
 }
 
-std::optional<double> ch::brush_expr::to_number() const {
+std::optional<double> ch::brush_expression::to_number() const {
     return {};
 }
 
-const std::vector<ch::brush_expr_ptr>* ch::brush_expr::children() const  {
+const std::vector<ch::brush_expression_ptr>* ch::brush_expression::children() const  {
     return &children_;
 }
 
-bool ch::brush_expr::is_expression() const {
+bool ch::brush_expression::is_expression() const {
     return true;
 }
 
-void ch::brush_expr::replace_child(brush_expr_ptr old_child, brush_expr_ptr new_child) {
+void ch::brush_expression::replace_child(brush_expression_ptr old_child, brush_expression_ptr new_child) {
     auto iter = std::find_if(children_.begin(), children_.end(), 
-        [old_child](brush_expr_ptr bep)->bool {
+        [old_child](brush_expression_ptr bep)->bool {
             return bep.get() == old_child.get();
         }
     );
@@ -364,16 +364,16 @@ std::variant<ch::brush_fn, std::string> ch::brush_language_to_func(const std::st
     if (std::holds_alternative<std::string>(result)) {
         return { std::get<std::string>(result) };
     }
-    auto item = std::get<ch::brush_expr_ptr>(result)->eval();
+    auto item = std::get<ch::brush_expression_ptr>(result)->eval();
     return std::get<ch::brush_fn>(item);
 }
 
-std::variant<ch::brush_expr_ptr, std::string> ch::brush_language_to_expr(const std::string& input) {
+std::variant<ch::brush_expression_ptr, std::string> ch::brush_language_to_expr(const std::string& input) {
     try {
         if (!parser_initialized) {
             init_parser();
         }
-        ch::brush_expr_ptr expr;
+        ch::brush_expression_ptr expr;
         bool success = ::parser.parse(input, expr);
         if (!success) {
             return std::string("error parsing brush");

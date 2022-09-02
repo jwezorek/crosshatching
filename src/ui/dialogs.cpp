@@ -141,7 +141,7 @@ void ui::brush_dialog::parse_brush_code() {
         mb.setText(std::get<std::string>(result).c_str());
         mb.exec();
     } else {
-        brush_ = std::get<ch::brush_expr_ptr>(result);
+        brush_ = std::get<ch::brush_expression_ptr>(result);
     }
     update_btn_enabled_state();
 }
@@ -169,35 +169,35 @@ std::string ui::brush_dialog::brush_name() const {
     return name_box_->text().toStdString();
 }
 
-ch::brush_expr_ptr ui::brush_dialog::brush_expr() const {
+ch::brush_expression_ptr ui::brush_dialog::brush_expression() const {
     return brush_;
 }
 
-std::optional<std::tuple<std::string, ch::brush_expr_ptr>> ui::brush_dialog::create_brush()
+std::optional<std::tuple<std::string, ch::brush_expression_ptr>> ui::brush_dialog::create_brush()
 {
     std::unique_ptr<ui::brush_dialog> dlg = std::make_unique<ui::brush_dialog>();
     if (dlg->exec() == QDialog::Accepted) {
-        return { { dlg->brush_name(), dlg->brush_expr() } };
+        return { { dlg->brush_name(), dlg->brush_expression() } };
     } else {
         return {};
     }
 }
 
-std::optional<std::tuple<std::string, ch::brush_expr_ptr>> ui::brush_dialog::edit_brush(const std::string& name, const std::string& code) {
+std::optional<std::tuple<std::string, ch::brush_expression_ptr>> ui::brush_dialog::edit_brush(const std::string& name, const std::string& code) {
     std::unique_ptr<ui::brush_dialog> dlg = std::make_unique<ui::brush_dialog>();
     dlg->set(name, code);
     if (dlg->exec() == QDialog::Accepted) {
-        return { { dlg->brush_name(), dlg->brush_expr() } };
+        return { { dlg->brush_name(), dlg->brush_expression() } };
     } else {
         return {};
     }
 }
 
-ch::brush_expr_ptr ui::brush_dialog::edit_brush_expr(const std::string& code) {
+ch::brush_expression_ptr ui::brush_dialog::edit_brush_expr(const std::string& code) {
     std::unique_ptr<ui::brush_dialog> dlg = std::make_unique<ui::brush_dialog>();
     dlg->set(code);
     if (dlg->exec() == QDialog::Accepted) {
-        return dlg->brush_expr();
+        return dlg->brush_expression();
     } else {
         return nullptr;
     }

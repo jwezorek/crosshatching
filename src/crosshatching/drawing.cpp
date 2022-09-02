@@ -712,7 +712,6 @@ namespace {
                     return {};
                 }
             }
-            
         };
 
         std::vector<ink_layer> layers_;

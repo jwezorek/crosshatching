@@ -28,15 +28,22 @@ namespace ch {
 
     struct brush_context {
         polygon poly;
+        cbrng_seed seed;
         std::unordered_map<std::string, double> variables;
     };
 
-    using brush_expr_nil = std::monostate;
-    using brush_expr_value = std::variant<brush_expr_nil, double, strokes>;
+    using nil_value = std::monostate;
+    using brush_expr_value = std::variant<nil_value, double, strokes, random_func>;
 
-    class brush_expr2 {
+    class brush_expr;
+    using brush_expr_ptr = std::shared_ptr<brush_expr>;
+
+    class brush_expr {
     public:
+        brush_expr(std::span<brush_expr_ptr> children);
         virtual brush_expr_value eval(brush_context& ctxt) = 0;
+    protected:
+        std::vector<brush_expr_ptr> children_;
     };
 
     void debug_brushes();

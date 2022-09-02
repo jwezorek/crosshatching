@@ -245,7 +245,22 @@ namespace {
         outfile << "</svg>" << std::endl;
         outfile.close();
     }
+
+    class pipe_expr : public ch::brush_expr {
+    public:
+        pipe_expr(std::span<ch::brush_expr_ptr> children) :
+            ch::brush_expr(children)
+        {}
+
+        ch::brush_expr_value eval(ch::brush_context& ctxt) {
+            return {};
+        }
+    };
 }
+
+ch::brush_expr::brush_expr(std::span<ch::brush_expr_ptr> children) :
+    children_(children.begin(), children.end())
+{}
 
 void ch::debug_brushes() {
 

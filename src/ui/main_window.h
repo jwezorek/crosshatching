@@ -72,18 +72,18 @@ namespace ui {
 
 		class brush_item : public QTreeWidgetItem {
 		public:
-            brush_item(const std::string& name, ch::brush_expr_ptr expr);
-            brush_item(ch::brush_expr_ptr expr);
+            brush_item(const std::string& name, ch::brush_expression_ptr expr);
+            brush_item(ch::brush_expression_ptr expr);
             
-			ch::brush_expr_ptr brush_expr;
+			ch::brush_expression_ptr brush_expression;
             bool is_toplevel;
 
-            ch::brush_expr* as_expr();
+            ch::brush_expression* as_expr();
             bool is_leaf() const;
 		};
 
         static void insert_brush_item(brush_item* parent, brush_item* item);
-        static void insert_toplevel_item(QTreeWidget* tree, const std::string& name, ch::brush_expr_ptr expr);
+        static void insert_toplevel_item(QTreeWidget* tree, const std::string& name, ch::brush_expression_ptr expr);
         void add_brush_node();
         void delete_brush_node();
         void sync_layer_panel();
