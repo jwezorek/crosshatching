@@ -26,10 +26,11 @@ namespace ch {
         dimensions<int> size;
     };
 
+    using variables_map = std::unordered_map<std::string, double>;
     struct brush_context {
         polygon poly;
         cbrng_seed seed;
-        std::unordered_map<std::string, double> variables;
+        variables_map variables;
     };
 
     using nil_value = std::monostate;
@@ -40,6 +41,7 @@ namespace ch {
 
     class brush_expr {
     public:
+        brush_expr() {}
         brush_expr(std::span<brush_expr_ptr> children);
         virtual brush_expr_value eval(brush_context& ctxt) = 0;
     protected:
