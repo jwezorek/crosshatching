@@ -71,6 +71,7 @@ namespace ch {
     matrix scale_matrix(double x_scale, double y_scale);
     ranges::any_view<polyline> transform_view(ranges::any_view<polyline> polys, const matrix& mat);
     std::vector<polyline> transform( std::span<const polyline> polys, const matrix& mat);
+
     point mean_point(std::span<const point> points);
     polyline transform(std::span<const point>, const matrix& mat);
     ring transform(const ring& r, const matrix& mat);
