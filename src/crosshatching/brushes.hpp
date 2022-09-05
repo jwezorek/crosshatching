@@ -33,7 +33,6 @@ namespace ch {
 
     struct brush_context {
         polygon poly;
-        cbrng_seed seed;
         variables_map variables;
         std::optional<ch::strokes> strokes;
     };

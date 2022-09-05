@@ -134,6 +134,14 @@ std::string ch::to_svg_color(const color& c) {
 	return ss.str();
 }
 
+
+uint32_t ch::random_seed() {
+	static std::random_device rd;    
+	static std::mt19937_64 eng(rd()); 
+	static std::uniform_int_distribution<uint32_t> distr;
+	return distr(eng);
+}
+
 double ch::normal_rnd(double mean, double stddev)
 {
 	std::normal_distribution<double> nd(mean, stddev);
@@ -454,28 +462,19 @@ std::vector<ch::point> ch::from_float_points(std::span<const cv::Point_<float>> 
 }
 
 double ch::normal_random(const cbrng_state& cbrng, double mean, double stddev) {
-	auto [seed_1, seed_2] = cbrng.seed.seeds();
-	std::counter_based_engine<std::philox4x32_prf, 1> philox{ 
-		{seed_1, seed_2, cbrng.key_1,cbrng.key_2}
-	};
+	std::counter_based_engine<std::philox4x32_prf, 1> philox{ cbrng.keys };
 	std::normal_distribution<double> nd(mean, stddev);
 	return nd(philox);
 }
 
 double ch::uniform_rnd(const cbrng_state& cbrng, double lower_bound, double upper_bound) {
-	auto [seed_1, seed_2] = cbrng.seed.seeds();
-	std::counter_based_engine<std::philox4x32_prf, 1> philox{
-		{seed_1, seed_2, cbrng.key_1, cbrng.key_2}
-	};
+	std::counter_based_engine<std::philox4x32_prf, 1> philox{ cbrng.keys };
 	std::uniform_real_distribution<double> ud(lower_bound, upper_bound);
 	return ud(philox);
 }
 
 int ch::uniform_rnd_int(const cbrng_state& cbrng, int low, int high) {
-	auto [seed_1, seed_2] = cbrng.seed.seeds();
-	std::counter_based_engine<std::philox4x32_prf, 1> philox{
-		{seed_1, seed_2, cbrng.key_1, cbrng.key_2}
-	};
+	std::counter_based_engine<std::philox4x32_prf, 1> philox{ cbrng.keys };
 	std::uniform_int_distribution<> ud(low, high);
 	return ud(philox);
 }
@@ -492,37 +491,6 @@ ch::random_func ch::const_rnd_func(double val) {
 	};
 }
 
-ch::cbrng_seed::cbrng_seed(uint32_t global_seed, uint16_t mini_key_1, uint16_t mini_key_2) :
-	global_seed_( global_seed ),
-	brush_key_( mini_key_1 ),
-	index_(mini_key_2)
-{ }
-
-ch::cbrng_state::cbrng_state(const cbrng_seed& s, uint32_t k1, uint32_t k2) :
-	seed(s),
-	key_1(k1),
-	key_2(k2)
+ch::cbrng_state::cbrng_state(uint32_t k1, uint32_t k2, uint32_t k3, uint32_t k4) :
+	keys( {k1,k2,k3,k4})
 {}
-
-std::tuple<uint32_t, uint32_t> ch::cbrng_seed::seeds() const {
-	return {
-		global_seed_,
-		(index_ << 16) | brush_key_
-	};
-}
-
-ch::cbrng_seed ch::cbrng_seed::next_brush() const {
-	return {
-		global_seed_,
-		static_cast<uint16_t>(brush_key_ + 1),
-		index_
-	};
-}
-
-ch::cbrng_seed ch::cbrng_seed::next_index() const {
-	return {
-		global_seed_,
-		brush_key_,
-		static_cast<uint16_t>(index_ + 1)
-	};
-}

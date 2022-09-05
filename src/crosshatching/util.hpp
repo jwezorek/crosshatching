@@ -8,6 +8,7 @@
 #include <optional>
 #include <optional>
 #include <span>
+#include <array>
 #include "geometry.hpp"
 
 namespace ch {
@@ -41,25 +42,9 @@ namespace ch {
 
     void debug_polygons(const std::string& output_file, std::span<polygon> polys);
 
-    // random numbers
-    class cbrng_seed {
-    private:
-        uint32_t global_seed_; 
-        uint16_t brush_key_;
-        uint16_t index_;
-    public:
-        cbrng_seed(uint32_t global_seed, uint16_t mini_key_1, uint16_t mini_key_2);
-        std::tuple<uint32_t, uint32_t> seeds() const;
-        cbrng_seed next_brush() const;
-        cbrng_seed next_index() const;
-    };
-    
     struct cbrng_state {
-        cbrng_seed seed;
-        const uint32_t key_1;
-        const uint32_t key_2;
-
-        cbrng_state(const cbrng_seed& s, uint32_t k1 = 0, uint32_t k2 = 0);
+        std::array<uint32_t, 4> keys;
+        cbrng_state(uint32_t k1 = 0, uint32_t k2 = 0, uint32_t k3 = 0, uint32_t k4 = 0);
     };
 
     using random_func = std::function<double(const cbrng_state&)>;
@@ -70,6 +55,7 @@ namespace ch {
     random_func const_rnd_func(double val);
 
     using rnd_fn = std::function<double()>;
+    uint32_t random_seed();
     double normal_rnd(double mean, double stddev);
     double uniform_rnd(double lower_bound, double upper_bound);
     int uniform_rnd_int(int low, int high);

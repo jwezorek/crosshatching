@@ -92,7 +92,7 @@ namespace {
         }
     };
 
-    auto running_sum(const ch::cbrng_seed& seed, const ch::random_func& gen_fn, 
+    auto running_sum(uint32_t seed, const ch::random_func& gen_fn,
             double init_sum, uint32_t initial_counter) {
         return 
             rv::concat(
@@ -112,12 +112,6 @@ namespace {
             );
     }
 
-    auto row_of_strokes(double x1, double x2, double y, int rnd_key_1,
-            ch::random_func run_length, ch::random_func space_length) {
-        qDebug() << x1 << " " << x2 << " " << y << " " << rnd_key_1 << "\n";
-        return 0;
-    }
-
     struct run_and_space {
         double run;
         double space;
@@ -125,7 +119,7 @@ namespace {
     };
 
     auto row_of_strokes(double x1, double x2, double y, 
-            const ch::cbrng_seed& seed, uint32_t rnd_key_1, 
+            uint32_t seed, uint32_t rnd_key_1,
             const ch::random_func& run_length, const ch::random_func& space_length) {
         x1 -= run_length(ch::cbrng_state(seed, rnd_key_1, 1));
         x2 += run_length(ch::cbrng_state(seed, rnd_key_1, 2));
@@ -162,7 +156,7 @@ namespace {
     }
 
     template<typename R>
-    auto horz_strokes_from_y_positions(const ch::cbrng_seed& seed, R row_y_positions, 
+    auto horz_strokes_from_y_positions(uint32_t seed, R row_y_positions, 
             std::shared_ptr<horz_hull_slicer> slicer, ch::random_func run_length, 
             ch::random_func space_length) {
         return row_y_positions | // given a view of y-positions
@@ -200,9 +194,10 @@ namespace {
             rv::join; // flatten all the row views above into one view.
     }
 
-    ch::strokes linear_strokes(const ch::cbrng_seed& seed, double rotation, double thickness,
+    ch::strokes linear_strokes(double rotation, double thickness,
             const std::vector<ch::point>& region, ch::random_func run_length, 
             ch::random_func space_length, ch::random_func vert_space) {
+        auto seed = ch::random_seed();
         auto rot_matrix = ch::rotation_matrix(rotation);
         auto hull = ch::convex_hull(region);
         hull = hull |
@@ -310,7 +305,6 @@ namespace {
                 auto value = child->eval(local_ctxt);
                 std::visit(visitor, value);
             }
-            ctxt.seed = local_ctxt.seed;
             if (ctxt.strokes) {
                 throw std::runtime_error("pipeline did not emit crosshatching.");
             }
@@ -468,9 +462,7 @@ namespace {
                 );
             auto pen_thickness = variable_value(ctxt.variables, k_pen_thickness_var, 1.0);
             auto rotation = variable_value(ctxt.variables, k_brush_param_var, 0.0);
-            ctxt.seed = ctxt.seed.next_brush();
             return linear_strokes(
-                ctxt.seed, 
                 rotation, 
                 pen_thickness,
                 ctxt.poly.outer(), 
@@ -542,12 +534,11 @@ namespace {
                 throw std::runtime_error("disintegrate : non-numeric argument");
             }
             auto probability = std::clamp(std::get<double>(result), 0.0, 1.0);
-            ctxt.seed = ctxt.seed.next_brush();
-
+            auto seed = ch::random_seed();
             auto disintegrated =
                 rv::enumerate(*ctxt.strokes) |
                 rv::filter(
-                    [probability, seed = ctxt.seed](const auto& tup)->bool {
+                    [probability, seed](const auto& tup)->bool {
                         auto [index, stroke] = tup;
                         return ch::uniform_rnd(ch::cbrng_state(seed, index), 0.0, 1.0) <= probability;
                     }
@@ -574,12 +565,12 @@ namespace {
             if (!std::holds_alternative<ch::random_func>(result)) {
                 throw std::runtime_error("jiggle : invalid argument");
             }
-            ctxt.seed = ctxt.seed.next_brush();
+            auto seed = ch::random_seed();
 
             return ch::strokes{
                 rv::enumerate(*ctxt.strokes) |
                 rv::transform(
-                    [seed = ctxt.seed, rand = std::get<ch::random_func>(result)](const auto& tup){
+                    [seed, rand = std::get<ch::random_func>(result)](const auto& tup){
                         auto [index, stroke] = tup;
                         auto theta = ch::degrees_to_radians(
                             rand(ch::cbrng_state(seed, index))
@@ -686,7 +677,7 @@ void ch::debug_brushes() {
     };
     auto ramp = std::make_shared<ramp_expr>( exprs );
 
-    brush_context ctxt{ {}, {0,0,0}, {} };
+    brush_context ctxt;
     auto val = ramp->eval(ctxt);
 
     std::vector<ch::point> pts{
@@ -696,7 +687,6 @@ void ch::debug_brushes() {
         {100,50},{150,50}
     };
     auto strokes = linear_strokes(
-        cbrng_seed(17, 0, 0),
         ch::degrees_to_radians(45),
         1,
         pts,
