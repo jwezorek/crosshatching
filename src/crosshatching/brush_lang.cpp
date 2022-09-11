@@ -577,7 +577,7 @@ namespace {
     template<typename T>
     expr_creation_fn make_op_create_fn() {
         return [](std::span<const ch::brush_expr_ptr> args)->ch::brush_expr_ptr {
-            auto expr = std::shared_ptr<T>(new T());
+            auto expr = std::make_shared<T>();
             expr->set_children(args);
             return expr;
         };
@@ -631,6 +631,17 @@ namespace {
         return tbl.at(sym);
     }
 
+    ch::brush_expr_ptr create_expr(operation sym, std::span<const ch::brush_expr_ptr> args) {
+        static std::unordered_map<operation, expr_creation_fn> tbl;
+        if (tbl.empty()) {
+            for (const auto& opi : g_ops) {
+                tbl[opi.op] = opi.create;
+            }
+        }
+        auto create = tbl.at(sym);
+        return create(args);
+    }
+
     auto operations() {
         return g_ops |
             rv::transform(
@@ -642,6 +653,37 @@ namespace {
 
     int num_ops() {
         return static_cast<int>(g_ops.size());
+    }
+
+    void insert_semantic_actions(peg::parser& parser) {
+        parser["Op"] = [](const peg::SemanticValues& vs)->operation {
+            return string_to_op(vs.token_to_string());
+        };
+
+        parser["Symbol"] = [](const peg::SemanticValues& vs)->ch::brush_expr_ptr {
+            auto symbol = vs.token_to_string();
+            if (symbol == "true") {
+                return std::make_shared<number_expr>(1);
+            } else if (symbol == "false") {
+                return std::make_shared<number_expr>(0);
+            }
+            return std::make_shared<variable_expr>(symbol);
+        };
+        parser["Number"] = [](const peg::SemanticValues& vs)->ch::brush_expr_ptr {
+            auto val = vs.token_to_number<double>();
+            return std::make_shared<number_expr>(val);
+        };
+
+        parser["Expr"] = [](const peg::SemanticValues& vs)->ch::brush_expr_ptr {
+            std::vector<ch::brush_expr_ptr> args(vs.size());
+            std::transform(std::next(vs.begin()), vs.end(), args.begin(),
+                [](auto vsi)->ch::brush_expr_ptr {
+                    return std::any_cast<ch::brush_expr_ptr>(vsi);
+                }
+            );
+            auto op = std::any_cast<operation>(vs.front());
+            return  create_expr(op, args);
+        };
     }
 
     peg::parser make_parser() {
@@ -665,22 +707,7 @@ namespace {
         ss << "Expr <- '(' Op (Expr / Symbol / Number)+ ')'\n";
 
         auto parser = peg::parser(ss.str());
-        parser["Op"] = [](const peg::SemanticValues& vs)->operation {
-            return string_to_op(vs.token_to_string());
-        };
-        parser["Symbol"] = [](const peg::SemanticValues& vs)->ch::brush_expr_ptr {
-            auto symbol = vs.token_to_string();
-            if (symbol == "true") {
-                return std::make_shared<number_expr>(1);
-            } else if (symbol == "false") {
-                return std::make_shared<number_expr>(0);
-            }
-            return std::make_shared<variable_expr>(symbol);
-        };
-        parser["Number"] = [](const peg::SemanticValues& vs)->ch::brush_expr_ptr {
-            auto val = vs.token_to_number<double>();
-            return std::make_shared<number_expr>(val);
-        };
+        insert_semantic_actions(parser);
 
         return parser;
     }
