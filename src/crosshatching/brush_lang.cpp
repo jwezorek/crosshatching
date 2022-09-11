@@ -567,26 +567,48 @@ namespace {
         divide,
     };
 
+    using expr_creation_fn = std::function<ch::brush_expr_ptr(std::span<const ch::brush_expr_ptr>)>;
     struct op_info {
         operation op;
         std::string str;
-        ch::brush_expr_ptr expr;
+        expr_creation_fn create;
     };
 
+    template<typename T>
+    expr_creation_fn make_op_create_fn() {
+        return [](std::span<const ch::brush_expr_ptr> args)->ch::brush_expr_ptr {
+            auto expr = std::shared_ptr<T>(new T());
+            expr->set_children(args);
+            return expr;
+        };
+    }
+
+    expr_creation_fn make_rot_create_fn(){
+        return [](std::span<const ch::brush_expr_ptr> args)->ch::brush_expr_ptr {
+            std::vector<ch::brush_expr_ptr> new_args = {
+                std::make_shared<variable_expr>(k_rotation_var),
+                args.front()
+            };
+            auto def_expr = std::make_shared<define_expr>();
+            def_expr->set_children(new_args);
+            return def_expr;
+        };
+    }
+
     std::vector<op_info> g_ops{
-        {operation::define,       "def",          {}},
-        {operation::brush,        "pipe",         {}},
-        {operation::norm_rnd,     "norm_rnd",     {}},
-        {operation::lerp,         "lerp",         {}},
-        {operation::ramp,         "ramp",         {}},
-        {operation::rotate,       "rot",          {}},
-        {operation::disintegrate, "dis",          {}},
-        {operation::jiggle,       "jiggle",       {}},
-        {operation::horz_strokes, "horz_strokes", {}},
-        {operation::add     ,     "+",            {}},
-        {operation::subtract,     "-",            {}},
-        {operation::multiply,     "*",            {}},
-        {operation::divide  ,     "/",            {}}
+        {operation::define,       "def",          make_op_create_fn<define_expr>()},
+        {operation::brush,        "brush",        make_op_create_fn<pipe_expr>()},
+        {operation::norm_rnd,     "norm_rnd",     make_op_create_fn<norm_rnd_expr>()},
+        {operation::lerp,         "lerp",         make_op_create_fn<lerp_expr>()},
+        {operation::ramp,         "ramp",         make_op_create_fn<ramp_expr>()},
+        {operation::rotate,       "rot",          make_rot_create_fn()},
+        {operation::disintegrate, "dis",          make_op_create_fn<disintegrate_expr>()},
+        {operation::jiggle,       "jiggle",       make_op_create_fn<jiggle_expr>()},
+        {operation::horz_strokes, "horz_strokes", make_op_create_fn<linear_brush_expr>()},
+        {operation::add     ,     "+",            make_op_create_fn<add_expr>()},
+        {operation::subtract,     "-",            make_op_create_fn<subtract_expr>()},
+        {operation::multiply,     "*",            make_op_create_fn<multiply_expr>()},
+        {operation::divide  ,     "/",            make_op_create_fn<divide_expr>()}
     };
 
     operation string_to_op(const std::string& str) {
