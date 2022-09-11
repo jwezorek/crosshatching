@@ -76,7 +76,7 @@
     <ClCompile Include="src\crosshatching\point_set.cpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClCompile>
-    <ClCompile Include="src\crosshatching\brushes.cpp">
+    <ClCompile Include="src\crosshatching\brush_lang.cpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClCompile>
   </ItemGroup>
@@ -142,7 +142,7 @@
     <ClInclude Include="src\crosshatching\point_set.hpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
-    <ClInclude Include="src\crosshatching\brushes.hpp">
+    <ClInclude Include="src\crosshatching\brush_lang.hpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
   </ItemGroup>

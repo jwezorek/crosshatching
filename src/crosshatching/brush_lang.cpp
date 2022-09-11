@@ -1,5 +1,6 @@
-#include "brushes.hpp"
+#include "brush_lang.hpp"
 #include "point_set.hpp"
+#include "peglib.h"
 #include "qdebug.h"
 #include <tuple>
 #include <map>
@@ -228,8 +229,13 @@ namespace {
             );
     }
 
-    void write_to_svg(const std::string& filename, ch::drawing2 d,
-        std::function<void(double)> update_progress) {
+    struct drawing2 {
+        ch::strokes content;
+        ch::dimensions<int> size;
+    };
+
+    void write_to_svg(const std::string& filename, drawing2 d,
+            std::function<void(double)> update_progress) {
         std::ofstream outfile(filename);
 
         outfile << ch::svg_header(static_cast<int>(d.size.wd), static_cast<int>(d.size.hgt));
@@ -292,9 +298,6 @@ namespace {
         };
 
     public:
-        pipe_expr(const std::vector<ch::brush_expr_ptr>& children) :
-            ch::brush_expr(children)
-        {}
 
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
 
@@ -329,6 +332,10 @@ namespace {
         variable_expr(const std::string& var) : var_(var)
         {}
 
+        std::string var() const {
+            return var_;
+        }
+
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto iter = ctxt.variables.find(var_);
             if (iter == ctxt.variables.end()) {
@@ -339,18 +346,17 @@ namespace {
         }
     };
 
-    class set_variable_expr : public ch::brush_expr {
-    
-        std::string var_;
+    class define_expr : public ch::brush_expr {
     
     public:
-        set_variable_expr(const std::string& var, const ch::brush_expr_ptr& child) :
-                var_(var) {
-            children_.push_back(child);
-        }
 
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
-            ctxt.variables[var_] = children_.front()->eval(ctxt);
+            try {
+                std::string var = std::dynamic_pointer_cast<variable_expr>(children_[0])->var();
+                ctxt.variables[var] = children_[1]->eval(ctxt);
+            } catch (...) {
+                throw std::runtime_error("bad define expression");
+            }
             return {};
         }
     };
@@ -395,9 +401,6 @@ namespace {
 
     class ramp_expr : public ch::brush_expr {
     public:
-        ramp_expr(const std::vector<ch::brush_expr_ptr>& children) :
-            ch::brush_expr(children)
-        {}
 
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             if (children_.size() == 4) {
@@ -414,9 +417,6 @@ namespace {
 
     class norm_rnd_expr : public ch::brush_expr {
     public:
-        norm_rnd_expr(const std::vector<ch::brush_expr_ptr>& children) :
-            ch::brush_expr(children)
-        {}
 
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto [mean, stddev] = evaluate_to_tuple<double, double>(
@@ -430,9 +430,6 @@ namespace {
 
     class lerp_expr : public  ch::brush_expr {
     public:
-        lerp_expr(const std::vector<ch::brush_expr_ptr>& children) :
-            ch::brush_expr(children)
-        {}
 
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             if (children_.size() == 3) {
@@ -451,10 +448,6 @@ namespace {
 
     class linear_brush_expr : public ch::brush_expr {
     public:
-        linear_brush_expr(const std::vector<ch::brush_expr_ptr>& children) :
-            ch::brush_expr(children)
-        {}
-
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto [run_length, space_length, vert_space] =
                 evaluate_to_tuple<ch::random_func, ch::random_func, ch::random_func>(
@@ -475,10 +468,6 @@ namespace {
 
     class add_expr : public ch::brush_expr {
     public:
-        add_expr(const std::vector<ch::brush_expr_ptr>& children) :
-            ch::brush_expr(children)
-        {}
-
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto args = evaluate_to_vector<double>(ctxt, children_, "add");
             return r::accumulate(args, 0.0);
@@ -487,10 +476,6 @@ namespace {
 
     class multiply_expr : public ch::brush_expr {
     public:
-        multiply_expr(const std::vector<ch::brush_expr_ptr>& children) :
-            ch::brush_expr(children)
-        {}
-
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto args = evaluate_to_vector<double>(ctxt, children_, "multiply");
             return r::accumulate(args, 1.0, std::multiplies<double>());
@@ -499,10 +484,6 @@ namespace {
 
     class subtract_expr : public ch::brush_expr {
     public:
-        subtract_expr(const std::vector<ch::brush_expr_ptr>& children) :
-            ch::brush_expr(children)
-        {}
-
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto args = evaluate_to_vector<double>(ctxt, children_, "subtract");
             return args.front() - r::accumulate(args | rv::drop(1), 0.0);
@@ -511,10 +492,6 @@ namespace {
 
     class divide_expr : public ch::brush_expr {
     public:
-        divide_expr(const std::vector<ch::brush_expr_ptr>& children) :
-            ch::brush_expr(children)
-        {}
-
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto args = evaluate_to_vector<double>(ctxt, children_, "divide");
             return args.front() / r::accumulate(args | rv::drop(1), 1.0, std::multiplies<double>());
@@ -523,11 +500,6 @@ namespace {
 
     class disintegrate_expr : public ch::brush_expr {
     public:
-        disintegrate_expr(const ch::brush_expr_ptr& child) 
-        {
-            children_.push_back(child);
-        }
-
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto result = children_.front()->eval(ctxt);
             if (!std::holds_alternative<double>(result)) {
@@ -555,11 +527,6 @@ namespace {
     
     class jiggle_expr : public ch::brush_expr {
     public:
-        jiggle_expr(const ch::brush_expr_ptr& child)
-        {
-            children_.push_back(child);
-        }
-
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto result = children_.front()->eval(ctxt);
             if (!std::holds_alternative<ch::random_func>(result)) {
@@ -583,6 +550,118 @@ namespace {
         }
     };
 
+    enum class operation {
+        define,
+        brush,
+        horz_strokes,
+        norm_rnd,
+        lerp,
+        ramp,
+        rotate,
+        disintegrate,
+        jiggle,
+        pen_thickness,
+        add,
+        subtract,
+        multiply,
+        divide,
+    };
+
+    struct op_info {
+        operation op;
+        std::string str;
+        ch::brush_expr_ptr expr;
+    };
+
+    std::vector<op_info> g_ops{
+        {operation::define,       "def",          {}},
+        {operation::brush,        "pipe",         {}},
+        {operation::norm_rnd,     "norm_rnd",     {}},
+        {operation::lerp,         "lerp",         {}},
+        {operation::ramp,         "ramp",         {}},
+        {operation::rotate,       "rot",          {}},
+        {operation::disintegrate, "dis",          {}},
+        {operation::jiggle,       "jiggle",       {}},
+        {operation::horz_strokes, "horz_strokes", {}},
+        {operation::add     ,     "+",            {}},
+        {operation::subtract,     "-",            {}},
+        {operation::multiply,     "*",            {}},
+        {operation::divide  ,     "/",            {}}
+    };
+
+    operation string_to_op(const std::string& str) {
+        static std::unordered_map<std::string, operation> tbl;
+        if (tbl.empty()) {
+            for (const auto& opi : g_ops) {
+                tbl[opi.str] = opi.op;
+            }
+        }
+        return tbl.at(str);
+    }
+
+    std::string op_to_string(operation sym) {
+        static std::unordered_map<operation, std::string> tbl;
+        if (tbl.empty()) {
+            for (const auto& opi : g_ops) {
+                tbl[opi.op] = opi.str;
+            }
+        }
+        return tbl.at(sym);
+    }
+
+    auto operations() {
+        return g_ops |
+            rv::transform(
+                [](const op_info& opi)->operation {
+                    return opi.op;
+                }
+        );
+    }
+
+    int num_ops() {
+        return static_cast<int>(g_ops.size());
+    }
+
+    peg::parser make_parser() {
+        auto make_op_rule = []() {
+            auto quoted_strings =
+                g_ops |
+                rv::transform(
+                     [](const op_info& opi)->std::string {
+                         return " '" + opi.str + "' ";
+                     }
+                ) | r::to_vector;
+            std::string rhs = quoted_strings | rv::join('|') | r::to_<std::string>();
+            return "Op <-" + rhs;
+        };
+
+        std::stringstream ss;
+        ss << "ROOT <- Expr\n";
+        ss << make_op_rule() << "\n";
+        ss << "Symbol <- < [_a-z]+ >\n";
+        ss << "Number <- < [.0-9]+ >\n";
+        ss << "Expr <- '(' Op (Expr / Symbol / Number)+ ')'\n";
+
+        auto parser = peg::parser(ss.str());
+        parser["Op"] = [](const peg::SemanticValues& vs)->operation {
+            return string_to_op(vs.token_to_string());
+        };
+        parser["Symbol"] = [](const peg::SemanticValues& vs)->ch::brush_expr_ptr {
+            auto symbol = vs.token_to_string();
+            if (symbol == "true") {
+                return std::make_shared<number_expr>(1);
+            } else if (symbol == "false") {
+                return std::make_shared<number_expr>(0);
+            }
+            return std::make_shared<variable_expr>(symbol);
+        };
+        parser["Number"] = [](const peg::SemanticValues& vs)->ch::brush_expr_ptr {
+            auto val = vs.token_to_number<double>();
+            return std::make_shared<number_expr>(val);
+        };
+
+        return parser;
+    }
 }
 
 ranges::any_view<ch::point> ch::transform(r::any_view<ch::point> poly, const ch::matrix& mat) {
@@ -610,75 +689,17 @@ ch::strokes ch::transform(ch::strokes strokes, const ch::matrix& mat) {
         );
 }
 
-ch::brush_expr::brush_expr(std::span<const ch::brush_expr_ptr> children) :
-    children_(children.begin(), children.end())
-{}
+void ch::brush_expr::set_children(std::span<const ch::brush_expr_ptr> children) {
+    children_ = children | r::to_vector;
+}
+
+std::variant<ch::brush_expr_ptr, std::runtime_error> ch::parse(const std::string& str) {
+    return std::runtime_error("TODO");
+}
 
 void ch::debug_brushes() {
 
-    auto br = std::make_shared<linear_brush_expr>(
-        std::vector<ch::brush_expr_ptr>{
-            std::make_shared<norm_rnd_expr>(
-                std::vector<ch::brush_expr_ptr>{
-                    std::make_shared<ramp_expr>(
-                        std::vector<ch::brush_expr_ptr>{
-                            std::make_shared<number_expr>(0),
-                            std::make_shared<number_expr>(800)
-                        }
-                    ),
-                    std::make_shared<ramp_expr>(
-                        std::vector<ch::brush_expr_ptr>{
-                            std::make_shared<number_expr>(50),
-                            std::make_shared<number_expr>(100)
-                        }
-                    )
-                }
-            ),
-            std::make_shared<norm_rnd_expr>(
-               std::vector<ch::brush_expr_ptr>{
-                    std::make_shared<ramp_expr>(
-                        std::vector<ch::brush_expr_ptr>{
-                            std::make_shared<number_expr>(200),
-                            std::make_shared<number_expr>(0)
-                        }
-                    ),
-                    std::make_shared<ramp_expr>(
-                        std::vector<ch::brush_expr_ptr>{
-                            std::make_shared<number_expr>(20),
-                            std::make_shared<number_expr>(0.05)
-                        }
-                    )
-                }
-            ),
-            std::make_shared<norm_rnd_expr>(
-                std::vector<ch::brush_expr_ptr>{
-                    std::make_shared<ramp_expr>(
-                        std::vector<ch::brush_expr_ptr>{
-                            std::make_shared<number_expr>(7),
-                            std::make_shared<number_expr>(0.5)
-                        }
-                    ),
-                    std::make_shared<ramp_expr>(
-                        std::vector<ch::brush_expr_ptr>{
-                            std::make_shared<number_expr>(0.5),
-                            std::make_shared<number_expr>(0.05)
-                        }
-                    )
-                }
-            )
-        }
-    );
-
-    auto exprs = std::vector<brush_expr_ptr>{
-        std::make_shared<number_expr>(0.35),
-        std::make_shared<number_expr>(1.0),
-        std::make_shared<number_expr>(0.0),
-        std::make_shared<number_expr>(0.5)
-    };
-    auto ramp = std::make_shared<ramp_expr>( exprs );
-
-    brush_context ctxt;
-    auto val = ramp->eval(ctxt);
+    auto parser = make_parser();
 
     std::vector<ch::point> pts{
         {100, 200}, {150,200},
@@ -700,7 +721,7 @@ void ch::debug_brushes() {
     
     write_to_svg(
         "C:\\test\\foo.svg",
-        ch::drawing2{ strokes, {500,500} },
+        drawing2{ strokes, {500,500} },
         std::function<void(double)>{}
     );
 }

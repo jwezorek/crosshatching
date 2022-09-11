@@ -15,7 +15,7 @@
 #include <memory>
 #include <fstream>
 
-#include "brushes.hpp"
+#include "brush_lang.hpp"
 
 namespace r = ranges;
 namespace rv = ranges::views;
