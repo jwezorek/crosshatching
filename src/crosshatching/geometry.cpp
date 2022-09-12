@@ -369,6 +369,15 @@ ch::polygon ch::make_polygon(const ch::ring& outer, const std::vector<ch::ring>&
 	return poly;
 }
 
+ch::polygon ch::make_polygon(std::span<const ch::point> verts) {
+	auto poly = ch::make_polygon(
+		verts | r::to_<ch::ring>(),
+		{}
+	);
+	bg::correct(poly);
+	return poly;
+}
+
 ch::matrix ch::rotation_matrix(double theta)
 {
 	return rotation_matrix(std::cos(theta), std::sin(theta));

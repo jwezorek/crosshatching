@@ -22,9 +22,12 @@ namespace ch {
         double pen_thickness;
     };
     using strokes = ranges::any_view<stroke>;
+
+    class brush_expr;
+    using brush_expr_ptr = std::shared_ptr<brush_expr>;
     
     using nil_value = std::monostate;
-    using brush_expr_value = std::variant<nil_value, double, strokes, random_func>;
+    using brush_expr_value = std::variant<nil_value, double, strokes, random_func, brush_expr_ptr>;
     using variables_map = std::unordered_map<std::string, brush_expr_value>;
 
     struct brush_context {
@@ -32,9 +35,6 @@ namespace ch {
         variables_map variables;
         std::optional<ch::strokes> strokes;
     };
-
-    class brush_expr;
-    using brush_expr_ptr = std::shared_ptr<brush_expr>;
 
     class brush_expr {
     public:

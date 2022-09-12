@@ -271,7 +271,7 @@ namespace {
     class pipe_expr : public ch::brush_expr {
 
         class expr_val_visitor {
-            ch::brush_context ctxt_;
+            ch::brush_context& ctxt_;
         public:
             expr_val_visitor(ch::brush_context& ctxt) :
                 ctxt_(ctxt)
@@ -292,6 +292,11 @@ namespace {
                 }
             }
 
+            void operator()(ch::brush_expr_ptr expr) {
+                auto results = expr->eval(ctxt_);
+                std::visit(*this, results);
+            }
+
             void operator()(ch::random_func rnd){
                 throw std::runtime_error("random number generator at pipeline scope.");
             }
@@ -308,10 +313,10 @@ namespace {
                 auto value = child->eval(local_ctxt);
                 std::visit(visitor, value);
             }
-            if (ctxt.strokes) {
+            if (!local_ctxt.strokes.has_value()) {
                 throw std::runtime_error("pipeline did not emit crosshatching.");
             }
-            return *ctxt.strokes;
+            return local_ctxt.strokes.value();
         }
     };
 
@@ -351,12 +356,13 @@ namespace {
     public:
 
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
+            std::string var;
             try {
-                std::string var = std::dynamic_pointer_cast<variable_expr>(children_[0])->var();
-                ctxt.variables[var] = children_[1]->eval(ctxt);
+                var = std::dynamic_pointer_cast<variable_expr>(children_[0])->var();
             } catch (...) {
-                throw std::runtime_error("bad define expression");
+                throw std::runtime_error("bad variable name in 'define' expression");
             }
+            ctxt.variables[var] = children_[1]->eval(ctxt);
             return {};
         }
     };
@@ -454,9 +460,9 @@ namespace {
                     ctxt, children_, "strokes"
                 );
             auto pen_thickness = variable_value(ctxt.variables, k_pen_thickness_var, 1.0);
-            auto rotation = variable_value(ctxt.variables, k_brush_param_var, 0.0);
+            auto rotation = variable_value(ctxt.variables, k_rotation_var, 0.0);
             return linear_strokes(
-                rotation, 
+                ch::degrees_to_radians(rotation), 
                 pen_thickness,
                 ctxt.poly.outer(), 
                 run_length, 
@@ -550,7 +556,15 @@ namespace {
         }
     };
 
+    class quote_expr : public ch::brush_expr {
+    public:
+        ch::brush_expr_value eval(ch::brush_context& ctxt) {
+            return children_.front();
+        }
+    };
+
     enum class operation {
+        quote,
         define,
         brush,
         horz_strokes,
@@ -596,7 +610,8 @@ namespace {
     }
 
     std::vector<op_info> g_ops{
-        {operation::define,       "def",          make_op_create_fn<define_expr>()},
+        {operation::quote,        "quote",        make_op_create_fn<quote_expr>()},
+        {operation::define,       "define",       make_op_create_fn<define_expr>()},
         {operation::brush,        "brush",        make_op_create_fn<pipe_expr>()},
         {operation::norm_rnd,     "norm_rnd",     make_op_create_fn<norm_rnd_expr>()},
         {operation::lerp,         "lerp",         make_op_create_fn<lerp_expr>()},
@@ -675,7 +690,7 @@ namespace {
         };
 
         parser["Expr"] = [](const peg::SemanticValues& vs)->ch::brush_expr_ptr {
-            std::vector<ch::brush_expr_ptr> args(vs.size());
+            std::vector<ch::brush_expr_ptr> args(vs.size()-1);
             std::transform(std::next(vs.begin()), vs.end(), args.begin(),
                 [](auto vsi)->ch::brush_expr_ptr {
                     return std::any_cast<ch::brush_expr_ptr>(vsi);
@@ -703,8 +718,9 @@ namespace {
         ss << "ROOT <- Expr\n";
         ss << make_op_rule() << "\n";
         ss << "Symbol <- < [_a-z]+ >\n";
-        ss << "Number <- < [.0-9]+ >\n";
+        ss << "Number <- < '-'? [0-9]+ ('.' [0-9]+)? >\n";
         ss << "Expr <- '(' Op (Expr / Symbol / Number)+ ')'\n";
+        ss << "%whitespace <- [ \t\r\n]*\n";
 
         auto parser = peg::parser(ss.str());
         insert_semantic_actions(parser);
@@ -742,35 +758,62 @@ void ch::brush_expr::set_children(std::span<const ch::brush_expr_ptr> children) 
     children_ = children | r::to_vector;
 }
 
-std::variant<ch::brush_expr_ptr, std::runtime_error> ch::parse(const std::string& str) {
-    return std::runtime_error("TODO");
+std::variant<ch::brush_expr_ptr, std::runtime_error> ch::parse(const std::string& input) {
+    static peg::parser parser;
+    if (!parser) {
+        parser = make_parser();
+    }
+    brush_expr_ptr expr;
+    try {
+        bool success = parser.parse(input, expr);
+        if (!success) {
+            return std::runtime_error("unknown parsing error");
+        }
+    } catch (std::runtime_error e) {
+        return e;
+    } catch (...) {
+        return std::runtime_error("unknown parsing error");
+    }
+    return expr;
 }
 
 void ch::debug_brushes() {
 
-    auto parser = make_parser();
+    std::string code = R"(
+        ( 
+        brush
+	        (define lines 
+                (quote
+		            (brush 
+                        (horz_strokes
+                            (norm_rnd (lerp 0 800) (lerp 50 100))
+                            (norm_rnd (lerp 200 0) (lerp 20 0.05))
+                            (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
+                        )
+                        (dis (ramp 0.20 false true))
+                    )
+                )
+	        )
+	        (rot 45)
+	        lines
+	        (rot -45)
+	        lines
+        )
+      )";
 
-    std::vector<ch::point> pts{
-        {100, 200}, {150,200},
-        {50,150}, {200,150},
-        {50,100},{200,100},
-        {100,50},{150,50}
+    auto e = parse(code);
+    brush_context ctxt{
+        make_polygon(std::vector<point>{ {0,-500}, {500,0}, {0,500}, {-500,0}}),
+        {},
+        {}
     };
-    auto strokes = linear_strokes(
-        ch::degrees_to_radians(45),
-        1,
-        pts,
-        normal_rnd_func(50, 15),
-        normal_rnd_func(2, 0.25),
-        normal_rnd_func(3, 0.5)
-    );
+    ctxt.variables[k_brush_param_var] = 0.5;
+    auto output = std::get<strokes>(std::get<brush_expr_ptr>(e)->eval(ctxt));
 
-    auto hull = convex_hull(pts) | r::to_vector;
-    strokes = rv::concat(rv::single(ch::stroke{hull, 2 }), strokes);
     
     write_to_svg(
         "C:\\test\\foo.svg",
-        drawing2{ strokes, {500,500} },
+        drawing2{ output, {600,600} },
         std::function<void(double)>{}
     );
 }

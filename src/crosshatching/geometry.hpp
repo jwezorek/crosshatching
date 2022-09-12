@@ -64,6 +64,7 @@ namespace ch {
     polyline make_polyline(size_t sz);
     ring make_ring(size_t);
     polygon make_polygon(const ring& outer, const std::vector<ring>& inners);
+    polygon make_polygon(std::span<const point> verts);
     matrix rotation_matrix(double theta);
     matrix rotation_matrix(double cos_theta, double sin_theta);
     matrix translation_matrix(double x, double y);
