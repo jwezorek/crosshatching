@@ -1,6 +1,6 @@
 #pragma once
 
-#include "brush.hpp"
+#include "old_brush.hpp"
 #include <vector>
 #include <memory>
 #include <string>

@@ -1,4 +1,4 @@
-#include "brush.hpp"
+#include "old_brush.hpp"
 #include "geometry.hpp"
 #include "util.hpp"
 #include <opencv2/highgui.hpp>
@@ -487,7 +487,7 @@ ch::param_adapter_fn ch::make_ramp_fn(param_adapter_fn k, bool right, bool up)
     return [k, up, right](double t) {return ch::ramp(t, k(t), right, up); };
 }
 
-ch::brush::brush(brush_fn fn, int line_thickness, double epsilon, 
+ch::old_brush::old_brush(brush_fn fn, int line_thickness, double epsilon,
         dimensions<double> sz, const std::vector<cv::Mat>& bkgds) :
     brush_fn_(fn),
     line_thickness_(line_thickness),
@@ -556,12 +556,12 @@ void debug(const range_queue& input) {
     std::cout << "\n";
 }
 
-bool ch::brush::is_uinitiailized() const
+bool ch::old_brush::is_uinitiailized() const
 {
     return gray_to_param_.empty();
 }
 
-double ch::brush::get_or_sample_param(double param) {
+double ch::old_brush::get_or_sample_param(double param) {
     auto iter = param_to_gray_.find(param);
     if (iter != param_to_gray_.end()) {
         return iter->second;
@@ -573,7 +573,7 @@ double ch::brush::get_or_sample_param(double param) {
     return gray;
 }
 
-double ch::brush::build_between(double gray, gray_map_iter left, gray_map_iter right)
+double ch::old_brush::build_between(double gray, gray_map_iter left, gray_map_iter right)
 {
     double mid_param = (left->second + right->second) / 2.0;
     auto mid_gray_value = get_or_sample_param(mid_param);
@@ -588,7 +588,7 @@ double ch::brush::build_between(double gray, gray_map_iter left, gray_map_iter r
     }
 }
 
-void ch::brush::build() { 
+void ch::old_brush::build() {
     throw std::runtime_error("dont use this build");
 
     if (!is_uinitiailized()) {
@@ -620,7 +620,7 @@ void ch::brush::build() {
     }
 }
 
-void ch::brush::build_n(int n)
+void ch::old_brush::build_n(int n)
 {
     if (!is_uinitiailized()) {
         throw std::runtime_error("brush is already built");
@@ -631,12 +631,12 @@ void ch::brush::build_n(int n)
     }
 }
 
-double ch::brush::stroke_width() const
+double ch::old_brush::stroke_width() const
 {
     return line_thickness_;
 }
 
-double ch::brush::build_to_gray_level(double gray_level) {
+double ch::old_brush::build_to_gray_level(double gray_level) {
     auto right = gray_to_param_.lower_bound(gray_level);
     if (right == gray_to_param_.end()) {
         return gray_to_param_.rbegin()->second;
@@ -652,41 +652,41 @@ double ch::brush::build_to_gray_level(double gray_level) {
     return build_between(gray_level, left, right);
 }
     
-ch::crosshatching_swatch ch::brush::get_hatching(double gray_level, dimensions<double> sz) {
+ch::crosshatching_swatch ch::old_brush::get_hatching(double gray_level, dimensions<double> sz) {
     if (is_uinitiailized()) {
         throw std::runtime_error("brush is not built");
     }
     if (gray_level < min_gray_level()) {
-        return get_hatching(ch::brush::min_gray_level(), sz);
+        return get_hatching(ch::old_brush::min_gray_level(), sz);
     } else if (gray_level > max_gray_level()) {
-        return get_hatching(ch::brush::max_gray_level(), sz);
+        return get_hatching(ch::old_brush::max_gray_level(), sz);
     }
     auto param = build_to_gray_level(gray_level);
     return brush_fn_(line_thickness_, sz, param);
 }
 
-double ch::brush::gray_value_to_param(double gray) {
+double ch::old_brush::gray_value_to_param(double gray) {
     if (is_uinitiailized()) {
         throw std::runtime_error("brush is not built");
     }
     return build_to_gray_level( gray );
 }
 
-double ch::brush::min_gray_level() const {
+double ch::old_brush::min_gray_level() const {
     if (is_uinitiailized()) {
         throw std::runtime_error("brush is not built");
     }
     return gray_to_param_.begin()->first;
 }
 
-double ch::brush::max_gray_level() const {
+double ch::old_brush::max_gray_level() const {
     if (is_uinitiailized()) {
         throw std::runtime_error("brush is not built");
     }
     return std::prev(gray_to_param_.end())->first;
 }
 
-ch::bkgd_swatches ch::brush::render_swatches(double gray_value) {
+ch::bkgd_swatches ch::old_brush::render_swatches(double gray_value) {
     auto bkgds = bkgds_;
     if (bkgds.empty()) {
         bkgds.resize(k_num_samples);
@@ -702,13 +702,13 @@ ch::bkgd_swatches ch::brush::render_swatches(double gray_value) {
         r::to_vector;
 }
 
-cv::Mat  ch::brush::swatch(double gray_value) {
+cv::Mat  ch::old_brush::swatch(double gray_value) {
     cv::Mat bkgd = bkgds_.empty() ? cv::Mat() : bkgds_.at(0);
     auto swatch = this->get_hatching(gray_value, swatch_sz_);
     return paint_cross_hatching(swatch, bkgd);
 }
 
-int ch::brush::num_samples() {
+int ch::old_brush::num_samples() {
     return k_num_samples;
 }
 

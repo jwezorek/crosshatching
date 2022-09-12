@@ -18,7 +18,7 @@ ui::brush_viewer::brush_viewer(const std::string& brush_name, ch::brush_fn brush
     );
     main_layout->addLayout(row);
 
-    brush_ = ch::brush(brush, 1);
+    brush_ = ch::old_brush(brush, 1);
     brush_.build_n(10);
     update_swatch();
 }

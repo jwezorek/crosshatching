@@ -147,7 +147,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\crosshatching\brush.cpp" />
+    <ClCompile Include="src\crosshatching\old_brush.cpp" />
     <ClCompile Include="src\crosshatching\brush_lang.cpp" />
     <ClCompile Include="src\crosshatching\brush_language.cpp" />
     <ClCompile Include="src\crosshatching\drawing.cpp" />
@@ -174,7 +174,7 @@
     <QtMoc Include="src\ui\main_window.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\crosshatching\brush.hpp" />
+    <ClInclude Include="src\crosshatching\old_brush.hpp" />
     <ClInclude Include="src\crosshatching\brush_lang.hpp" />
     <ClInclude Include="src\crosshatching\brush_language.hpp" />
     <ClInclude Include="src\crosshatching\drawing.hpp" />

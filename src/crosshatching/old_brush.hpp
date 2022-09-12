@@ -72,7 +72,7 @@ namespace ch {
 
     using bkgd_swatches = std::vector<cv::Mat>;
 
-    class brush {
+    class old_brush {
     private:
         using gray_map_iter = std::map<double, double>::iterator;
         std::map<double, double> gray_to_param_;
@@ -89,8 +89,8 @@ namespace ch {
         double build_to_gray_level(double gray_level);
 
     public:
-        brush() {};
-        brush(brush_fn fn, int line_thickness = 1, double epsilon = k_epsilon, 
+        old_brush() {};
+        old_brush(brush_fn fn, int line_thickness = 1, double epsilon = k_epsilon,
             dimensions<double> swatch_sz = { static_cast<double>(k_swatch_sz) }, const bkgd_swatches& bkgds = {});
 
         void build();
@@ -105,7 +105,7 @@ namespace ch {
         static int num_samples();
     };
 
-    using brush_ptr = std::shared_ptr<brush>;
+    using brush_ptr = std::shared_ptr<old_brush>;
     
     void debug_brush(const cv::Mat& mat);
 }

@@ -1,6 +1,6 @@
 #pragma once
 #include "util.hpp"
-#include "brush.hpp"
+#include "old_brush.hpp"
 #include "geometry.hpp"
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>

@@ -896,7 +896,7 @@ namespace {
             if (iter != brush_table.end()) {
                 current_brush = iter->second;
             } else {
-                current_brush = std::make_shared<ch::brush>(
+                current_brush = std::make_shared<ch::old_brush>(
                     brush_func, 
                     params.stroke_width, 
                     params.epsilon,

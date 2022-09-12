@@ -4,7 +4,7 @@
 #include <QLabel>
 #include <string>
 #include "float_value_slider.h"
-#include "../crosshatching/brush.hpp"
+#include "../crosshatching/old_brush.hpp"
 
 namespace ui {
 
@@ -21,6 +21,6 @@ namespace ui {
 
         QLabel* swatch_box_;
         float_value_slider* slider_;
-        ch::brush brush_;
+        ch::old_brush brush_;
     };
 }

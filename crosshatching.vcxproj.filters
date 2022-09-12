@@ -28,7 +28,7 @@
     <ClCompile Include="src\ui\main_window.cpp">
       <Filter>Source Files\ui</Filter>
     </ClCompile>
-    <ClCompile Include="src\crosshatching\brush.cpp">
+    <ClCompile Include="src\crosshatching\old_brush.cpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClCompile>
     <ClCompile Include="src\crosshatching\drawing.cpp">
@@ -115,7 +115,7 @@
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\crosshatching\brush.hpp">
+    <ClInclude Include="src\crosshatching\old_brush.hpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
     <ClInclude Include="src\crosshatching\drawing.hpp">
