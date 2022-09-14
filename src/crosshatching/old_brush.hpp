@@ -93,7 +93,7 @@ namespace ch {
         old_brush(brush_fn fn, int line_thickness = 1, double epsilon = k_epsilon,
             dimensions<double> swatch_sz = { static_cast<double>(k_swatch_sz) }, const bkgd_swatches& bkgds = {});
 
-        void build();
+        //void build();
         void build_n(int n);
         double stroke_width() const;
         double gray_value_to_param(double gray_val);

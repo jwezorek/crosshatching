@@ -587,7 +587,7 @@ double ch::old_brush::build_between(double gray, gray_map_iter left, gray_map_it
         return build_between(gray, mid_iter, right);
     }
 }
-
+/*
 void ch::old_brush::build() {
     throw std::runtime_error("dont use this build");
 
@@ -619,7 +619,7 @@ void ch::old_brush::build() {
         }
     }
 }
-
+*/
 void ch::old_brush::build_n(int n)
 {
     if (!is_uinitiailized()) {
