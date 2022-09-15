@@ -43,6 +43,8 @@ namespace ch {
         brush_expr() {}
         void set_children(std::span<const brush_expr_ptr> children);
         virtual brush_expr_value eval(brush_context& ctxt) = 0;
+        virtual std::string short_string() const = 0;
+        const std::vector<brush_expr_ptr>& children() const;
     protected:
         std::vector<brush_expr_ptr> children_;
     };

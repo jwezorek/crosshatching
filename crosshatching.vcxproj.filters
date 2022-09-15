@@ -28,9 +28,6 @@
     <ClCompile Include="src\ui\main_window.cpp">
       <Filter>Source Files\ui</Filter>
     </ClCompile>
-    <ClCompile Include="src\crosshatching\old_brush.cpp">
-      <Filter>Source Files\crosshatching</Filter>
-    </ClCompile>
     <ClCompile Include="src\crosshatching\drawing.cpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClCompile>
@@ -48,9 +45,6 @@
     </ClCompile>
     <ClCompile Include="src\ui\float_value_slider.cpp">
       <Filter>Source Files\ui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\crosshatching\brush_language.cpp">
-      <Filter>Source Files\crosshatching</Filter>
     </ClCompile>
     <ClCompile Include="src\crosshatching\segmentation.cpp">
       <Filter>Source Files\crosshatching</Filter>
@@ -118,9 +112,6 @@
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\crosshatching\old_brush.hpp">
-      <Filter>Source Files\crosshatching</Filter>
-    </ClInclude>
     <ClInclude Include="src\crosshatching\drawing.hpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
@@ -131,9 +122,6 @@
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
     <ClInclude Include="src\crosshatching\util.hpp">
-      <Filter>Source Files\crosshatching</Filter>
-    </ClInclude>
-    <ClInclude Include="src\crosshatching\brush_language.hpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
     <ClInclude Include="src\crosshatching\peglib.h">

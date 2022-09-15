@@ -374,19 +374,19 @@ cv::Mat ui::main_window::processed_image() const {
 	return img_proc_ctrls_.current;
 }
 
-std::vector<std::tuple<ch::brush_fn, double>> ui::main_window::brush_per_intervals() const {
+std::vector<std::tuple<ch::brush_expr_ptr, double>> ui::main_window::brush_per_intervals() const {
 	auto brush_dict = static_cast<brush_panel*>(crosshatching_.brushes)->brush_dictionary();
 	auto layer_name_vals = static_cast<layer_panel*>(crosshatching_.layers)->layers();
 	return layer_name_vals |
 			rv::transform(
-				[&](const auto& p)->std::tuple<ch::brush_fn, double> {
+				[&](const auto& p)->std::tuple<ch::brush_expr_ptr, double> {
 					const auto& [brush_name, val] = p;
 					return { brush_dict.at(brush_name), val };
 				}
 		) | r::to_vector;
 }
 
-std::vector<std::tuple<ch::brush_fn, cv::Mat>> ui::main_window::layers() const {
+std::vector<std::tuple<ch::brush_expr_ptr, cv::Mat>> ui::main_window::layers() const {
 	if (processed_image().empty()) {
 		return {};
 	}
@@ -593,62 +593,46 @@ std::vector<std::string> ui::brush_panel::brush_names() const {
 	return brushes;
 }
 
-std::unordered_map<std::string, ch::brush_fn> ui::brush_panel::brush_dictionary() const {
-	std::unordered_map<std::string, ch::brush_fn> dictionary;
+std::unordered_map<std::string, ch::brush_expr_ptr> ui::brush_panel::brush_dictionary() const {
+	std::unordered_map<std::string, ch::brush_expr_ptr> dictionary;
 	for (int i = 0; i < tree()->topLevelItemCount(); ++i) {
 		QTreeWidgetItem* item = tree()->topLevelItem(i);
 		std::string name = item->text(0).toStdString();
 		brush_item* bi = static_cast<brush_item*>(item);
-		dictionary[name] = std::get<ch::brush_fn>(bi->brush_expression->eval());
+		dictionary[name] = bi->brush_expression;
 	}
 	return dictionary;
 }
 
-ui::brush_panel::brush_item::brush_item(const std::string& name, ch::brush_expression_ptr expr) :
+ui::brush_panel::brush_item::brush_item(const std::string& name, ch::brush_expr_ptr expr) :
 	QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString(name.c_str()))),
 	brush_expression(expr), 
 	is_toplevel(true)
 {}
 
-ui::brush_panel::brush_item::brush_item(ch::brush_expression_ptr expr) :
-	QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString(expr->to_short_string().c_str()))),
+ui::brush_panel::brush_item::brush_item(ch::brush_expr_ptr expr) :
+	QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString(expr->short_string().c_str()))),
 	brush_expression(expr), 
 	is_toplevel(false)
 {}
 
-ch::brush_expression* ui::brush_panel::brush_item::as_expr()
-{
-	return dynamic_cast<ch::brush_expression*>(brush_expression.get());
-}
-
 bool ui::brush_panel::brush_item::is_leaf() const {
-	return (!brush_expression->children() || brush_expression->children()->empty());
+	return brush_expression->children().empty();
 }
 
 void ui::brush_panel::insert_brush_item(brush_item* parent, brush_item* item) {
 	parent->addChild(item);
-	if (item->brush_expression->is_expression()) {
-		auto expr = item->brush_expression;
-		auto children = expr->children();
-		if (!children) {
-			return;
-		}
-		for (auto child : *children) {
-			insert_brush_item(item, new brush_item(child));
-		}
+	auto expr = item->brush_expression;
+	for (auto child : expr->children()) {
+		insert_brush_item(item, new brush_item(child));
 	}
 }
 
-void ui::brush_panel::insert_toplevel_item(QTreeWidget* tree, const std::string& name, ch::brush_expression_ptr expr) {
+void ui::brush_panel::insert_toplevel_item(QTreeWidget* tree, const std::string& name, ch::brush_expr_ptr expr) {
 	auto toplevel_item = new brush_item(name, expr);
 	tree->addTopLevelItem(toplevel_item);
-	auto children = expr->children();
 
-	if (!children) {
-		return;
-	}
-
-	for (auto child : *children) {
+	for (auto child : expr->children()) {
 		insert_brush_item(toplevel_item, new brush_item(child));
 	}
 }
@@ -684,6 +668,7 @@ QTreeWidgetItem* toplevel_parent(QTreeWidgetItem* twi) {
 }
 
 void ui::brush_panel::handle_double_click(QTreeWidgetItem* item, int column) {
+	/*
 	brush_item* bi = static_cast<brush_item*>(item);
 	if (bi->is_toplevel) {
 		auto result = brush_dialog::edit_brush(bi->text(0).toStdString(), 
@@ -715,4 +700,5 @@ void ui::brush_panel::handle_double_click(QTreeWidgetItem* item, int column) {
 			insert_toplevel_item(tree(), toplevel_parent_name, toplevel_parent_body);
 		}
 	}
+	*/
 }

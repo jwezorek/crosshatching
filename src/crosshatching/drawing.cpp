@@ -1,7 +1,7 @@
 #include "drawing.hpp"
 #include "geometry.hpp"
 #include "point_set.hpp"
-#include "brush_language.hpp"
+#include "brush_lang.hpp"
 #include "segmentation.hpp"
 #include "qdebug.h"
 #include <opencv2/core.hpp>
@@ -51,10 +51,10 @@ namespace {
 
     public:
         progress_logger(const std::string& job_name, const ch::callbacks& cbs) :
-            job_name_( job_name ),
-            prog_fn_( cbs.update_progress_cb ),
-            stat_fn_( cbs.update_status_cb ),
-            log_fn_( cbs.log_message_cb ),
+            job_name_(job_name),
+            prog_fn_(cbs.update_progress_cb),
+            stat_fn_(cbs.update_status_cb),
+            log_fn_(cbs.log_message_cb),
             total_blobs(0),
             curr_blob(0)
         {};
@@ -79,7 +79,7 @@ namespace {
             }
             if (log_fn_) {
                 if (completed_new_quantile(layer_blob, total_layer_blobs, 10)) {
-                    log(std::string("        ") + 
+                    log(std::string("        ") +
                         std::to_string(pcnt_complete(layer_blob, total_layer_blobs)) +
                         "% complete...");
                 }
@@ -123,7 +123,7 @@ namespace {
 
     template<typename T>
     std::vector<std::tuple<T, find_contour_output>> perform_find_contours(
-            const cv::Mat& input) {
+        const cv::Mat& input) {
         auto planes = color_masks<T>(input);
         return planes |
             rv::transform(
@@ -134,7 +134,7 @@ namespace {
 
                     return { value, std::move(output) };
                 }
-            ) | r::to_vector;
+        ) | r::to_vector;
     }
 
     enum class direction {
@@ -297,8 +297,8 @@ namespace {
         poly.reserve(n);
 
         auto contour = canonicalized_cyclic_contour_view(ip);
-        auto crawler = pixel_crawler{ 
-            contour[0], counter_clockwise ? direction::NW : direction::SW 
+        auto crawler = pixel_crawler{
+            contour[0], counter_clockwise ? direction::NW : direction::SW
         };
         auto neighbors = neighbor_view(contour);
         auto iter = neighbors.begin();
@@ -319,7 +319,7 @@ namespace {
     }
 
     std::vector<ch::polygon> contour_info_to_polygons(
-            const find_contour_output& contours) {
+        const find_contour_output& contours) {
 
         std::unordered_map<int, int> contour_index_to_poly_index;
         std::vector<ch::polygon> blobs;
@@ -343,7 +343,51 @@ namespace {
         }
         return blobs;
     }
+}
 
+std::vector<std::tuple<ch::brush_expr_ptr, cv::Mat>> ch::generate_ink_layer_images(
+        cv::Mat img, cv::Mat label_img,
+        const std::vector<std::tuple<ch::brush_expr_ptr, double>>& brush_intervals) {
+    return {};
+}
+
+ch::drawing ch::generate_crosshatched_drawing(const ch::crosshatching_job& job, const callbacks& cbs) {
+    return {};
+}
+
+void ch::write_to_svg(const std::string& filename, const drawing& d,
+        std::function<void(double)> update_progress_cb) {
+
+}
+
+ch::drawing ch::scale(const drawing& d, double scale) {
+    return {};
+}
+
+cv::Mat ch::paint_drawing(const ch::drawing& d, std::function<void(double)> update_progress_cb) {
+    return {};
+}
+
+std::vector<std::tuple<uchar, ch::polygon>> ch::detail::to_blobs_from_1channel_image(
+        const cv::Mat& input) {
+    return {};
+}
+
+std::vector<std::tuple<ch::color, ch::polygon>> ch::detail::to_blobs_from_3channel_image(
+        const cv::Mat& input) {
+    return {};
+}
+
+void ch::raster_to_vector(const std::string& fname, const cv::Mat& mat, double scale, double param) {
+
+}
+
+void ch::debug_drawing(const cv::Mat& mat) {
+
+}
+
+
+    /*
     ch::polylines clip_crosshatching_to_bbox(
             ch::crosshatching_range swatch, const ch::rectangle& bbox) {
 
@@ -1058,25 +1102,9 @@ void ch::raster_to_vector(const std::string& fname, const cv::Mat& mat, double s
     polygons_to_svg<ch::color>(fname, blobs, scale);
 }
 
-/*
-void ch::debug_drawing(const cv::Mat& mat) {
-    cv::Mat img = cv::imread("C:\\test\\polygon.png");
-    img = ch::convert_to_1channel_gray(img);
-    auto blobs = to_blobs<uchar>(img);
-    blobs = ch::simplify_colored_polygons<uchar>(blobs, 1.5);
-    auto poly = std::get<1>(blobs[1]);
-
-    std::vector<ch::polygon> output = { poly };
-    auto polys = output;
-    while (!polys.empty()) {
-        polys = ch::buffer(polys, -2.0);
-        std::copy(polys.begin(), polys.end(), std::back_inserter(output));
-    }
-
-    debug_polygons("C:\\test\\polygons.svg", output);
-}
-*/
 
 void ch::debug_drawing(const cv::Mat& mat) {
     debug_brushes();
 }
+
+*/

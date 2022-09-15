@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../crosshatching/drawing.hpp"
-#include "../crosshatching/brush_language.hpp"
+#include "../crosshatching/brush_lang.hpp"
 #include "settingctrls.hpp"
 #include "treepanel.h"
 #include "image_box.h"
@@ -64,7 +64,7 @@ namespace ui {
 
 		brush_panel(layer_panel& layers);
 		std::vector<std::string> brush_names() const;
-        std::unordered_map<std::string, ch::brush_fn> brush_dictionary() const;
+        std::unordered_map<std::string, ch::brush_expr_ptr> brush_dictionary() const;
 
 	private:
 
@@ -72,18 +72,17 @@ namespace ui {
 
 		class brush_item : public QTreeWidgetItem {
 		public:
-            brush_item(const std::string& name, ch::brush_expression_ptr expr);
-            brush_item(ch::brush_expression_ptr expr);
+            brush_item(const std::string& name, ch::brush_expr_ptr expr);
+            brush_item(ch::brush_expr_ptr expr);
             
-			ch::brush_expression_ptr brush_expression;
+			ch::brush_expr_ptr brush_expression;
             bool is_toplevel;
 
-            ch::brush_expression* as_expr();
             bool is_leaf() const;
 		};
 
         static void insert_brush_item(brush_item* parent, brush_item* item);
-        static void insert_toplevel_item(QTreeWidget* tree, const std::string& name, ch::brush_expression_ptr expr);
+        static void insert_toplevel_item(QTreeWidget* tree, const std::string& name, ch::brush_expr_ptr expr);
         void add_brush_node();
         void delete_brush_node();
         void sync_layer_panel();
@@ -148,8 +147,8 @@ namespace ui {
         cv::Mat input_to_nth_stage(int index) const;
         cv::Mat segmentation() const;
         ch::crosshatching_job drawing_job() const;
-        std::vector<std::tuple<ch::brush_fn, double>> brush_per_intervals() const;
-        std::vector<std::tuple<ch::brush_fn, cv::Mat>> layers() const;
+        std::vector<std::tuple<ch::brush_expr_ptr, double>> brush_per_intervals() const;
+        std::vector<std::tuple<ch::brush_expr_ptr, cv::Mat>> layers() const;
         std::vector<cv::Mat> layer_images() const;
         ch::parameters drawing_params() const;
         std::string image_src_filename() const;

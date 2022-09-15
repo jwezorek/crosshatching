@@ -37,7 +37,8 @@ namespace ch {
     public:
         brush();
         brush(brush_expr_ptr expr, double epsilon = k_epsilon,
-            dimensions<double> swatch_sz = { static_cast<double>(k_swatch_sz) }, const bkgd_swatches& bkgds = {});
+            dimensions<double> swatch_sz = { static_cast<double>(k_swatch_sz) }, 
+            const bkgd_swatches& bkgds = {});
 
         void build_n(int n);
         double gray_value_to_param(double gray_val);

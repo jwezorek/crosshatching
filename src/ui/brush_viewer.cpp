@@ -1,7 +1,7 @@
 #include "brush_viewer.h"
 #include <QtWidgets>
 
-ui::brush_viewer::brush_viewer(const std::string& brush_name, ch::brush_fn brush, QWidget *parent)
+ui::brush_viewer::brush_viewer(const std::string& brush_name, ch::brush_expr_ptr b_expr, QWidget *parent)
     : QDialog(parent)
 {
     setWindowTitle(brush_name.c_str());
@@ -18,7 +18,7 @@ ui::brush_viewer::brush_viewer(const std::string& brush_name, ch::brush_fn brush
     );
     main_layout->addLayout(row);
 
-    brush_ = ch::old_brush(brush, 1);
+    brush_ = ch::brush(b_expr);
     brush_.build_n(10);
     update_swatch();
 }

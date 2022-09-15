@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../crosshatching/brush_language.hpp"
+#include "../crosshatching/brush_lang.hpp"
 #include "../crosshatching/drawing.hpp"
 #include "image_box.h"
 #include "main_window.h"
@@ -36,11 +36,11 @@ namespace ui {
         brush_dialog(QWidget* parent = 0);
 
         std::string brush_name() const;
-        ch::brush_expression_ptr brush_expression() const;
+        ch::brush_expr_ptr brush_expression() const;
 
-        static std::optional<std::tuple<std::string, ch::brush_expression_ptr>> create_brush();
-        static std::optional<std::tuple<std::string, ch::brush_expression_ptr>> edit_brush(const std::string& name, const std::string& code);
-        static ch::brush_expression_ptr edit_brush_expr(const std::string& code);
+        static std::optional<std::tuple<std::string, ch::brush_expr_ptr>> create_brush();
+        static std::optional<std::tuple<std::string, ch::brush_expr_ptr>> edit_brush(const std::string& name, const std::string& code);
+        static ch::brush_expr_ptr edit_brush_expr(const std::string& code);
 
         void set(const std::string& name, const std::string& code);
         void set(const std::string& code);
@@ -56,7 +56,7 @@ namespace ui {
         QTextEdit* code_box_;
         QDialogButtonBox* btns_;
         QPushButton* view_btn_;
-        ch::brush_expression_ptr brush_;
+        ch::brush_expr_ptr brush_;
     };
 
     using layer_param = std::variant<bool, std::tuple<std::string, double>>;

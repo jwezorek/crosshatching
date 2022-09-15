@@ -321,6 +321,10 @@ namespace {
             }
             return local_ctxt.strokes.value();
         }
+
+        std::string short_string() const override {
+            return "foo";
+        }
     };
 
     class number_expr : public ch::brush_expr {
@@ -331,6 +335,10 @@ namespace {
 
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             return value_;
+        }
+
+        std::string short_string() const override {
+            return std::to_string(value_);
         }
     };
 
@@ -352,6 +360,10 @@ namespace {
             }
             return iter->second;
         }
+
+        std::string short_string() const override {
+            return var_;
+        }
     };
 
     class define_expr : public ch::brush_expr {
@@ -367,6 +379,10 @@ namespace {
             }
             ctxt.variables[var] = children_[1]->eval(ctxt);
             return {};
+        }
+
+        std::string short_string() const override {
+            return "foo";
         }
     };
 
@@ -422,6 +438,10 @@ namespace {
             auto t = variable_value(ctxt.variables, k_brush_param_var, 0.0);
             return ch::ramp(t, k, right != 0.0, up != 0.0);
         }
+
+        std::string short_string() const override {
+            return "foo";
+        }
     };
 
     class norm_rnd_expr : public ch::brush_expr {
@@ -434,6 +454,10 @@ namespace {
             return [=](const ch::cbrng_state& rnd)->double {
                 return ch::normal_random(rnd, mean, stddev);
             };
+        }
+
+        std::string short_string() const override {
+            return "foo";
         }
     };
 
@@ -452,6 +476,10 @@ namespace {
             );
             auto t = variable_value(ctxt.variables, k_brush_param_var, 0.0);
             return std::lerp(from, to, t);
+        }
+
+        std::string short_string() const override {
+            return "foo";
         }
     };
 
@@ -473,6 +501,10 @@ namespace {
                 vert_space
             );
         }
+
+        std::string short_string() const override {
+            return "foo";
+        }
     };
 
     class add_expr : public ch::brush_expr {
@@ -480,6 +512,10 @@ namespace {
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto args = evaluate_to_vector<double>(ctxt, children_, "add");
             return r::accumulate(args, 0.0);
+        }
+
+        std::string short_string() const override {
+            return "foo";
         }
     };
 
@@ -489,6 +525,10 @@ namespace {
             auto args = evaluate_to_vector<double>(ctxt, children_, "multiply");
             return r::accumulate(args, 1.0, std::multiplies<double>());
         }
+
+        std::string short_string() const override {
+            return "foo";
+        }
     };
 
     class subtract_expr : public ch::brush_expr {
@@ -497,6 +537,10 @@ namespace {
             auto args = evaluate_to_vector<double>(ctxt, children_, "subtract");
             return args.front() - r::accumulate(args | rv::drop(1), 0.0);
         }
+
+        std::string short_string() const override {
+            return "foo";
+        }
     };
 
     class divide_expr : public ch::brush_expr {
@@ -504,6 +548,10 @@ namespace {
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto args = evaluate_to_vector<double>(ctxt, children_, "divide");
             return args.front() / r::accumulate(args | rv::drop(1), 1.0, std::multiplies<double>());
+        }
+
+        std::string short_string() const override {
+            return "foo";
         }
     };
 
@@ -532,6 +580,10 @@ namespace {
 
             return ch::strokes{ disintegrated };
         }
+
+        std::string short_string() const override {
+            return "foo";
+        }
     };
     
     class jiggle_expr : public ch::brush_expr {
@@ -557,12 +609,20 @@ namespace {
                 )
             };
         }
+
+        std::string short_string() const override {
+            return "foo";
+        }
     };
 
     class quote_expr : public ch::brush_expr {
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             return children_.front();
+        }
+
+        std::string short_string() const override {
+            return "foo";
         }
     };
 
@@ -764,6 +824,10 @@ ch::strokes ch::transform(ch::strokes strokes, const ch::matrix& mat) {
 
 void ch::brush_expr::set_children(std::span<const ch::brush_expr_ptr> children) {
     children_ = children | r::to_vector;
+}
+
+const std::vector<ch::brush_expr_ptr>& ch::brush_expr::children() const {
+    return children_;
 }
 
 std::variant<ch::brush_expr_ptr, std::runtime_error> ch::parse(const std::string& input) {

@@ -414,7 +414,7 @@ ch::matrix ch::scale_matrix(double x_scale, double y_scale) {
 		0, 0, 1;
 	return scale;
 }
-
+/*
 ranges::any_view<ch::polyline> ch::transform_view(ranges::any_view<polyline> polys, const matrix& mat)
 {
 	return polys | rv::transform([=](const auto& poly) { return ch::transform(poly, mat); });
@@ -430,7 +430,7 @@ std::vector<ch::polyline> ch::transform( std::span<const polyline> polys, const 
 	);
 	return output;
 }
-
+*/
 ch::point ch::mean_point(std::span<const point> points)
 {
 	auto x = 0.0;
