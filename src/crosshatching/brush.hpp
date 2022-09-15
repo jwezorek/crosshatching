@@ -3,6 +3,7 @@
 #include <map>
 #include <unordered_map>
 #include <opencv2/core.hpp>
+#include <range/v3/all.hpp>
 #include "brush_lang.hpp"
 
 namespace ch {
@@ -12,7 +13,7 @@ namespace ch {
     constexpr int k_swatch_sz = 512;
     constexpr double k_epsilon = 0.001;
 
-    struct crosshatching_swatch {
+    struct swatch {
         strokes content;
         dimensions<double> sz;
     };
@@ -38,10 +39,9 @@ namespace ch {
         brush(brush_expr_ptr expr, double epsilon = k_epsilon,
             dimensions<double> swatch_sz = { static_cast<double>(k_swatch_sz) }, const bkgd_swatches& bkgds = {});
 
-        void build();
         void build_n(int n);
         double gray_value_to_param(double gray_val);
-        crosshatching_swatch get_hatching(double gray_val, dimensions<double> sz);
+        swatch get_hatching(double gray_val, dimensions<double> sz);
         bkgd_swatches render_swatches(double gray_level);
         cv::Mat swatch(double gray_level);
         double min_gray_level() const;

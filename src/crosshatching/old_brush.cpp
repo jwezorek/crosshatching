@@ -587,39 +587,7 @@ double ch::old_brush::build_between(double gray, gray_map_iter left, gray_map_it
         return build_between(gray, mid_iter, right);
     }
 }
-/*
-void ch::old_brush::build() {
-    throw std::runtime_error("dont use this build");
 
-    if (!is_uinitiailized()) {
-        throw std::runtime_error("brush is already built");
-    }
-    range_queue queue(compare_items);
-
-    auto make_item = [this](double left, double right)->range_queue_item {
-        auto left_gray = get_or_sample_param(left);
-        auto right_gray = get_or_sample_param(right);
-        return {
-            left,
-            right,
-            left_gray,
-            right_gray
-        };
-    };
-    
-    queue.push(make_item(0, 1));
-    while (!queue.empty()) {
-        //debug(queue);
-        auto item = queue.top();
-        queue.pop();
-        if (item.gray_level_right - item.gray_level_left > eps_) {
-            double mid = (item.left + item.right) / 2.0;
-            queue.push(make_item(item.left, mid));
-            queue.push(make_item(mid, item.right));
-        }
-    }
-}
-*/
 void ch::old_brush::build_n(int n)
 {
     if (!is_uinitiailized()) {

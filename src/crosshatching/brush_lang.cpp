@@ -11,6 +11,9 @@
 #include <sstream>
 #include <fstream>
 #include <numeric>
+#include <opencv2/highgui.hpp>
+
+/*------------------------------------------------------------------------------------------------------*/
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -729,6 +732,11 @@ namespace {
     }
 }
 
+ch::brush_context::brush_context(const ch::polygon& p, double param) :
+        poly(p) {
+    variables[k_brush_param_var] = param;
+}
+
 ranges::any_view<ch::point> ch::transform(r::any_view<ch::point> poly, const ch::matrix& mat) {
     return poly |
         rv::transform(
@@ -777,6 +785,11 @@ std::variant<ch::brush_expr_ptr, std::runtime_error> ch::parse(const std::string
     return expr;
 }
 
+ch::strokes ch::brush_expr_to_strokes(const brush_expr_ptr& expr, const polygon& poly, double t) {
+    brush_context ctxt(poly, t);
+    return std::get<strokes>(expr->eval(ctxt));
+}
+
 void ch::debug_brushes() {
 
     std::string code = R"(
@@ -802,12 +815,10 @@ void ch::debug_brushes() {
       )";
 
     auto e = parse(code);
-    brush_context ctxt{
-        make_polygon(std::vector<point>{ {0,-500}, {500,0}, {0,500}, {-500,0}}),
-        {},
-        {}
-    };
-    ctxt.variables[k_brush_param_var] = 0.5;
+    brush_context ctxt(
+        make_polygon(std::vector<point>{ {0, -500}, { 500,0 }, { 0,500 }, { -500,0 }}), 
+        0.5
+    );
     auto output = std::get<strokes>(std::get<brush_expr_ptr>(e)->eval(ctxt));
 
     
