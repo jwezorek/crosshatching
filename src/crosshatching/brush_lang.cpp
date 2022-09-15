@@ -555,8 +555,12 @@ namespace {
             }
             auto probability = std::clamp(std::get<double>(result), 0.0, 1.0);
             auto seed = ch::random_seed();
+
+            auto input = *ctxt.strokes;
+            ctxt.strokes = {};
+
             auto disintegrated =
-                rv::enumerate(*ctxt.strokes) |
+                rv::enumerate(input) |
                 rv::filter(
                     [probability, seed](const auto& tup)->bool {
                         auto [index, stroke] = tup;
@@ -581,9 +585,11 @@ namespace {
                 throw std::runtime_error("jiggle : invalid argument");
             }
             auto seed = ch::random_seed();
+            auto input = *ctxt.strokes;
+            ctxt.strokes = {};
 
             return ch::strokes{
-                rv::enumerate(*ctxt.strokes) |
+                rv::enumerate(input) |
                 rv::transform(
                     [seed, rand = std::get<ch::random_func>(result)](const auto& tup){
                         auto [index, stroke] = tup;
