@@ -271,7 +271,34 @@ namespace {
         return std::get<T>(iter->second);
     }
 
-    class pipe_expr : public ch::brush_expr {
+    enum class operation {
+        quote,
+        define,
+        brush,
+        horz_strokes,
+        norm_rnd,
+        lerp,
+        ramp,
+        rotate,
+        disintegrate,
+        jiggle,
+        pen_thickness,
+        add,
+        subtract,
+        multiply,
+        divide,
+    };
+
+    std::string op_to_string(operation sym);
+
+    template<operation OP>
+    class op_expr : public ch::brush_expr {
+        std::string short_string() const override {
+            return op_to_string(OP);
+        }
+    };
+
+    class pipe_expr : public op_expr<operation::brush> {
 
         class expr_val_visitor {
             ch::brush_context& ctxt_;
@@ -321,10 +348,6 @@ namespace {
             }
             return local_ctxt.strokes.value();
         }
-
-        std::string short_string() const override {
-            return "foo";
-        }
     };
 
     class number_expr : public ch::brush_expr {
@@ -366,7 +389,7 @@ namespace {
         }
     };
 
-    class define_expr : public ch::brush_expr {
+    class define_expr : public op_expr<operation::define> {
     
     public:
 
@@ -381,9 +404,6 @@ namespace {
             return {};
         }
 
-        std::string short_string() const override {
-            return "foo";
-        }
     };
 
     std::string error_msg_from_tag(const std::string& msg, const std::string& err_tag) {
@@ -424,7 +444,7 @@ namespace {
         }
     }
 
-    class ramp_expr : public ch::brush_expr {
+    class ramp_expr : public op_expr<operation::ramp> {
     public:
 
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
@@ -439,12 +459,9 @@ namespace {
             return ch::ramp(t, k, right != 0.0, up != 0.0);
         }
 
-        std::string short_string() const override {
-            return "foo";
-        }
     };
 
-    class norm_rnd_expr : public ch::brush_expr {
+    class norm_rnd_expr : public op_expr<operation::norm_rnd> {
     public:
 
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
@@ -456,12 +473,9 @@ namespace {
             };
         }
 
-        std::string short_string() const override {
-            return "foo";
-        }
     };
 
-    class lerp_expr : public  ch::brush_expr {
+    class lerp_expr : public op_expr<operation::lerp> {
     public:
 
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
@@ -478,12 +492,9 @@ namespace {
             return std::lerp(from, to, t);
         }
 
-        std::string short_string() const override {
-            return "foo";
-        }
     };
 
-    class linear_brush_expr : public ch::brush_expr {
+    class horz_strokes_expr : public op_expr<operation::horz_strokes> {
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto [run_length, space_length, vert_space] =
@@ -501,61 +512,41 @@ namespace {
                 vert_space
             );
         }
-
-        std::string short_string() const override {
-            return "foo";
-        }
     };
 
-    class add_expr : public ch::brush_expr {
+    class add_expr : public op_expr<operation::add> {
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto args = evaluate_to_vector<double>(ctxt, children_, "add");
             return r::accumulate(args, 0.0);
         }
-
-        std::string short_string() const override {
-            return "foo";
-        }
     };
 
-    class multiply_expr : public ch::brush_expr {
+    class multiply_expr :public op_expr<operation::multiply> {
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto args = evaluate_to_vector<double>(ctxt, children_, "multiply");
             return r::accumulate(args, 1.0, std::multiplies<double>());
         }
-
-        std::string short_string() const override {
-            return "foo";
-        }
     };
 
-    class subtract_expr : public ch::brush_expr {
+    class subtract_expr : public op_expr<operation::subtract> {
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto args = evaluate_to_vector<double>(ctxt, children_, "subtract");
             return args.front() - r::accumulate(args | rv::drop(1), 0.0);
         }
-
-        std::string short_string() const override {
-            return "foo";
-        }
     };
 
-    class divide_expr : public ch::brush_expr {
+    class divide_expr : public op_expr<operation::divide> {
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto args = evaluate_to_vector<double>(ctxt, children_, "divide");
             return args.front() / r::accumulate(args | rv::drop(1), 1.0, std::multiplies<double>());
         }
-
-        std::string short_string() const override {
-            return "foo";
-        }
     };
 
-    class disintegrate_expr : public ch::brush_expr {
+    class disintegrate_expr : public op_expr<operation::disintegrate> {
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto result = children_.front()->eval(ctxt);
@@ -580,13 +571,9 @@ namespace {
 
             return ch::strokes{ disintegrated };
         }
-
-        std::string short_string() const override {
-            return "foo";
-        }
     };
     
-    class jiggle_expr : public ch::brush_expr {
+    class jiggle_expr : public op_expr<operation::jiggle> {
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto result = children_.front()->eval(ctxt);
@@ -609,39 +596,13 @@ namespace {
                 )
             };
         }
-
-        std::string short_string() const override {
-            return "foo";
-        }
     };
 
-    class quote_expr : public ch::brush_expr {
+    class quote_expr : public op_expr<operation::quote> {
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             return children_.front();
         }
-
-        std::string short_string() const override {
-            return "foo";
-        }
-    };
-
-    enum class operation {
-        quote,
-        define,
-        brush,
-        horz_strokes,
-        norm_rnd,
-        lerp,
-        ramp,
-        rotate,
-        disintegrate,
-        jiggle,
-        pen_thickness,
-        add,
-        subtract,
-        multiply,
-        divide,
     };
 
     using expr_creation_fn = std::function<ch::brush_expr_ptr(std::span<const ch::brush_expr_ptr>)>;
@@ -682,7 +643,7 @@ namespace {
         {operation::rotate,       "rot",          make_rot_create_fn()},
         {operation::disintegrate, "dis",          make_op_create_fn<disintegrate_expr>()},
         {operation::jiggle,       "jiggle",       make_op_create_fn<jiggle_expr>()},
-        {operation::horz_strokes, "horz_strokes", make_op_create_fn<linear_brush_expr>()},
+        {operation::horz_strokes, "horz_strokes", make_op_create_fn<horz_strokes_expr>()},
         {operation::add     ,     "+",            make_op_create_fn<add_expr>()},
         {operation::subtract,     "-",            make_op_create_fn<subtract_expr>()},
         {operation::multiply,     "*",            make_op_create_fn<multiply_expr>()},
