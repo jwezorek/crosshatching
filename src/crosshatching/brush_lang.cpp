@@ -770,31 +770,6 @@ ch::brush_context::brush_context(const ch::polygon& p, double param) :
     variables[k_brush_param_var] = param;
 }
 
-ranges::any_view<ch::point> ch::transform(r::any_view<ch::point> poly, const ch::matrix& mat) {
-    return poly |
-        rv::transform(
-            [mat](const ch::point& pt) {
-                return ch::transform(pt, mat);
-            }
-    );
-}
-
-ch::stroke ch::transform(ch::stroke s, const ch::matrix& mat) {
-    return ch::stroke{
-        ch::transform(s.polyline, mat),
-        s.pen_thickness
-    };
-}
-
-ch::strokes ch::transform(ch::strokes strokes, const ch::matrix& mat) {
-    return strokes |
-        rv::transform(
-            [mat](auto stroke) {
-                return ch::transform(stroke, mat);
-            }
-        );
-}
-
 void ch::brush_expr::set_children(std::span<const ch::brush_expr_ptr> children) {
     children_ = children | r::to_vector;
 }

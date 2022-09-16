@@ -13,6 +13,8 @@
 #include <unordered_set>
 #include <qdebug.h>
 
+/*------------------------------------------------------------------------------------------------------*/
+
 namespace r = ranges;
 namespace rv = ranges::views;
 
@@ -44,9 +46,10 @@ namespace {
 	}
 
 	uchar sigmoidal_contrast(uchar u, double contrast, double thresh) {
-		auto sigmoidal_contrast = [contrast, thresh](double u) {
-			return (1.0 / (1.0 + std::exp(contrast * (thresh - u))) - 1.0 / (1.0 + std::exp(contrast * thresh))) /
-				(1.0 / (1.0 + std::exp(contrast * (thresh - 1.0))) - 1.0 / (1.0 + std::exp(contrast * thresh)));
+		using namespace std;
+		auto sigmoidal_contrast = [k = contrast, mu = thresh](double u) {
+			return (1.0 / (1.0 + exp(k * (mu - u))) - 1.0 / (1.0 + exp(k * mu))) /
+				   (1.0 / (1.0 + exp(k * (mu - 1.0))) - 1.0 / (1.0 + exp(k * mu)));
 		};
 		return static_cast<uchar>(
 			255.0 * sigmoidal_contrast( static_cast<double>(u) / 255.0 )
@@ -470,3 +473,28 @@ ch::random_func ch::const_rnd_func(double val) {
 ch::cbrng_state::cbrng_state(uint32_t k1, uint32_t k2, uint32_t k3, uint32_t k4) :
 	keys( {k1,k2,k3,k4})
 {}
+
+ch::polyline_rng ch::transform(ch::polyline_rng poly, const ch::matrix& mat) {
+	return poly |
+		rv::transform(
+			[mat](const ch::point& pt) {
+				return ch::transform(pt, mat);
+			}
+	);
+}
+
+ch::stroke ch::transform(ch::stroke s, const ch::matrix& mat) {
+	return ch::stroke{
+		ch::transform(s.polyline, mat),
+		s.pen_thickness
+	};
+}
+
+ch::strokes ch::transform(ch::strokes strokes, const ch::matrix& mat) {
+	return strokes |
+		rv::transform(
+			[mat](auto stroke) {
+				return ch::transform(stroke, mat);
+			}
+	);
+}

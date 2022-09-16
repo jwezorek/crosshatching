@@ -17,12 +17,6 @@
 
 namespace ch {
 
-    struct stroke {
-        ranges::any_view<ch::point> polyline;
-        double pen_thickness;
-    };
-    using strokes = ranges::any_view<stroke>;
-
     class brush_expr;
     using brush_expr_ptr = std::shared_ptr<brush_expr>;
     
@@ -51,8 +45,5 @@ namespace ch {
 
     std::variant<brush_expr_ptr, std::runtime_error> parse(const std::string& str);
     strokes brush_expr_to_strokes(const brush_expr_ptr& expr, const polygon& poly, double t);
-    ranges::any_view<ch::point> transform(ranges::any_view<ch::point> poly, const ch::matrix& mat);
-    stroke transform(stroke s, const ch::matrix& mat);
-    strokes transform(strokes s, const ch::matrix& mat);
     void debug_brushes();
 }

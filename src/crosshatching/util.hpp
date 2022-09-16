@@ -47,6 +47,18 @@ namespace ch {
         cbrng_state(uint32_t k1 = 0, uint32_t k2 = 0, uint32_t k3 = 0, uint32_t k4 = 0);
     };
 
+    // crosshatching strokes...
+    using polyline_rng = ranges::any_view<ch::point>;
+    struct stroke {
+        polyline_rng polyline;
+        double pen_thickness;
+    };
+    using strokes = ranges::any_view<stroke>;
+    polyline_rng transform(polyline_rng poly, const ch::matrix& mat);
+    stroke transform(stroke s, const ch::matrix& mat);
+    strokes transform(strokes s, const ch::matrix& mat);
+
+    // counter-based RNG...
     uint32_t random_seed();
     using random_func = std::function<double(const cbrng_state&)>;
     double normal_random(const cbrng_state& rnd, double mean, double stddev);
