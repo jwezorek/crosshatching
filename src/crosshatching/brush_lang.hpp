@@ -45,5 +45,6 @@ namespace ch {
 
     std::variant<brush_expr_ptr, std::runtime_error> parse(const std::string& str);
     strokes brush_expr_to_strokes(const brush_expr_ptr& expr, const polygon& poly, double t);
+    std::string pretty_print(const brush_expr_ptr& expr);
     void debug_brushes();
 }

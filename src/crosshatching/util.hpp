@@ -74,7 +74,8 @@ namespace ch {
     cv::Mat convert_to_1channel_gray(const cv::Mat& img);
     cv::Mat coherence_filter(cv::Mat img, int sigma, int str_sigma, float blend, int iter);
     cv::Mat anisotropic_diffusion(cv::Mat img, double alpha, double k, int iters);
-    std::tuple<cv::Mat,cv::Mat> meanshift_segmentation(const cv::Mat& input, int sigmaS, float sigmaR, int minSize);
+    std::tuple<cv::Mat,cv::Mat> meanshift_segmentation(
+        const cv::Mat& input, int sigmaS, float sigmaR, int minSize);
     int max_val_in_mat(cv::Mat mat);
     void label_map_to_visualization_img(cv::Mat img, const std::string& output_file);
     dimensions<int> mat_dimensions(cv::Mat mat);

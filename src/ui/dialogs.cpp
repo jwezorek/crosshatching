@@ -4,6 +4,8 @@
 #include <QtWidgets>
 #include <memory>
 
+/*------------------------------------------------------------------------------------------------------*/
+
 namespace {
 
     constexpr int k_test_swatch_sz = 150;
@@ -141,7 +143,9 @@ void ui::brush_dialog::parse_brush_code() {
         mb.setText(std::get<std::runtime_error>(result).what());
         mb.exec();
     } else {
-        brush_ = std::get<ch::brush_expr_ptr>(result);
+        auto new_brush_expr = std::get<ch::brush_expr_ptr>(result);
+        code_box_->setText(ch::pretty_print(new_brush_expr).c_str());
+        brush_ = new_brush_expr;
     }
     update_btn_enabled_state();
 }
@@ -182,7 +186,8 @@ std::optional<std::tuple<std::string, ch::brush_expr_ptr>> ui::brush_dialog::cre
     }
 }
 
-std::optional<std::tuple<std::string, ch::brush_expr_ptr>> ui::brush_dialog::edit_brush(const std::string& name, const std::string& code) {
+std::optional<std::tuple<std::string, ch::brush_expr_ptr>> ui::brush_dialog::edit_brush(
+        const std::string& name, const std::string& code) {
     std::unique_ptr<ui::brush_dialog> dlg = std::make_unique<ui::brush_dialog>();
     dlg->set(name, code);
     if (dlg->exec() == QDialog::Accepted) {
@@ -216,7 +221,8 @@ void ui::brush_dialog::set(const std::string& code) {
     parse_brush_code();
 }
 
-ui::layer_dialog::layer_dialog(const std::vector<std::string>& brushes, const ui::layer_param& current_layer_params) :
+ui::layer_dialog::layer_dialog(
+    const std::vector<std::string>& brushes, const ui::layer_param& current_layer_params) :
         QDialog(nullptr) {
     
     auto layout = new QVBoxLayout(this);
@@ -253,9 +259,11 @@ double ui::layer_dialog::value() const {
     return value_edit_->text().toDouble();
 }
 
-std::optional<std::tuple<std::string, double>> ui::layer_dialog::create_layer_item(const std::vector<std::string>& brushes, bool is_initial)
-{
-    std::unique_ptr<ui::layer_dialog> dlg = std::make_unique<ui::layer_dialog>(brushes, layer_param{ is_initial });
+std::optional<std::tuple<std::string, double>> ui::layer_dialog::create_layer_item(
+        const std::vector<std::string>& brushes, bool is_initial) {
+
+    std::unique_ptr<ui::layer_dialog> dlg = 
+        std::make_unique<ui::layer_dialog>(brushes, layer_param{ is_initial });
     if (dlg->exec() == QDialog::Accepted) {
         return { { dlg->brush_name(), dlg->value() } };
     } else {
@@ -266,7 +274,9 @@ std::optional<std::tuple<std::string, double>> ui::layer_dialog::create_layer_it
 std::optional<std::tuple<std::string, double>> ui::layer_dialog::edit_layer_item(
         const std::vector<std::string>& brushes, const std::string& curr_brush, double curr_end_val) {
 
-    std::unique_ptr<ui::layer_dialog> dlg = std::make_unique<ui::layer_dialog>(brushes, std::tuple(curr_brush, curr_end_val));
+    std::unique_ptr<ui::layer_dialog> dlg = std::make_unique<ui::layer_dialog>(
+        brushes, std::tuple(curr_brush, curr_end_val)
+    );
     if (dlg->exec() == QDialog::Accepted) {
         return { { dlg->brush_name(), dlg->value() } };
     } else {
@@ -298,13 +308,22 @@ void ui::layer_dialog::update_btn_enabled_state() {
     btns_->button(QDialogButtonBox::Ok)->setEnabled(valid_value);
 }
 
-/*--------------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------------------------------*/
 
 ui::test_swatch_picker::test_swatch_picker(cv::Mat img) :
         src_img_(img) {
     auto layout = new QVBoxLayout(this);
-    layout->addWidget(selector_ = new rect_in_image_selector(img, [this]() {this->update_btn_enabled_state(); }));
-    layout->addWidget(btns_ = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel));
+    layout->addWidget(
+        selector_ = new rect_in_image_selector(
+            img, 
+            [this]() {
+                this->update_btn_enabled_state(); 
+            }
+        )
+    );
+    layout->addWidget(
+        btns_ = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel)
+    );
     connect(btns_, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(btns_, &QDialogButtonBox::rejected, this, &QDialog::reject);
     update_btn_enabled_state();
@@ -338,7 +357,7 @@ cv::Mat ui::test_swatch_picker::get_test_swatch(cv::Mat src_img) {
     }
 }
 
-/*------------------------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------------------------------*/
 
 ui::drawing_progress::drawing_progress(ui::main_window* parent, const ch::crosshatching_job& job) :
         parent_(parent),
@@ -469,8 +488,7 @@ void ui::drawing_progress::generate_drawing() {
     thread->start();
 }
      
-
-/*------------------------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------------------------------*/
 
 ui::progress::progress() : 
         worker_(std::make_unique<worker>()),
@@ -512,7 +530,7 @@ std::any ui::progress::run(const std::string& title, std::function<std::any()> j
     return worker_->output();
 }
 
-/*--------------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------------------------------*/
 
 ui::settings::settings(const ch::parameters& params) {
     setWindowTitle("Crosshatching parameters");

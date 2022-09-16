@@ -763,6 +763,62 @@ namespace {
 
         return parser;
     }
+
+    bool is_leaf(const ch::brush_expr_ptr& expr) {
+        return expr->children().empty();
+    }
+
+    int expr_height(ch::brush_expr_ptr expr) {
+        if (is_leaf(expr)) {
+            return 0;
+        }
+        int highest_child_hgt = r::max(
+            expr->children() |
+                rv::transform(
+                    [](ch::brush_expr_ptr child)->int {
+                        return expr_height(child);
+                    }
+                )
+        );
+        return highest_child_hgt + 1;
+    }
+
+    std::string single_line_pretty_print(const ch::brush_expr_ptr& expr) {
+        auto str = expr->short_string();
+        if (is_leaf(expr)) {
+            return str;
+        }
+        std::stringstream ss;
+        ss << "(" << str;
+        for (auto child : expr->children()) {
+            ss << " " << single_line_pretty_print(child);
+        }
+        ss << ")";
+        return ss.str();
+    }
+
+    r::any_view<std::string> pretty_print(const ch::brush_expr_ptr& expr) {
+        if (expr_height(expr) <= 2) {
+            return rv::single( single_line_pretty_print(expr) );
+        }
+        auto pretty_printed_children = expr->children() |
+                rv::transform(
+                    [](const auto& child)->r::any_view<std::string> {
+                        return ::pretty_print(child) |
+                            rv::transform(
+                                [](const std::string& str)->std::string {
+                                    return "    " + str;
+                                }
+                        );
+                    }
+                ) | 
+                rv::join;
+        return rv::concat(
+            rv::single(std::string{ "(" } + expr->short_string()),
+            pretty_printed_children,
+            rv::single(std::string{ ")" })
+        );
+    }
 }
 
 ch::brush_context::brush_context(const ch::polygon& p, double param) :
@@ -800,6 +856,11 @@ std::variant<ch::brush_expr_ptr, std::runtime_error> ch::parse(const std::string
 ch::strokes ch::brush_expr_to_strokes(const brush_expr_ptr& expr, const polygon& poly, double t) {
     brush_context ctxt(poly, t);
     return std::get<strokes>(expr->eval(ctxt));
+}
+
+std::string ch::pretty_print(const ch::brush_expr_ptr& expr) {
+    auto lines = ::pretty_print(expr) | r::to_vector;
+    return lines | rv::join('\n') | r::to_<std::string>();
 }
 
 void ch::debug_brushes() {
