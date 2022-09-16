@@ -391,6 +391,13 @@ namespace {
 
     class number_expr : public ch::brush_expr {
         double value_;
+
+        static void rtrim_zeroes(std::string& s) {
+            s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+                return ch != '0';
+                }).base(), s.end());
+        }
+
     public:
         number_expr(double num) : value_(num)
         {}
@@ -400,7 +407,12 @@ namespace {
         }
 
         std::string short_string() const override {
-            return std::to_string(value_);
+            if (value_ == std::floor(value_)) {
+                return std::to_string(static_cast<int>(value_));
+            }
+            auto str = std::to_string(value_);
+            rtrim_zeroes(str);
+            return str;
         }
     };
 
@@ -654,10 +666,10 @@ namespace {
         {operation::disintegrate, "dis",          make_op_create_fn<disintegrate_expr>()},
         {operation::jiggle,       "jiggle",       make_op_create_fn<jiggle_expr>()},
         {operation::horz_strokes, "horz_strokes", make_op_create_fn<horz_strokes_expr>()},
-        {operation::add     ,     "+",            make_op_create_fn<add_expr>()},
+        {operation::add,          "+",            make_op_create_fn<add_expr>()},
         {operation::subtract,     "-",            make_op_create_fn<subtract_expr>()},
         {operation::multiply,     "*",            make_op_create_fn<multiply_expr>()},
-        {operation::divide  ,     "/",            make_op_create_fn<divide_expr>()},
+        {operation::divide,       "/",            make_op_create_fn<divide_expr>()},
         {operation::pen,          "pen",          make_op_create_fn<pen_expr>()},
         {operation::rotate,       "rot",          make_op_create_fn<rotate_expr>()},
     };
@@ -814,9 +826,9 @@ namespace {
                 ) | 
                 rv::join;
         return rv::concat(
-            rv::single(std::string{ "(" } + expr->short_string()),
+            rv::single( "(" + expr->short_string()),
             pretty_printed_children,
-            rv::single(std::string{ ")" })
+            rv::single( ")")
         );
     }
 }
