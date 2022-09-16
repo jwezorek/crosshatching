@@ -76,6 +76,9 @@
     <ClCompile Include="src\crosshatching\brush.cpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClCompile>
+    <ClCompile Include="src\crosshatching\painting.cpp">
+      <Filter>Source Files\crosshatching</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="src\ui\crosshatching.qrc">
@@ -137,6 +140,9 @@
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
     <ClInclude Include="src\crosshatching\brush.hpp">
+      <Filter>Source Files\crosshatching</Filter>
+    </ClInclude>
+    <ClInclude Include="src\crosshatching\painting.hpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
   </ItemGroup>

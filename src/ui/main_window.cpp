@@ -239,7 +239,45 @@ void ui::main_window::edit_settings() {
 }
 
 void ui::main_window::debug() {
-	ch::debug_drawing( processed_image() );
+	int wd = 800;
+	int hgt = 600;
+	QImage img(wd, hgt, QImage::Format::Format_ARGB32);
+	img.fill(Qt::white);
+
+	QPainter g(&img);
+
+	QPainterPath path;
+	path.addPolygon(
+		QPolygonF(
+			QVector<QPointF>{ 
+				{ 100,300 }, { 200,500 }, { 300,300 }, { 400,500 }, 
+				{ 600,500 }, { 700,300 }, { 600,100 }, { 500,300 },
+				{ 400,100 }, { 200,100 }, { 100,300 }
+			}
+		)
+	);
+	path.addPolygon(
+		QPolygonF(
+			QVector<QPointF>{
+				{ 400, 200 }, { 450,300 }, { 400,400 }, { 350,300 }, {400,200}
+			}
+		)
+	);
+	g.setPen(Qt::PenStyle::NoPen);
+	g.setBrush(QBrush(QColor(Qt::GlobalColor::blue)));
+	g.setRenderHint(QPainter::Antialiasing, true);
+	g.drawPath(path);
+
+	for (int i = 0; i < 5; i++) {
+		g.setPen(
+			QPen(QBrush(QColor(Qt::GlobalColor::black)), 0.5 + i * 0.5)
+		);
+		g.drawLine(QPointF(100, 100 + i *5), QPointF(700, 400 + i * 10));
+	}
+
+	img_proc_ctrls_.img_box->setFixedHeight(hgt);
+	img_proc_ctrls_.img_box->setFixedWidth(wd);
+	img_proc_ctrls_.img_box->set_image(img);
 }
 
 void ui::main_window::create_main_menu()
@@ -441,7 +479,6 @@ void ui::main_window::display(cv::Mat img) {
 	}
 	int wd = mat.cols;
 	int hgt = mat.rows;
-	int stride = mat.step;
 	img_proc_ctrls_.img_box->setFixedHeight(hgt);
 	img_proc_ctrls_.img_box->setFixedWidth(wd);
 	img_proc_ctrls_.img_box->set_image(mat);

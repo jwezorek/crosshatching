@@ -543,7 +543,8 @@ ch::ring ch::simplify_rectilinear_ring(const ch::ring& poly) {
 	return elide_adjacent_parallel_edges(poly);
 }
 
-std::optional<ch::line_segment> ch::linesegment_rectangle_intersection(const ch::line_segment& line_seg, const ch::rectangle& rect) {
+std::optional<ch::line_segment> ch::linesegment_rectangle_intersection(
+		const ch::line_segment& line_seg, const ch::rectangle& rect) {
 	auto [p1, p2] = line_seg;
 	auto [x1, y1, x2, y2] = rect;
 	return cohen_sutherland::clip(
