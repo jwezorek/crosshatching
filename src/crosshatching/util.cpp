@@ -142,33 +142,6 @@ uint32_t ch::random_seed() {
 	return distr(eng);
 }
 
-double ch::normal_rnd(double mean, double stddev)
-{
-	std::normal_distribution<double> nd(mean, stddev);
-	return nd(random);
-}
-
-double ch::uniform_rnd(double lower_bound, double upper_bound)
-{
-	std::uniform_real_distribution<> ud(lower_bound, upper_bound);
-	return ud(random);
-}
-
-int ch::uniform_rnd_int(int low, int high) {
-	std::uniform_int_distribution<> ud(low, high);
-	return ud(random);
-}
-
-ch::rnd_fn ch::normal_rnd_fn(double mean, double stddev)
-{
-	return [mean, stddev]() {return normal_rnd(mean, stddev); };
-}
-
-ch::rnd_fn ch::const_rnd_fn(double val)
-{
-	return [val]() {return val; };
-}
-
 double ch::ramp(double t, double k, bool right, bool up) {
 	if (right) {
 		return up ? ramp_up_right(t, k) : 1.0 - ramp_up_right(t, k);
@@ -366,13 +339,16 @@ double ch::degrees_to_radians(double degrees)
 }
 
 void ch::label_map_to_visualization_img(cv::Mat img, const std::string& output_file) {
-
+	auto uniform_rnd_int = [](int low, int high)->uint8_t {
+			std::uniform_int_distribution<> ud(low, high);
+			return static_cast<uint8_t>(ud(random));
+		};
 	using pixel = cv::Point3_<uint8_t>;
-	static auto random_color = []()->pixel {
+	static auto random_color = [uniform_rnd_int]()->pixel {
 		return pixel(
-			ch::uniform_rnd_int(0, 255), 
-			ch::uniform_rnd_int(0, 255), 
-			ch::uniform_rnd_int(0, 255)
+			uniform_rnd_int(0, 255), 
+			uniform_rnd_int(0, 255), 
+			uniform_rnd_int(0, 255)
 		);
 	};
 

@@ -47,20 +47,13 @@ namespace ch {
         cbrng_state(uint32_t k1 = 0, uint32_t k2 = 0, uint32_t k3 = 0, uint32_t k4 = 0);
     };
 
+    uint32_t random_seed();
     using random_func = std::function<double(const cbrng_state&)>;
     double normal_random(const cbrng_state& rnd, double mean, double stddev);
     double uniform_rnd(const cbrng_state& rnd, double lower_bound, double upper_bound);
     int uniform_rnd_int(const cbrng_state& rnd, int low, int high);
     random_func normal_rnd_func(double mean, double stddev);
     random_func const_rnd_func(double val);
-
-    using rnd_fn = std::function<double()>;
-    uint32_t random_seed();
-    double normal_rnd(double mean, double stddev);
-    double uniform_rnd(double lower_bound, double upper_bound);
-    int uniform_rnd_int(int low, int high);
-    rnd_fn normal_rnd_fn(double mean, double stddev);
-    ch::rnd_fn const_rnd_fn(double val);
 
     // image processing
     cv::Mat apply_contrast(cv::Mat img, double beta, double sigma);

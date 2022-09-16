@@ -279,7 +279,6 @@ namespace {
         norm_rnd,
         lerp,
         ramp,
-        rotate,
         disintegrate,
         jiggle,
         pen_thickness,
@@ -287,9 +286,18 @@ namespace {
         subtract,
         multiply,
         divide,
+        rotate,
+        pen
     };
 
     std::string op_to_string(operation sym);
+
+    std::string error_msg_from_tag(const std::string& msg, const std::string& err_tag) {
+        if (err_tag.empty()) {
+            return msg;
+        }
+        return err_tag + " : " + msg;
+    }
 
     template<operation OP>
     class op_expr : public ch::brush_expr {
@@ -297,6 +305,37 @@ namespace {
             return op_to_string(OP);
         }
     };
+
+    template<typename... Ts>
+    std::tuple<Ts...> evaluate_to_tuple(ch::brush_context& ctxt,
+            const std::vector<ch::brush_expr_ptr>& exprs, const std::string& err_tag = "") {
+        if (sizeof...(Ts) != exprs.size()) {
+            throw std::runtime_error(error_msg_from_tag("wrong number of args", err_tag));
+        }
+        int i = 0;
+        try {
+            return  std::tuple<Ts...>{
+                std::get<Ts>(exprs[i++]->eval(ctxt)) ...
+            };
+        } catch (...) {
+            throw std::runtime_error(error_msg_from_tag("bad argument(s)", err_tag));
+        }
+    }
+
+    template<typename T>
+    std::vector<T> evaluate_to_vector(ch::brush_context& ctxt,
+            const std::vector<ch::brush_expr_ptr>& exprs, const std::string& err_tag = "") {
+        try {
+            return exprs |
+                rv::transform(
+                    [&ctxt](ch::brush_expr_ptr ptr) {
+                        return std::get<T>(ptr->eval(ctxt));
+                    }
+            ) | r::to_vector;
+        } catch (...) {
+            throw std::runtime_error(error_msg_from_tag("bad argument(s)", err_tag));
+        }
+    }
 
     class pipe_expr : public op_expr<operation::brush> {
 
@@ -405,44 +444,6 @@ namespace {
         }
 
     };
-
-    std::string error_msg_from_tag(const std::string& msg, const std::string& err_tag) {
-        if (err_tag.empty()) {
-            return msg;
-        }
-        return err_tag + " : " + msg;
-    }
-
-    template<typename... Ts>
-    std::tuple<Ts...> evaluate_to_tuple(ch::brush_context& ctxt, 
-            const std::vector<ch::brush_expr_ptr>& exprs, const std::string& err_tag = "") {
-        if (sizeof...(Ts) != exprs.size()) {
-            throw std::runtime_error( error_msg_from_tag("wrong number of args", err_tag) );
-        }
-        int i = 0;
-        try {
-            return  std::tuple<Ts...>{
-                std::get<Ts>(exprs[i++]->eval(ctxt)) ...
-            };
-        } catch (...) {
-            throw std::runtime_error( error_msg_from_tag("bad argument(s)", err_tag) );
-        }
-    }
-
-    template<typename T>
-    std::vector<T> evaluate_to_vector(ch::brush_context& ctxt,
-            const std::vector<ch::brush_expr_ptr>& exprs, const std::string& err_tag = "") {
-        try {
-            return exprs |
-                rv::transform(
-                    [&ctxt](ch::brush_expr_ptr ptr) {
-                        return std::get<T>(ptr->eval(ctxt));
-                    }
-                ) | r::to_vector;
-        } catch (...) {
-            throw std::runtime_error(error_msg_from_tag("bad argument(s)", err_tag));
-        }
-    }
 
     class ramp_expr : public op_expr<operation::ramp> {
     public:
@@ -611,6 +612,22 @@ namespace {
         }
     };
 
+    class rotate_expr : public op_expr<operation::rotate> {
+    public:
+        ch::brush_expr_value eval(ch::brush_context& ctxt) {
+            ctxt.variables[k_rotation_var] = children_[0]->eval(ctxt);
+            return {};
+        }
+    };
+
+    class pen_expr : public op_expr<operation::pen> {
+    public:
+        ch::brush_expr_value eval(ch::brush_context& ctxt) {
+            ctxt.variables[k_pen_thickness_var] = children_[0]->eval(ctxt);
+            return {};
+        }
+    };
+
     using expr_creation_fn = std::function<ch::brush_expr_ptr(std::span<const ch::brush_expr_ptr>)>;
     struct op_info {
         operation op;
@@ -627,18 +644,6 @@ namespace {
         };
     }
 
-    expr_creation_fn make_rot_create_fn(){
-        return [](std::span<const ch::brush_expr_ptr> args)->ch::brush_expr_ptr {
-            std::vector<ch::brush_expr_ptr> new_args = {
-                std::make_shared<variable_expr>(k_rotation_var),
-                args.front()
-            };
-            auto def_expr = std::make_shared<define_expr>();
-            def_expr->set_children(new_args);
-            return def_expr;
-        };
-    }
-
     std::vector<op_info> g_ops{
         {operation::quote,        "quote",        make_op_create_fn<quote_expr>()},
         {operation::define,       "define",       make_op_create_fn<define_expr>()},
@@ -646,14 +651,15 @@ namespace {
         {operation::norm_rnd,     "norm_rnd",     make_op_create_fn<norm_rnd_expr>()},
         {operation::lerp,         "lerp",         make_op_create_fn<lerp_expr>()},
         {operation::ramp,         "ramp",         make_op_create_fn<ramp_expr>()},
-        {operation::rotate,       "rot",          make_rot_create_fn()},
         {operation::disintegrate, "dis",          make_op_create_fn<disintegrate_expr>()},
         {operation::jiggle,       "jiggle",       make_op_create_fn<jiggle_expr>()},
         {operation::horz_strokes, "horz_strokes", make_op_create_fn<horz_strokes_expr>()},
         {operation::add     ,     "+",            make_op_create_fn<add_expr>()},
         {operation::subtract,     "-",            make_op_create_fn<subtract_expr>()},
         {operation::multiply,     "*",            make_op_create_fn<multiply_expr>()},
-        {operation::divide  ,     "/",            make_op_create_fn<divide_expr>()}
+        {operation::divide  ,     "/",            make_op_create_fn<divide_expr>()},
+        {operation::pen,          "pen",          make_op_create_fn<pen_expr>()},
+        {operation::rotate,       "rot",          make_op_create_fn<rotate_expr>()},
     };
 
     operation string_to_op(const std::string& str) {
@@ -822,40 +828,4 @@ ch::strokes ch::brush_expr_to_strokes(const brush_expr_ptr& expr, const polygon&
 }
 
 void ch::debug_brushes() {
-
-    std::string code = R"(
-        ( 
-        brush
-	        (define lines 
-                (quote
-		            (brush 
-                        (horz_strokes
-                            (norm_rnd (lerp 0 800) (lerp 50 100))
-                            (norm_rnd (lerp 200 0) (lerp 20 0.05))
-                            (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
-                        )
-                        (dis (ramp 0.20 false true))
-                    )
-                )
-	        )
-	        (rot 45)
-	        lines
-	        (rot -45)
-	        lines
-        )
-      )";
-
-    auto e = parse(code);
-    brush_context ctxt(
-        make_polygon(std::vector<point>{ {0, -500}, { 500,0 }, { 0,500 }, { -500,0 }}), 
-        0.5
-    );
-    auto output = std::get<strokes>(std::get<brush_expr_ptr>(e)->eval(ctxt));
-
-    
-    write_to_svg(
-        "C:\\test\\foo.svg",
-        drawing2{ output, {600,600} },
-        std::function<void(double)>{}
-    );
 }
