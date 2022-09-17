@@ -2,13 +2,15 @@
 
 #include <string>
 #include <functional>
-#include <range/v3/all.hpp>
-#include <opencv2/core.hpp>
 #include <tuple>
 #include <optional>
 #include <optional>
 #include <span>
 #include <array>
+#include "qpainter.h"
+#include "qimage.h"
+#include <range/v3/all.hpp>
+#include <opencv2/core.hpp>
 #include "geometry.hpp"
 
 namespace ch {
@@ -16,8 +18,6 @@ namespace ch {
     using color = cv::Vec3b;
 
     namespace detail {
-        std::vector<uchar> unique_1channel_values(const cv::Mat& input);
-        std::vector<color> unique_3channel_values(const cv::Mat& input);
         void polygons_to_svg_aux(const std::string& output_file,
             std::span<std::tuple<color, polygon>> polys,
             double scale);
@@ -79,17 +79,13 @@ namespace ch {
     int max_val_in_mat(cv::Mat mat);
     void label_map_to_visualization_img(cv::Mat img, const std::string& output_file);
     dimensions<int> mat_dimensions(cv::Mat mat);
-    std::vector<ch::point> perform_douglas_peucker_simplification(
-        const std::vector<ch::point>& pts, double param);
 
-    template<typename T>
-    std::vector<T> unique_values(const cv::Mat& img) {
-        if constexpr (std::is_same<T, uchar>::value) {
-            return detail::unique_1channel_values(img);
-        } else {
-            return detail::unique_3channel_values(img);
-        }
-    }
+    // painting with Qt...
+    QImage create_compatible_qimage(int wd, int hgt);
+    cv::Mat qimage_to_mat(QImage img, bool copy = true);
+    QImage mat_to_qimage(cv::Mat mat, bool copy = true);
+    void paint_polygon(QPainter& g, const polygon& poly, color col);
+    void paint_strokes(QPainter& g, strokes str);
 
     // etc.
     std::string to_string(double val, int precision);

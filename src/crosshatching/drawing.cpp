@@ -16,6 +16,7 @@
 #include <fstream>
 
 #include "brush_lang.hpp"
+#include "raster_to_vector.hpp"
 
 namespace r = ranges;
 namespace rv = ranges::views;

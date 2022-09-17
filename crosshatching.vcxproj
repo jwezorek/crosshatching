@@ -152,8 +152,8 @@
     <ClCompile Include="src\crosshatching\drawing.cpp" />
     <ClCompile Include="src\crosshatching\geometry.cpp" />
     <ClCompile Include="src\crosshatching\meanshift.cpp" />
-    <ClCompile Include="src\crosshatching\painting.cpp" />
     <ClCompile Include="src\crosshatching\point_set.cpp" />
+    <ClCompile Include="src\crosshatching\raster_to_vector.cpp" />
     <ClCompile Include="src\crosshatching\segmentation.cpp" />
     <ClCompile Include="src\crosshatching\util.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -179,9 +179,9 @@
     <ClInclude Include="src\crosshatching\drawing.hpp" />
     <ClInclude Include="src\crosshatching\geometry.hpp" />
     <ClInclude Include="src\crosshatching\meanshift.hpp" />
-    <ClInclude Include="src\crosshatching\painting.hpp" />
     <ClInclude Include="src\crosshatching\peglib.h" />
     <ClInclude Include="src\crosshatching\point_set.hpp" />
+    <ClInclude Include="src\crosshatching\raster_to_vector.hpp" />
     <ClInclude Include="src\crosshatching\segmentation.hpp" />
     <ClInclude Include="src\crosshatching\util.hpp" />
     <QtMoc Include="src\ui\image_tab_ctrl.h" />

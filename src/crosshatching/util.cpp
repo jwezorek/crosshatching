@@ -2,6 +2,8 @@
 #include "meanshift.hpp"
 #include "random/counter_based_engine.hpp"
 #include "random/philox_prf.hpp"
+#include "qpainterpath.h"
+#include "qvector.h"
 #include <opencv2/imgproc.hpp>
 #include <opencv2/ximgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -26,20 +28,6 @@ namespace {
 		std::uniform_int_distribution<uint32_t> distr;
 		return distr(random);
 	}
-
-	struct color_hasher {
-		size_t operator()(const ch::color& c) const
-		{
-			std::size_t seed = 0;
-			boost::hash_combine(seed, c[0]);
-			boost::hash_combine(seed, c[1]);
-			boost::hash_combine(seed, c[2]);
-
-			return seed;
-		}
-	};
-
-	using color_set = std::unordered_set<ch::color, color_hasher>;
 
 	double ramp_up_right(double t, double k) {
 		return (t <= k) ? 0.0 : (t - k) / (1.0 - k);
@@ -114,6 +102,27 @@ namespace {
 		}
 		outfile << "</svg>" << std::endl;
 		outfile.close();
+	}
+
+	QPolygonF ring_to_qpolygon(const ch::ring& r) {
+		return QPolygonF(
+			r |
+			rv::transform(
+				[](const ch::point pt)->QPointF {
+					return {
+						static_cast<float>(pt.x),
+						static_cast<float>(pt.y)
+					};
+				}
+			) | r::to_<QVector>
+		);
+	}
+
+	QColor cv_color_to_qcolor(ch::color c) {
+		auto red = c[2];
+		auto green = c[1];
+		auto blue = c[0];
+		return QColor(red, green, blue);
 	}
 }
 
@@ -378,46 +387,6 @@ ch::dimensions<int> ch::mat_dimensions(cv::Mat mat) {
 	return { mat.cols, mat.rows };
 }
 
-std::vector<ch::point> ch::perform_douglas_peucker_simplification(
-		const std::vector<ch::point>& input, double param) {
-
-	auto points = to_float_points(input);
-	std::vector<cv::Point_<float>> output;
-	bool closed = input.front() == input.back();
-	cv::approxPolyDP(points, output, param, false);
-	if (closed && output.front() != output.back()) {
-		output.push_back(output.front());
-	}
-	return from_float_points(output);
-}
-
-std::vector<uchar> ch::detail::unique_1channel_values(const cv::Mat& input) {
-	if (input.channels() != 1) {
-		throw std::runtime_error("called unique_1channel_values on color image");
-	}
-	std::array<bool, 256> grays = {};
-	input.forEach<uchar>([&grays](uchar gray, const int* pos) { grays[gray] = true;  });
-	return rv::iota(0) |
-		rv::take(256) |
-		rv::filter([&grays](int g) {return grays[g]; }) |
-		r::to<std::vector<uchar>>() |
-		r::action::reverse;
-}
-
-std::vector<ch::color> ch::detail::unique_3channel_values(const cv::Mat& input) {
-	if (input.channels() != 3) {
-		throw std::runtime_error("called unique_3channel_values on color image");
-	}
-	color_set colors;
-	for (int y = 0; y < input.rows; ++y) {
-		for (int x = 0; x < input.cols; ++x) {
-			auto pixel = input.at<ch::color>(y, x);
-			colors.insert(pixel);
-		}
-	}
-	return colors | r::to_vector;
-}
-
 int ch::max_val_in_mat(cv::Mat mat) {
 	double min_val;
 	double max_val;
@@ -497,4 +466,40 @@ ch::strokes ch::transform(ch::strokes strokes, const ch::matrix& mat) {
 				return ch::transform(stroke, mat);
 			}
 	);
+}
+
+
+QImage ch::create_compatible_qimage(int wd, int hgt) {
+	QImage img(wd, hgt, QImage::Format::Format_BGR888);
+	img.fill(Qt::white);
+	return img;
+}
+
+cv::Mat ch::qimage_to_mat(QImage image, bool copy) {
+	cv::Mat mat(image.height(), image.width(), CV_8UC3, (cv::Scalar*)image.scanLine(0));
+	return copy ? mat.clone() : mat;
+}
+
+QImage ch::mat_to_qimage(cv::Mat mat, bool copy) {
+	if (mat.channels() == 1) {
+		mat = ch::convert_to_3channel_grayscale(mat);
+		copy = true;
+	}
+	auto img = QImage(mat.data, mat.cols, mat.rows, mat.step, QImage::Format_BGR888);
+	return copy ? img.copy() : img;
+}
+
+void ch::paint_polygon(QPainter& g, const polygon& poly, color col) {
+	QPainterPath path;
+	path.addPolygon(ring_to_qpolygon(poly.outer()));
+	for (const auto& hole : poly.inners()) {
+		path.addPolygon(ring_to_qpolygon(hole));
+	}
+	g.setPen(Qt::PenStyle::NoPen);
+	g.setBrush(QBrush(cv_color_to_qcolor(col)));
+	g.drawPath(path);
+}
+
+void ch::paint_strokes(QPainter& g, strokes str) {
+	//TODO
 }

@@ -1,5 +1,6 @@
 #include "segmentation.hpp"
 #include "util.hpp"
+#include "raster_to_vector.hpp"
 #include <boost/functional/hash.hpp>
 #include <unordered_set>
 #include <unordered_map>

@@ -169,7 +169,7 @@ namespace {
                     // turn them into possibly empty horizontal slices of the convex polygon at 
                     // the given y and also pass along the integer index which will be used as a 
                     // key in a counter-based RNG.
-                [slicer, run_length, space_length, seed](const std::tuple<int, double>& pair) ->
+                [slicer, run_length, space_length, seed](const std::tuple<size_t, double>& pair) ->
                         std::optional<std::tuple<int, double,double,double>> {
                     auto [key, y] = pair;
                     auto slice = slicer->slice(y);
@@ -177,7 +177,7 @@ namespace {
                         return {};
                     } else {
                         auto [x1, x2] = *slice;
-                        return { {key, x1, x2, y } };
+                        return { {static_cast<int>(key), x1, x2, y } };
                     }
                 }
             ) | 

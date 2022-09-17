@@ -76,7 +76,7 @@
     <ClCompile Include="src\crosshatching\brush.cpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClCompile>
-    <ClCompile Include="src\crosshatching\painting.cpp">
+    <ClCompile Include="src\crosshatching\raster_to_vector.cpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClCompile>
   </ItemGroup>
@@ -142,7 +142,7 @@
     <ClInclude Include="src\crosshatching\brush.hpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
-    <ClInclude Include="src\crosshatching\painting.hpp">
+    <ClInclude Include="src\crosshatching\raster_to_vector.hpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
   </ItemGroup>

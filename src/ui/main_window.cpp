@@ -142,6 +142,7 @@ void ui::main_window::open()
 	auto str = image_filename.toStdString();
 	if (!str.empty()) {
 		img_proc_ctrls_.src = cv::imread(str.c_str());
+		int n = img_proc_ctrls_.src.channels();
 		display(img_proc_ctrls_.src);
 		change_source_image(img_proc_ctrls_.src);
 		img_proc_ctrls_.src_filename = fs::path(str).filename().string();
@@ -241,32 +242,21 @@ void ui::main_window::edit_settings() {
 void ui::main_window::debug() {
 	int wd = 800;
 	int hgt = 600;
-	QImage img(wd, hgt, QImage::Format::Format_ARGB32);
-	img.fill(Qt::white);
+	auto img = ch::create_compatible_qimage(wd, hgt);
 
 	QPainter g(&img);
-
-	QPainterPath path;
-	path.addPolygon(
-		QPolygonF(
-			QVector<QPointF>{ 
-				{ 100,300 }, { 200,500 }, { 300,300 }, { 400,500 }, 
-				{ 600,500 }, { 700,300 }, { 600,100 }, { 500,300 },
-				{ 400,100 }, { 200,100 }, { 100,300 }
-			}
-		)
-	);
-	path.addPolygon(
-		QPolygonF(
-			QVector<QPointF>{
-				{ 400, 200 }, { 450,300 }, { 400,400 }, { 350,300 }, {400,200}
-			}
-		)
-	);
-	g.setPen(Qt::PenStyle::NoPen);
-	g.setBrush(QBrush(QColor(Qt::GlobalColor::blue)));
 	g.setRenderHint(QPainter::Antialiasing, true);
-	g.drawPath(path);
+
+	auto poly = ch::make_polygon( {
+			{ 100,300 }, { 200,500 }, { 300,300 }, { 400,500 },
+			{ 600,500 }, { 700,300 }, { 600,100 }, { 500,300 },
+			{ 400,100 }, { 200,100 }, { 100,300 }
+		}, { 
+			{{ 400, 200 }, { 450,300 }, { 400,400 }, { 350,300 }, {400,200}}
+		} 
+	);
+	auto color = img_proc_ctrls_.current.at<ch::color>(cv::Point(0,0));
+	ch::paint_polygon(g, poly, color);
 
 	for (int i = 0; i < 5; i++) {
 		g.setPen(
@@ -277,7 +267,7 @@ void ui::main_window::debug() {
 
 	img_proc_ctrls_.img_box->setFixedHeight(hgt);
 	img_proc_ctrls_.img_box->setFixedWidth(wd);
-	img_proc_ctrls_.img_box->set_image(img);
+	img_proc_ctrls_.img_box->set_image(ch::qimage_to_mat(img));
 }
 
 void ui::main_window::create_main_menu()
