@@ -28,7 +28,7 @@ namespace fs = std::filesystem;
 namespace {
 
 	constexpr auto k_view_menu_index = 1;
-	constexpr auto k_controls_width = 300;
+	constexpr auto k_controls_width = 400;
 	constexpr auto k_swatch_scale = 4.0;
 
 	QMenu* create_view_menu(ui::main_window* parent) {
@@ -293,7 +293,11 @@ QWidget* ui::main_window::create_drawing_tools() {
 	QSplitter* vert_splitter = new QSplitter();
 	vert_splitter->setOrientation(Qt::Orientation::Vertical);
 	crosshatching_.layers = new layer_panel();
-	vert_splitter->addWidget(crosshatching_.brushes = new brush_panel(*static_cast<layer_panel*>( crosshatching_.layers )));
+	vert_splitter->addWidget(
+		crosshatching_.brushes = new brush_panel(
+			*static_cast<layer_panel*>( crosshatching_.layers )
+		)
+	);
 	vert_splitter->addWidget(crosshatching_.layers);
 
 	vert_splitter->setMaximumWidth(100);
@@ -337,31 +341,33 @@ QWidget* ui::main_window::create_drawing_tools() {
 QWidget* ui::main_window::create_image_processing_pipeline_tools()
 {
 	QTabWidget* tab_ctrl = new QTabWidget();
-	tab_ctrl->setMaximumWidth(k_controls_width);
+	tab_ctrl->setMaximumWidth(300);
 
 	img_proc_ctrls_.pipeline = std::vector<ui::image_processing_pipeline_item*>{
 		new ui::scale_and_contrast(),
 		new ui::anisotropic_diffusion_filter(),
 		new ui::shock_filter(),
-		new ui::mean_shift_segmentation()
+		new ui::mean_shift_segmentation(),
+		new ui::raster_to_vector()
 	};
 
 	for (auto* stage: img_proc_ctrls_.pipeline) {
 		stage->populate();
-		tab_ctrl->addTab(stage, (std::string("stage ") + std::to_string(stage->index() + 1)).c_str());
-		connect(stage, &ui::image_processing_pipeline_item::changed, this, &main_window::handle_pipeline_change);
+		tab_ctrl->addTab(stage, ("<" + std::to_string(stage->index() + 1) + ">").c_str());
+		connect(stage, &ui::image_processing_pipeline_item::changed, 
+			this, &main_window::handle_pipeline_change);
 	}
 
 	QScrollArea* scroller = new QScrollArea();
 	scroller->setWidget(img_proc_ctrls_.img_box = new image_box());
 	scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
-	QSplitter* splitter = new QSplitter();
-	splitter->addWidget(tab_ctrl);
-	splitter->addWidget(scroller);
-	splitter->setSizes(QList<int>({ INT_MAX, INT_MAX }));
+	QWidget* ctrl = new QWidget();
+	QHBoxLayout* horz_layout = new QHBoxLayout(ctrl);
+	horz_layout->addWidget(tab_ctrl);
+	horz_layout->addWidget(scroller);
 
-	return splitter;
+	return ctrl;
 }
 
 cv::Mat ui::main_window::input_to_nth_stage(int index) const {
@@ -444,6 +450,9 @@ void ui::main_window::handle_pipeline_change(int index) {
 	);
 
 	cv::Mat mat = input_to_nth_stage(index);
+	if (mat.empty()) {
+		return;
+	}
 	std::for_each(img_proc_ctrls_.pipeline.begin() + index, img_proc_ctrls_.pipeline.end(),
 		[&mat](ui::image_processing_pipeline_item* stage) {
 			if (stage->is_on()) {

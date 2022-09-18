@@ -220,17 +220,6 @@ std::string ch::polyline_to_svg(std::span<const point> poly, double thickness, b
 	return ss.str();
 }
 
-void ch::debug_polygons(const std::string& output_file, std::span<polygon> polys) {
-	auto [x1,y1,wd,hgt] = bounding_rectangle(polys);
-	std::ofstream outfile(output_file);
-	outfile << ch::svg_header(static_cast<int>(wd), static_cast<int>(hgt));
-	for (const auto& poly : polys) {
-		outfile << polyline_to_svg(poly.outer(), 1, true) << std::endl;
-	}
-	outfile << "</svg>" << std::endl;
-	outfile.close();
-}
-
 std::string ch::to_string(double val, int precision) {
 	std::stringstream ss;
 	ss << std::fixed << std::setprecision(2) << val;
@@ -468,7 +457,6 @@ ch::strokes ch::transform(ch::strokes strokes, const ch::matrix& mat) {
 	);
 }
 
-
 QImage ch::create_compatible_qimage(int wd, int hgt) {
 	QImage img(wd, hgt, QImage::Format::Format_BGR888);
 	img.fill(Qt::white);
@@ -495,11 +483,26 @@ void ch::paint_polygon(QPainter& g, const polygon& poly, color col) {
 	for (const auto& hole : poly.inners()) {
 		path.addPolygon(ring_to_qpolygon(hole));
 	}
-	g.setPen(Qt::PenStyle::NoPen);
-	g.setBrush(QBrush(cv_color_to_qcolor(col)));
+	auto qcolor = cv_color_to_qcolor(col);
+	g.setPen(QPen(qcolor));
+	g.setBrush(QBrush(qcolor));
 	g.drawPath(path);
 }
 
 void ch::paint_strokes(QPainter& g, strokes str) {
 	//TODO
+}
+
+cv::Mat ch::paint_colored_polygons(const std::vector<std::tuple<color, polygon>>& polys,
+		dimensions<int> sz) {
+	cv::Mat mat(sz.hgt, sz.wd, CV_8UC3);
+	QImage img = mat_to_qimage(mat, false);
+	QPainter g(&img);
+	g.setRenderHint(QPainter::Antialiasing, true);
+
+	for (const auto& [col, poly] : polys) {
+		paint_polygon(g, poly, col);
+	}
+
+	return mat;
 }

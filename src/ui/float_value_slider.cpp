@@ -19,11 +19,10 @@ double ui::float_value_slider::value() const {
 	return position_to_value(slider_->sliderPosition());
 }
 
-ui::float_value_slider::float_value_slider(const QString& txt, double min, double max, double init_val, int range,
-	val_to_pos_fn val_to_pos, pos_to_val_fn pos_to_val) :
-	min_(min), max_(max),
-	val_to_pos_(val_to_pos), pos_to_val_(pos_to_val)
-{
+ui::float_value_slider::float_value_slider(const QString& txt, double min, double max, 
+			double init_val, int range, val_to_pos_fn val_to_pos, pos_to_val_fn pos_to_val) :
+		min_(min), max_(max),
+		val_to_pos_(val_to_pos), pos_to_val_(pos_to_val) {
 	QVBoxLayout* layout = new QVBoxLayout();
 	QLabel* lbl_title = new QLabel(txt);
 

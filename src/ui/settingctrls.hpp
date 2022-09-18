@@ -88,4 +88,17 @@ namespace ui {
         cv::Mat labels() const;
         bool is_on() const override;
     };
+
+    class raster_to_vector : public image_processing_pipeline_item {
+        Q_OBJECT
+    private:
+        float_value_slider* param_slider_;
+    public:
+        raster_to_vector();
+        void populate() override;
+        void initialize() override;
+        cv::Mat process_image(cv::Mat input) override;
+        cv::Mat labels() const;
+        bool is_on() const override;
+    };
 }

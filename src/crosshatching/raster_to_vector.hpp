@@ -3,11 +3,15 @@
 #include "util.hpp"
 #include "geometry.hpp"
 #include <vector>
+#include <tuple>
 
 namespace ch {
 
-    std::vector<std::tuple<uchar, polygon>> raster_to_vector_grayscale(cv::Mat mat, double param);
-    std::vector<std::tuple<color, polygon>> raster_to_vector(cv::Mat mat, double param);
+    using colored_polygon = std::tuple<color, polygon>;
+    using gray_polygon = std::tuple<uchar, polygon>;
+
+    std::vector<gray_polygon> raster_to_vector_grayscale(cv::Mat mat, double param);
+    std::vector<colored_polygon> raster_to_vector(cv::Mat mat, double param);
 
     std::vector<ch::point> perform_douglas_peucker_simplification(
         const std::vector<ch::point>& pts, double param);

@@ -12,7 +12,7 @@
 #include <range/v3/all.hpp>
 #include <opencv2/core.hpp>
 #include "geometry.hpp"
-
+/*------------------------------------------------------------------------------------------------------*/
 namespace ch {
 
     using color = cv::Vec3b;
@@ -40,13 +40,6 @@ namespace ch {
         detail::polygons_to_svg_aux(output_file, polys, scale);
     }
 
-    void debug_polygons(const std::string& output_file, std::span<polygon> polys);
-
-    struct cbrng_state {
-        std::array<uint32_t, 4> keys;
-        cbrng_state(uint32_t k1 = 0, uint32_t k2 = 0, uint32_t k3 = 0, uint32_t k4 = 0);
-    };
-
     // crosshatching strokes...
     using polyline_rng = ranges::any_view<ch::point>;
     struct stroke {
@@ -59,6 +52,10 @@ namespace ch {
     strokes transform(strokes s, const ch::matrix& mat);
 
     // counter-based RNG...
+    struct cbrng_state {
+        std::array<uint32_t, 4> keys;
+        cbrng_state(uint32_t k1 = 0, uint32_t k2 = 0, uint32_t k3 = 0, uint32_t k4 = 0);
+    };
     uint32_t random_seed();
     using random_func = std::function<double(const cbrng_state&)>;
     double normal_random(const cbrng_state& rnd, double mean, double stddev);
@@ -86,6 +83,8 @@ namespace ch {
     QImage mat_to_qimage(cv::Mat mat, bool copy = true);
     void paint_polygon(QPainter& g, const polygon& poly, color col);
     void paint_strokes(QPainter& g, strokes str);
+    cv::Mat paint_colored_polygons(const std::vector<std::tuple<color, polygon>>& polys,
+        dimensions<int> sz);
 
     // etc.
     std::string to_string(double val, int precision);

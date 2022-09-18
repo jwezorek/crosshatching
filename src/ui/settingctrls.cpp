@@ -1,7 +1,8 @@
 #include "settingctrls.hpp"
 #include "../crosshatching/util.hpp"
+#include "../crosshatching/raster_to_vector.hpp"
 
-/*---------------------------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------------------------------*/
 
 ui::image_processing_pipeline_item::image_processing_pipeline_item(QString title, int index) :
 		content_area_(new QWidget()),
@@ -41,7 +42,7 @@ bool ui::image_processing_pipeline_item::is_on() const {
 	return false;
 }
 
-/*---------------------------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------------------------------*/
 
 ui::scale_and_contrast::scale_and_contrast() :
 	ui::image_processing_pipeline_item("Scale & Contrast", 0)
@@ -52,7 +53,9 @@ void ui::scale_and_contrast::populate() {
 
 	QGroupBox* contrast_box = new QGroupBox("contrast");
 	QHBoxLayout* cb_layout = new QHBoxLayout();
-	cb_layout->addWidget(contrast_slider_ = new ui::float_value_slider("beta", 1, 20, 1, 1000, ui::exp_val_to_pos, ui::exp_pos_to_val));
+	cb_layout->addWidget(contrast_slider_ = 
+		new ui::float_value_slider("beta", 1, 20, 1, 1000, ui::exp_val_to_pos, ui::exp_pos_to_val)
+	);
 	cb_layout->addWidget(thresh_slider_ = new ui::float_value_slider("sigma", 0, 1, 0.5));
 	contrast_box->setLayout(cb_layout);
 
@@ -60,9 +63,12 @@ void ui::scale_and_contrast::populate() {
 	layout->addWidget(contrast_box, 2);
 	content_area_->setLayout(layout);
 
-	connect(scale_slider_, &float_value_slider::slider_released, [this]() { this->changed(this->index_); });
-	connect(contrast_slider_, &float_value_slider::slider_released, [this]() { this->changed(this->index_); });
-	connect(thresh_slider_, &float_value_slider::slider_released, [this]() { this->changed(this->index_); });
+	connect(scale_slider_, &float_value_slider::slider_released, 
+		[this]() { this->changed(this->index_); });
+	connect(contrast_slider_, &float_value_slider::slider_released, 
+		[this]() { this->changed(this->index_); });
+	connect(thresh_slider_, &float_value_slider::slider_released, 
+		[this]() { this->changed(this->index_); });
 }
 
 void ui::scale_and_contrast::initialize() {
@@ -92,7 +98,7 @@ bool ui::scale_and_contrast::is_on() const {
 		thresh_slider_->value() != 0.5;
 }
 
-/*---------------------------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------------------------------*/
 
 ui::anisotropic_diffusion_filter::anisotropic_diffusion_filter() :
 	ui::image_processing_pipeline_item("Anisotropic Diffusion", 1) {
@@ -130,7 +136,7 @@ bool ui::anisotropic_diffusion_filter::is_on() const {
 	return iters_slider_->value() > 0;
 }
 
-/*---------------------------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------------------------------*/
 
 ui::shock_filter::shock_filter() :
 	ui::image_processing_pipeline_item("Coherence Enhancing Shock Filter", 2) {
@@ -145,10 +151,14 @@ void ui::shock_filter::populate() {
 		layout->addWidget(iter_slider_ = new ui::int_value_slider("n", 0, 25, 0));
 		content_area_->setLayout(layout);
 
-		connect(sigma_slider_, &int_value_slider::slider_released, [this]() { changed(this->index()); });
-		connect(str_sigma_slider_, &int_value_slider::slider_released, [this]() { changed(this->index()); });
-		connect(blend_slider_, &float_value_slider::slider_released, [this]() { changed(this->index()); });
-		connect(iter_slider_, &int_value_slider::slider_released, [this]() { changed(this->index()); });
+		connect(sigma_slider_, &int_value_slider::slider_released, 
+			[this]() { changed(this->index()); });
+		connect(str_sigma_slider_, &int_value_slider::slider_released, 
+			[this]() { changed(this->index()); });
+		connect(blend_slider_, &float_value_slider::slider_released, 
+			[this]() { changed(this->index()); });
+		connect(iter_slider_, &int_value_slider::slider_released, 
+			[this]() { changed(this->index()); });
 }
 
 void ui::shock_filter::initialize() {
@@ -172,7 +182,7 @@ bool ui::shock_filter::is_on() const {
 	return iter_slider_->value() > 0;
 }
 
-/*---------------------------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------------------------------*/
 
 ui::mean_shift_segmentation::mean_shift_segmentation() :
 	ui::image_processing_pipeline_item("Mean Shift Segmentation", 3) {
@@ -213,4 +223,38 @@ cv::Mat ui::mean_shift_segmentation::labels() const {
 
 bool ui::mean_shift_segmentation::is_on() const {
 	return sigmaS_slider_->value() != 0 && sigmaR_slider_->value() != 0.0;
+}
+
+/*------------------------------------------------------------------------------------------------------*/
+
+ui::raster_to_vector::raster_to_vector() :
+	ui::image_processing_pipeline_item("Raster to vector", 4) {
+}
+
+void ui::raster_to_vector::populate() {
+	QHBoxLayout* layout = new QHBoxLayout();
+
+	layout->addWidget(param_slider_ = new ui::float_value_slider("RDP param", 1.0, 10.0, 1.0));
+	content_area_->setLayout(layout);
+
+	connect(param_slider_, &float_value_slider::slider_released, [this]() {
+		changed(this->index()); }
+	);
+}
+
+void ui::raster_to_vector::initialize() {
+	param_slider_->set(1.0);
+}
+
+cv::Mat ui::raster_to_vector::process_image(cv::Mat input) {
+	auto param = param_slider_->value();
+	if (param <= 1.0) {
+		return input;
+	}
+	auto colored_polys = ch::raster_to_vector(input, param);
+	return output_ = paint_colored_polygons(colored_polys, ch::mat_dimensions(input));
+}
+
+bool ui::raster_to_vector::is_on() const {
+	return param_slider_->value() > 1.0;
 }

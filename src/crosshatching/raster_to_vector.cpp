@@ -122,8 +122,10 @@ namespace {
 		}
 	}
 
-	std::tuple<direction, direction> get_shared_vert_directions(const cv::Point& from_pt, const cv::Point& to_pt) {
-		static std::unordered_map<direction, std::tuple<direction, direction>> dir_to_shared_verts = {
+	using dir_pair = std::tuple<direction, direction>;
+	std::tuple<direction, direction> get_shared_vert_directions(
+			const cv::Point& from_pt, const cv::Point& to_pt) {
+		static std::unordered_map<direction, dir_pair> dir_to_shared_verts = {
 			{direction::N , {direction::NW, direction::NE}},
 			{direction::NW, {direction::NW, direction::NW}},
 			{direction::W , {direction::NW, direction::SW} },
@@ -161,9 +163,16 @@ namespace {
 		return north_west_index;
 	}
 
-	std::tuple<pixel_crawler, int> initialize_contour_crawl(const int_polyline& ip, bool counter_clockwise) {
+	std::tuple<pixel_crawler, int> initialize_contour_crawl(
+			const int_polyline& ip, bool counter_clockwise) {
 		int northwest_index = find_northwest_index(ip);
-		return { {ip[northwest_index], counter_clockwise ? direction::NW : direction::SW}, northwest_index };
+		return { 
+			pixel_crawler{
+				ip[northwest_index], 
+				counter_clockwise ? direction::NW : direction::SW
+			},
+			northwest_index 
+		};
 	}
 
 	void push_if_new(ch::ring& poly, const ch::point& pt) {
@@ -313,7 +322,7 @@ namespace {
 
 
 	int update_vertex_usage_count(ch::point_map<int>& vertex_count, const ch::point& pt,
-		const ch::dimensions<int>& dims) {
+			const ch::dimensions<int>& dims) {
 		bool not_in_table = vertex_count.find(pt) == vertex_count.end();
 		if (not_in_table && (pt.x == 0 || pt.x == dims.wd)) {
 			++vertex_count[pt];
@@ -442,8 +451,8 @@ namespace {
 	}
 
 	std::span<const ch::point> lookup_path_or_expand_and_simplify(
-		const edge& e, const ch::ring& ring, const ch::point_set& crit_pts,
-		ch::path_table& paths, double param) {
+			const edge& e, const ch::ring& ring, const ch::point_set& crit_pts,
+			ch::path_table& paths, double param) {
 
 		auto edge = expand_edge(e, ring);
 		auto pid = ch::make_path_id(edge);
@@ -461,7 +470,7 @@ namespace {
 	}
 
 	ch::ring simplify_ring(const ch::ring& ring, const ch::point_set& crit_pts,
-		ch::path_table& paths, double param) {
+			ch::path_table& paths, double param) {
 		auto edges = get_shared_edges(ring, crit_pts);
 		return edges |
 			rv::transform(
@@ -478,7 +487,7 @@ namespace {
 	}
 
 	ch::polygon simplify_polygon(const ch::polygon& poly, const ch::point_set& crit_pts,
-		ch::path_table& paths, double param) {
+			ch::path_table& paths, double param) {
 		return ch::make_polygon(
 			simplify_ring(poly.outer(), crit_pts, paths, param),
 			poly.inners() |
@@ -549,16 +558,20 @@ namespace {
 
 	using color_set = std::unordered_set<ch::color, color_hasher>;
 
+	template<typename T>
+	std::vector<std::tuple<T,ch::polygon>> raster_to_vector_aux(cv::Mat mat, double param) {
+		auto colored_polygons = image_to_polygons<T>(mat);
+		return simplify_colored_polygons<T>(colored_polygons, param);
+	}
+
 }
 
-std::vector<std::tuple<uchar, ch::polygon>> ch::raster_to_vector_grayscale(cv::Mat mat, double param) {
-    auto colored_polygons = image_to_polygons<uchar>(mat);
-    return simplify_colored_polygons<uchar>(colored_polygons, param);
+std::vector<ch::gray_polygon> ch::raster_to_vector_grayscale(cv::Mat mat, double param) {
+	return raster_to_vector_aux<uchar>(mat, param);
 }
 
-std::vector<std::tuple<ch::color, ch::polygon>> ch::raster_to_vector(cv::Mat mat, double param) {
-    auto colored_polygons = image_to_polygons<ch::color>(mat);
-    return simplify_colored_polygons<ch::color>(colored_polygons, param);
+std::vector<ch::colored_polygon> ch::raster_to_vector(cv::Mat mat, double param) {
+    return raster_to_vector_aux<color>(mat, param);
 }
 
 std::vector<ch::point> ch::perform_douglas_peucker_simplification(
