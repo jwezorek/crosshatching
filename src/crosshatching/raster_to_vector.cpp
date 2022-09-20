@@ -401,11 +401,10 @@ namespace {
 				}
 			) |
 			rv::join |
-					r::to_<ch::point_set>();
+			r::to_<ch::point_set>();
 
-				insert_island_critical_points(set, polygons);
-
-				return set;
+		insert_island_critical_points(set, polygons);
+		return set;
 	}
 
 	using edge = std::tuple<ch::ring::const_iterator, ch::ring::const_iterator>;

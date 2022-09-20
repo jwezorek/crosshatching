@@ -831,6 +831,7 @@ namespace {
             rv::single( ")")
         );
     }
+
 }
 
 ch::brush_context::brush_context(const ch::polygon& p, double param) :

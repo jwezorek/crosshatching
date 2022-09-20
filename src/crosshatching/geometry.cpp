@@ -188,7 +188,8 @@ ch::ring ch::make_ring(size_t sz) {
 ch::polygon ch::make_polygon(const ch::ring& outer, const std::vector<ch::ring>& inners) {
 	ch::polygon poly;
 	poly.outer() = outer;
-	poly.inners() = inners;
+	poly.inners() = inners; 
+	bg::correct(poly);
 	return poly;
 }
 

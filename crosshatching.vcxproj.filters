@@ -79,6 +79,9 @@
     <ClCompile Include="src\crosshatching\raster_to_vector.cpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClCompile>
+    <ClCompile Include="src\crosshatching\ink_layers.cpp">
+      <Filter>Source Files\crosshatching</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="src\ui\crosshatching.qrc">
@@ -143,6 +146,9 @@
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
     <ClInclude Include="src\crosshatching\raster_to_vector.hpp">
+      <Filter>Source Files\crosshatching</Filter>
+    </ClInclude>
+    <ClInclude Include="src\crosshatching\ink_layers.hpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
   </ItemGroup>

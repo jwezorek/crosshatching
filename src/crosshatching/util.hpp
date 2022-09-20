@@ -88,6 +88,7 @@ namespace ch {
 
     // etc.
     std::string to_string(double val, int precision);
+    std::string to_string(const point& pt);
     double degrees_to_radians(double degrees);
     double ramp(double t, double k, bool right, bool up);
     std::vector<cv::Point_<float>> to_float_points(std::span<const ch::point> pts);

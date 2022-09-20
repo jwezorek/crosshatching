@@ -102,7 +102,32 @@ namespace ch {
     std::vector<polygon> buffer(std::span<const ch::polygon> polys, double amt);
     std::vector<ch::point> convex_hull(std::span<const ch::point> points);
 
+    using edge = std::tuple<point, point>;
 
+    inline auto all_edges(const ring& r) {
+        namespace rv = ranges::views;
+        return rv::concat(r, rv::single(r.front())) | rv::sliding(2);
+    }
+
+    inline auto all_edges(const polygon& poly) {
+        namespace r = ranges;
+        namespace rv = ranges::views;
+
+        return rv::concat(
+                all_edges(poly.outer()),
+                poly.inners() |
+                    rv::transform(
+                        [](const auto& r) {
+                            return all_edges(r);
+                        }
+                    ) |
+                rv::join
+            ) | rv::transform(
+                [](auto rng)->edge {
+                    return { rng[0], rng[1] };
+                }
+            );
+    }
 
 
     void debug_geom(cv::Mat mat);

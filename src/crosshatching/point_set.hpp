@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <boost/functional/hash.hpp>
+#include <limits>
 
 namespace ch {
 
@@ -145,6 +146,64 @@ namespace ch {
             }
         };
 
+        std::tuple<ch::point, ch::point> sort_points(const std::tuple<ch::point, ch::point>& tup);
+
+        template<int P>
+        class edge_key {
+
+            template<int P>
+            friend struct edge_key_hasher;
+
+        public:
+
+            edge_key() :
+                u_x_(-std::numeric_limits<double>::max()),
+                u_y_(-std::numeric_limits<double>::max()),
+                v_x_(-std::numeric_limits<double>::max()),
+                v_y_(-std::numeric_limits<double>::max())
+            {
+            }
+
+            edge_key(const std::tuple<point, point>& pid) :
+                edge_key() {
+                auto [pt1, pt2] = detail::sort_points(pid);
+                u_x_ = pt1.x;
+                u_y_ = pt1.y;
+                v_x_ = pt2.x;
+                v_y_ = pt2.y;
+            }
+
+            edge_key(const ch::point& u, const ch::point& v) :
+                edge_key(std::tuple<ch::point, ch::point>{u, v}) {
+            }
+
+            bool operator==(const edge_key<P>& other) const {
+                return u_x_ == other.u_x_ && u_y_ == other.u_y_ &&
+                    v_x_ == other.v_x_ && v_y_ == other.v_y_;
+            }
+
+        private:
+            detail::fp_value<P> u_x_;
+            detail::fp_value<P> u_y_;
+            detail::fp_value<P> v_x_;
+            detail::fp_value<P> v_y_;
+        };
+
+        template<int P>
+        struct edge_key_hasher
+        {
+            size_t operator()(const edge_key<P>& key) const {
+                size_t seed = 0;
+
+                boost::hash_combine(seed, key.u_x_.impl());
+                boost::hash_combine(seed, key.u_y_.impl());
+                boost::hash_combine(seed, key.v_x_.impl());
+                boost::hash_combine(seed, key.v_y_.impl());
+
+                return seed;
+            }
+        };
+
     }
 
     constexpr int k_point_set_prec = 2;
@@ -178,5 +237,12 @@ namespace ch {
     };
 
     path_table::path_id make_path_id(std::span<const point> path);
+
+
+    constexpr int k_edge_table_prec = 4;
+    using edge_key = detail::edge_key<k_edge_table_prec>;
+
+    template<typename V>
+    using edge_table = std::unordered_map<edge_key, V, detail::edge_key_hasher<k_edge_table_prec>>;
 
 }

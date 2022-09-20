@@ -222,7 +222,14 @@ std::string ch::polyline_to_svg(std::span<const point> poly, double thickness, b
 
 std::string ch::to_string(double val, int precision) {
 	std::stringstream ss;
-	ss << std::fixed << std::setprecision(2) << val;
+	ss << std::fixed << std::setprecision(precision) << val;
+	return ss.str();
+}
+
+std::string ch::to_string(const point& pt) {
+
+	std::stringstream ss;
+	ss << "( " << pt.x << " , " << pt.y << " )";
 	return ss.str();
 }
 

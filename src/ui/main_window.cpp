@@ -4,6 +4,7 @@
 #include "dialogs.h"
 #include "../crosshatching/drawing.hpp"
 #include "../crosshatching/util.hpp"
+#include "../crosshatching/ink_layers.hpp"
 #include <QtWidgets>
 #include <QSlider>
 #include <opencv2/core.hpp>
@@ -240,34 +241,7 @@ void ui::main_window::edit_settings() {
 }
 
 void ui::main_window::debug() {
-	int wd = 800;
-	int hgt = 600;
-	auto img = ch::create_compatible_qimage(wd, hgt);
-
-	QPainter g(&img);
-	g.setRenderHint(QPainter::Antialiasing, true);
-
-	auto poly = ch::make_polygon( {
-			{ 100,300 }, { 200,500 }, { 300,300 }, { 400,500 },
-			{ 600,500 }, { 700,300 }, { 600,100 }, { 500,300 },
-			{ 400,100 }, { 200,100 }, { 100,300 }
-		}, { 
-			{{ 400, 200 }, { 450,300 }, { 400,400 }, { 350,300 }, {400,200}}
-		} 
-	);
-	auto color = img_proc_ctrls_.current.at<ch::color>(cv::Point(0,0));
-	ch::paint_polygon(g, poly, color);
-
-	for (int i = 0; i < 5; i++) {
-		g.setPen(
-			QPen(QBrush(QColor(Qt::GlobalColor::black)), 0.5 + i * 0.5)
-		);
-		g.drawLine(QPointF(100, 100 + i *5), QPointF(700, 400 + i * 10));
-	}
-
-	img_proc_ctrls_.img_box->setFixedHeight(hgt);
-	img_proc_ctrls_.img_box->setFixedWidth(wd);
-	img_proc_ctrls_.img_box->set_image(ch::qimage_to_mat(img));
+	ch::debug_layers();
 }
 
 void ui::main_window::create_main_menu()

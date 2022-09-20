@@ -36,3 +36,17 @@ ch::path_table::path_id ch::make_path_id(std::span<const ch::point> path)
         return { path.front(), { 0,0 }, path.back() };
     }
 }
+
+std::tuple<ch::point, ch::point> ch::detail::sort_points(const std::tuple<ch::point, ch::point>& tup) {
+    auto u = std::get<0>(tup);
+    auto v = std::get<1>(tup);
+    const auto& [u_x, u_y] = u;
+    const auto& [v_x, v_y] = v;
+
+    if (v_x < u_x) {
+        return { v,u };
+    } else if (v_x > u_x) {
+        return { u,v };
+    }
+    return (v_y < u_y) ? std::tuple{v, u} : std::tuple{u, v};
+}
