@@ -204,6 +204,18 @@ namespace ch {
             }
         };
 
+        struct int_edge_hasher {
+            size_t operator()(const std::tuple<int, int>& ie) const {
+                size_t seed = 0;
+                auto [u, v] = ie;
+                if (u > v) {
+                    std::swap(u, v);
+                }
+                boost::hash_combine(seed, u);
+                boost::hash_combine(seed, v);
+                return seed;
+            }
+        };
     }
 
     constexpr int k_point_set_prec = 2;
@@ -244,5 +256,7 @@ namespace ch {
 
     template<typename V>
     using edge_table = std::unordered_map<edge_key, V, detail::edge_key_hasher<k_edge_table_prec>>;
+
+    using int_edge_set = std::unordered_set<std::tuple<int, int>, detail::int_edge_hasher>;
 
 }

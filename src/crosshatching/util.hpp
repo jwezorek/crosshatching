@@ -40,6 +40,9 @@ namespace ch {
         detail::polygons_to_svg_aux(output_file, polys, scale);
     }
 
+    void debug_polygons(const std::string& output_file,
+        std::span<std::tuple<uchar, polygon>> polys);
+
     // crosshatching strokes...
     using polyline_rng = ranges::any_view<ch::point>;
     struct stroke {
@@ -93,4 +96,6 @@ namespace ch {
     double ramp(double t, double k, bool right, bool up);
     std::vector<cv::Point_<float>> to_float_points(std::span<const ch::point> pts);
     std::vector<ch::point> from_float_points(std::span<const cv::Point_<float>> pts);
+
+    color rgb(uchar r, uchar g, uchar b);
 }

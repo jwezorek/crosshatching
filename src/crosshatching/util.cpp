@@ -513,3 +513,48 @@ cv::Mat ch::paint_colored_polygons(const std::vector<std::tuple<color, polygon>>
 
 	return mat;
 }
+
+void ch::debug_polygons(const std::string& output_file, std::span<std::tuple<uchar, ch::polygon>> cpolys) {
+	auto polys = cpolys | rv::transform([](const auto& tup) {return std::get<1>(tup); }) | r::to_vector;
+	auto [x1, y1, x2, y2] = ch::bounding_rectangle(polys);
+	int wd = x2 - x1;
+	int hgt = y2 - y1;
+	std::vector<ch::color> colors = {
+		rgb(255,0,0),
+		rgb(255,97,3),
+		rgb(255,255,0),
+		rgb(0,255,0),
+		rgb(0,0,255),
+		rgb(138,43,226),
+		rgb(255, 192, 203),
+		rgb(255, 160, 122),
+		rgb(255, 250, 205),
+		rgb(152, 251, 152),
+		rgb(173, 216, 230),
+		rgb(230, 230, 250)
+	};
+	auto n = std::min(cpolys.size(), colors.size());
+	auto bottom_of_img = hgt;
+	hgt += 35 * (n+2);
+	auto colored_polys = rv::zip(colors, polys | rv::take(n)) | 
+		rv::transform(
+			[](const auto& p) {return std::tuple(p.first, p.second); }
+		) | r::to_vector;
+	auto img = paint_colored_polygons(colored_polys, dimensions<int>(wd, hgt));
+
+	for (int i = 0; i < static_cast<int>(n); ++i) {
+		cv::putText(img, //target image
+			std::to_string(i).c_str(), //text
+			cv::Point(50, bottom_of_img + 35 * (i+1)), //top-left position
+			cv::FONT_HERSHEY_DUPLEX,
+			1.0,
+			colors[i], //font color
+			2);
+	}
+
+	cv::imwrite(output_file, img);
+}
+
+ch::color ch::rgb(uchar r, uchar g, uchar b) {
+	return { b,g,r };
+}

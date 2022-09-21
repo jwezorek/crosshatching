@@ -3,6 +3,10 @@
 #include <range/v3/all.hpp>
 #include "qdebug.h"
 
+
+#include <opencv2/core.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/highgui.hpp>
 /*------------------------------------------------------------------------------------------------------*/
 
 namespace r = ranges;
@@ -31,7 +35,7 @@ namespace {
     struct edge_record {
         std::array<int, 2> poly_ids;
 
-        edge_record(int id) : poly_ids{id,-1}
+        edge_record(int id = -1) : poly_ids{id,-1}
         {}
 
         int count() const {
@@ -42,11 +46,14 @@ namespace {
         }
 
         void insert(int id) {
-            auto iter = r::find_if(poly_ids, [](int id) {return id >= 0; });
+            auto iter = r::find_if(poly_ids, [](int id) {return id < 0; });
             if (iter == poly_ids.end()) {
                 throw std::runtime_error("error constructing polygon graph");
             }
             *iter = id;
+            if (poly_ids.back() >= 0) {
+                r::sort(poly_ids);
+            }
         }
     };
 
@@ -60,11 +67,34 @@ namespace {
 
     graph polygons_to_adjacency_graph(const std::vector<ch::gray_polygon>& polys) {
 
-        ch::edge_table<edge_record> edges;
+        ch::edge_table<edge_record> edge_table;
+        graph g;
+        ch::int_edge_set already_added;
+
         for (const auto& [index, poly] : enumerated_polygons(polys)) {
-        //    for (con)
+            for (const auto& [u, v] : ch::all_edges(poly)) {
+                edge_table[{ u,v }].insert(index);
+            }
         }
-        return {};
+
+        auto edges = edge_table |
+            rv::transform(
+                [](const auto& e)->std::tuple<int,int> {
+                    const auto& ary = e.second.poly_ids;
+                    return { ary[0],ary[1] };
+                }
+            );
+
+        for (const auto& [u, v] : edges) {
+            if (v == -1 || already_added.find({ u,v }) != already_added.end()) {
+                continue;
+            }
+            already_added.insert({ u,v });
+            g[u].push_back(v);
+            g[v].push_back(u);
+        }
+
+        return g;
     }
 
 }
@@ -79,18 +109,17 @@ ch::ink_layers ch::split_into_layers(const std::vector<gray_polygon>& polys,
 }
 
 void ch::debug_layers() {
-    edge_table<int> test;
-    auto poly = ch::make_polygon({
-            { 100,300 }, { 200,500 }, { 300,300 }, { 400,500 },
-            { 600,500 }, { 700,300 }, { 600,100 }, { 500,300 },
-            { 400,100 }, { 200,100 }, { 100,300 }
-        }, {
-            {{ 400, 200 }, { 450,300 }, { 400,400 }, { 350,300 }, {400,200}},
-            {{250,250}, {250,350}, {150,350}, {150,250}, {250,250}}
+    auto mat = cv::imread("C:\\test\\test_img.png");
+    mat = ch::convert_to_1channel_gray(mat);
+    auto polys = ch::raster_to_vector_grayscale(mat, 1.5);
+    debug_polygons("C:\\test\\test_img_labeled.png", polys);
+    auto graph = polygons_to_adjacency_graph(polys);
+    for (const auto& [u, adj_list] : graph) {
+        std::stringstream ss;
+        ss << u << " : ";
+        for (int v : adj_list) {
+            ss << v << " ";
         }
-    );
-
-    for (const auto& [u, v] : all_edges(poly)) {
-        qDebug() << "{" << to_string(u).c_str() << " , " << to_string(v).c_str() << "}";
+        qDebug() << ss.str().c_str();
     }
 }
