@@ -71,7 +71,7 @@ namespace ch {
     cv::Mat apply_contrast(cv::Mat img, double beta, double sigma);
     cv::Mat scale(cv::Mat mat, double scale);
     cv::Mat convert_to_3channel_grayscale(cv::Mat img);
-    cv::Mat convert_to_1channel_gray(const cv::Mat& img);
+    cv::Mat convert_to_1channel_gray(const cv::Mat& img, bool invert = false);
     cv::Mat coherence_filter(cv::Mat img, int sigma, int str_sigma, float blend, int iter);
     cv::Mat anisotropic_diffusion(cv::Mat img, double alpha, double k, int iters);
     std::tuple<cv::Mat,cv::Mat> meanshift_segmentation(
@@ -86,9 +86,10 @@ namespace ch {
     QImage mat_to_qimage(cv::Mat mat, bool copy = true);
     void paint_polygon(QPainter& g, const polygon& poly, color col);
     void paint_strokes(QPainter& g, strokes str);
-    cv::Mat paint_colored_polygons(const std::vector<std::tuple<color, polygon>>& polys,
+    cv::Mat paint_polygons(const std::vector<std::tuple<color, polygon>>& polys,
         dimensions<int> sz);
-
+    cv::Mat paint_polygons(const std::vector<std::tuple<uchar, polygon>>& polys,
+        dimensions<int> sz);
     // etc.
     std::string to_string(double val, int precision);
     std::string to_string(const point& pt);

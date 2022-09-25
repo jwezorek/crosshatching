@@ -335,9 +335,12 @@ std::tuple<cv::Mat, cv::Mat> ch::meanshift_segmentation(const cv::Mat& input, in
 	return { output, labels };
 }
 
-cv::Mat ch::convert_to_1channel_gray(const cv::Mat& color) {
+cv::Mat ch::convert_to_1channel_gray(const cv::Mat& color, bool invert) {
 	cv::Mat gray;
 	cv::cvtColor(color, gray, cv::COLOR_BGR2GRAY);
+	if (invert) {
+		gray = cv::Scalar::all(255) - gray;
+	}
 	return gray;
 }
 
@@ -500,7 +503,7 @@ void ch::paint_strokes(QPainter& g, strokes str) {
 	//TODO
 }
 
-cv::Mat ch::paint_colored_polygons(const std::vector<std::tuple<color, polygon>>& polys,
+cv::Mat ch::paint_polygons(const std::vector<std::tuple<color, polygon>>& polys,
 		dimensions<int> sz) {
 	cv::Mat mat(sz.hgt, sz.wd, CV_8UC3);
 	QImage img = mat_to_qimage(mat, false);
@@ -514,12 +517,28 @@ cv::Mat ch::paint_colored_polygons(const std::vector<std::tuple<color, polygon>>
 	return mat;
 }
 
+cv::Mat ch::paint_polygons(const std::vector<std::tuple<uchar, ch::polygon>>& gray_polys,
+		ch::dimensions<int> sz) {
+	auto colored_polys = gray_polys |
+		rv::transform(
+			[](const auto& tup)->std::tuple<color, ch::polygon> {
+				auto [gray, poly] = tup;
+				return { rgb(gray,gray,gray), poly };
+			}
+	) | r::to_vector;
+	return paint_polygons(colored_polys, sz);
+}
+
 void ch::debug_polygons(const std::string& output_file, std::span<std::tuple<uchar, ch::polygon>> cpolys) {
+	auto iter_white = r::find_if(cpolys, [](const auto& tup) {return std::get<0>(tup) == 0; });
+	size_t i = std::distance(cpolys.begin(), iter_white);
 	auto polys = cpolys | rv::transform([](const auto& tup) {return std::get<1>(tup); }) | r::to_vector;
+
 	auto [x1, y1, x2, y2] = ch::bounding_rectangle(polys);
 	int wd = x2 - x1;
 	int hgt = y2 - y1;
 	std::vector<ch::color> colors = {
+		rgb(255,255,255),
 		rgb(255,0,0),
 		rgb(255,97,3),
 		rgb(255,255,0),
@@ -533,19 +552,23 @@ void ch::debug_polygons(const std::string& output_file, std::span<std::tuple<uch
 		rgb(173, 216, 230),
 		rgb(230, 230, 250)
 	};
+	if (i < colors.size()) {
+		std::swap(colors[0], colors[i]);
+	}
 	auto n = std::min(cpolys.size(), colors.size());
-	auto bottom_of_img = hgt;
+	auto old_hgt = hgt;
 	hgt += 35 * (n+2);
 	auto colored_polys = rv::zip(colors, polys | rv::take(n)) | 
 		rv::transform(
 			[](const auto& p) {return std::tuple(p.first, p.second); }
 		) | r::to_vector;
-	auto img = paint_colored_polygons(colored_polys, dimensions<int>(wd, hgt));
+	
+	auto img = paint_polygons(colored_polys, dimensions<int>(wd, hgt));
 
 	for (int i = 0; i < static_cast<int>(n); ++i) {
 		cv::putText(img, //target image
 			std::to_string(i).c_str(), //text
-			cv::Point(50, bottom_of_img + 35 * (i+1)), //top-left position
+			cv::Point(50, old_hgt + 35 * (i+1)), //top-left position
 			cv::FONT_HERSHEY_DUPLEX,
 			1.0,
 			colors[i], //font color

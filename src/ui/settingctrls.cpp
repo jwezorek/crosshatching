@@ -252,7 +252,7 @@ cv::Mat ui::raster_to_vector::process_image(cv::Mat input) {
 		return input;
 	}
 	auto colored_polys = ch::raster_to_vector(input, param);
-	return output_ = paint_colored_polygons(colored_polys, ch::mat_dimensions(input));
+	return output_ = paint_polygons(colored_polys, ch::mat_dimensions(input));
 }
 
 bool ui::raster_to_vector::is_on() const {
