@@ -529,16 +529,15 @@ cv::Mat ch::paint_polygons(const std::vector<std::tuple<uchar, ch::polygon>>& gr
 	return paint_polygons(colored_polys, sz);
 }
 
-void ch::debug_polygons(const std::string& output_file, std::span<std::tuple<uchar, ch::polygon>> cpolys) {
-	auto iter_white = r::find_if(cpolys, [](const auto& tup) {return std::get<0>(tup) == 0; });
-	size_t i = std::distance(cpolys.begin(), iter_white);
+void ch::debug_polygons(const std::string& output_file, dimensions<int> sz,
+		std::span<std::tuple<uchar, ch::polygon>> cpolys) {
+
 	auto polys = cpolys | rv::transform([](const auto& tup) {return std::get<1>(tup); }) | r::to_vector;
 
 	auto [x1, y1, x2, y2] = ch::bounding_rectangle(polys);
-	int wd = x2 - x1;
-	int hgt = y2 - y1;
+	int wd = sz.wd;
+	int hgt = sz.hgt;
 	std::vector<ch::color> colors = {
-		rgb(255,255,255),
 		rgb(255,0,0),
 		rgb(255,97,3),
 		rgb(255,255,0),
@@ -552,9 +551,9 @@ void ch::debug_polygons(const std::string& output_file, std::span<std::tuple<uch
 		rgb(173, 216, 230),
 		rgb(230, 230, 250)
 	};
-	if (i < colors.size()) {
-		std::swap(colors[0], colors[i]);
-	}
+	//if (i < colors.size()) {
+	//	std::swap(colors[0], colors[i]);
+	//}
 	auto n = std::min(cpolys.size(), colors.size());
 	auto old_hgt = hgt;
 	hgt += 35 * (n+2);

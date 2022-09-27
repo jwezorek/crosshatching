@@ -25,6 +25,7 @@ BOOST_GEOMETRY_REGISTER_POINT_2D(ch::point, double, boost::geometry::cs::cartesi
 namespace ch {
 
     using polygon = boost::geometry::model::polygon<point, true, false>;
+    using polygons = boost::geometry::model::multi_polygon<polygon>;
     using ring = boost::geometry::model::ring<point, true, false>;
     using polyline = boost::geometry::model::linestring<point>;
     using polylines = boost::geometry::model::multi_linestring<polyline>;

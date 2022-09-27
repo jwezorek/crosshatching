@@ -40,7 +40,7 @@ namespace ch {
         detail::polygons_to_svg_aux(output_file, polys, scale);
     }
 
-    void debug_polygons(const std::string& output_file,
+    void debug_polygons(const std::string& output_file, dimensions<int> sz,
         std::span<std::tuple<uchar, polygon>> polys);
 
     // crosshatching strokes...

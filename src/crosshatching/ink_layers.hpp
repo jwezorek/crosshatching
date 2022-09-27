@@ -20,5 +20,5 @@ namespace ch {
     ink_layers split_into_layers(const std::vector<gray_polygon>& polys,
         std::span<const uchar> gray_levels);
 
-    void debug_layers();
+    void debug_layers(cv::Mat img);
 }

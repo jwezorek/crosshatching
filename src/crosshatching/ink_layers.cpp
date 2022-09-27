@@ -7,6 +7,11 @@
 #include <opencv2/highgui.hpp>
 #include <map>
 #include <memory>
+#include <unordered_set>
+#include <sstream>
+#include <functional>
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
 
 /*------------------------------------------------------------------------------------------------------*/
 
@@ -61,6 +66,11 @@ namespace {
             graph_[v].insert(u);
         }
 
+        void remove_edge(int u, int v) {
+            graph_[u].erase(v);
+            graph_[v].erase(u);
+        }
+
         bool contains_edge(int u, int v) const {
             auto iter = graph_.find(u);
             if (iter == graph_.end()) {
@@ -71,10 +81,19 @@ namespace {
         }
         
         auto adjacent_verts(int v) const {
-            return rv::all(graph_.at(v));
+            static std::set<int> dummy;
+            const std::set<int>* adj_list = nullptr;
+            if (graph_.find(v) == graph_.end()) {
+                adj_list = &dummy;
+            } else {
+                adj_list = &graph_.at(v);
+            }
+            return rv::all(*adj_list);
         }
 
         int merge_vertices(int v1, int v2) {
+
+            remove_edge(v1, v2);
 
             // order v1 and v2 such that v1 is the lower index.
             if (v1 > v2) {
@@ -107,8 +126,6 @@ namespace {
                 id = merge_vertices(id, joinee);
             }
         }
-
-        
     };
 
     struct edge_record {
@@ -184,7 +201,7 @@ namespace {
             std::shared_ptr<std::vector<int>> component_ids_;
         public:
             cluster(int id = -1, double area = 0.0, uchar color = 0)  :
-                    id_(id), color_(color)  {
+                    id_(id), area_(area), color_(color)  {
                 if (id_ >= 0) {
                     component_ids_ = std::make_shared<std::vector<int>>();
                     component_ids_->push_back(id_);
@@ -196,7 +213,10 @@ namespace {
                     component_ids_(
                         std::make_shared<std::vector<int>>(
                             children | 
-                                rv::transform([](const auto& c) {return c.id(); }) | 
+                                rv::transform([](const auto& c) {
+                                    return rv::all(c.components()); }
+                                ) | 
+                                rv::join |
                                 r::to_vector
                         )
                     ),
@@ -221,6 +241,10 @@ namespace {
                 return color_;
             }
 
+            void set_color(uchar c) {
+                color_ = c;
+            }
+
             double area() const {
                 return area_;
             }
@@ -228,28 +252,12 @@ namespace {
             const std::vector<int>& components() const {
                 return *component_ids_;
             }
-
-            cluster join(const std::vector<cluster>& children) const {
-                uchar color = children.front().color();
-                
-                for (const auto& c : children) {
-                    if (c.color() != color) {
-                        throw std::logic_error("cluster::join");
-                    }
-                }
-                return {
-                    color,
-                    rv::concat(
-                        rv::single(*this),
-                        children 
-                    )
-                };
-            }
         };
         
         class cluster_set {
             std::unordered_map<int, cluster> set_;
             adjacency_graph* graph_;
+
         public:
             using value_type = std::unordered_map<int, cluster>::value_type;
 
@@ -294,18 +302,22 @@ namespace {
                 return clusters;
             }
 
-            auto local_neighbors(int ex_id) const {
-                return graph_->adjacent_verts(ex_id) |
+            auto adjacent_cluster_ids(int c_id) {
+                return graph_->adjacent_verts(c_id) |
                     rv::remove_if(
-                        [this](int neighbor) {
-                            return set_.find(neighbor) == set_.end();
+                        [this](int v) {
+                            return set_.find(v) == set_.end();
                         }
-                    ) |
-                    rv::transform(
-                        [this](int id)->cluster {
-                            return set_.at(id);
-                        }
-                        ) | r::to_vector;
+                );
+            }
+
+            auto adjacent_clusters(int c_id) {
+                return adjacent_cluster_ids(c_id) |
+                    rv::transform([&](int id) {return this->at(id); });
+            }
+
+            cluster at(int c_id) {
+                return set_.at(c_id);
             }
 
             std::vector<cluster> select_merge_targets(const std::vector<cluster>& candidates) {
@@ -327,18 +339,32 @@ namespace {
                 ) | r::to_vector;
             }
 
+            bool contains(const cluster& c) {
+                return set_.find(c.id()) != set_.end();
+            }
+
             cluster remove(int id) {
                 cluster c = set_.at(id);
                 set_.erase(id);
                 return c;
             }
 
-            void merge_clusters(const std::vector<cluster>& local, const cluster& ex) {
-                for (const auto& c : local) {
-                    remove(c.id());
+            void merge_clusters(r::any_view<cluster> mergees) {
+                uchar color = 0;
+                for (const auto& c : mergees) {
+                    if (c.color() > 0) {
+                        color = c.color();
+                    }
+                    if (contains(c)) {
+                        remove(c.id());
+                    }
                 }
-                graph_->join(local | rv::transform([](const auto& c) {return c.id(); }));
-                auto new_cluster = ex.join(local);
+
+                graph_->join(
+                    mergees |  rv::transform([](const auto& c) {return c.id(); })
+                );
+
+                auto new_cluster = cluster{ color, mergees };
                 insert(new_cluster);
             }
 
@@ -350,10 +376,12 @@ namespace {
                 do {
                     bool merged_one = false;
                     for (auto ex_clust : src.clusters_by_area()) {
-                        auto neighbors = local_neighbors(ex_clust.id());
+
+                        auto neighbors = adjacent_clusters(ex_clust.id()) |  r::to_vector;
                         if (! neighbors.empty()) {
                             auto targets = select_merge_targets(neighbors);
-                            merge_clusters(targets, ex_clust);
+                            auto mergees = rv::concat(rv::single(ex_clust), targets) | r::to_vector;
+                            merge_clusters(mergees);
                             merged_one = true;
                         } else {
                             slop.push_back(ex_clust);
@@ -365,9 +393,51 @@ namespace {
                 return slop;
             }
 
-            void merge(const std::vector<cluster>& clusts) {
+            void insert(const std::vector<cluster>& clusts) {
                 for (const auto& c : clusts) {
                     insert(c);
+                }
+            }
+
+            void flatten() {
+                for (auto& [id, val] : set_) {
+                    val.set_color(0);
+                }
+
+                using id_set = std::set<int>;
+                std::vector<std::vector<cluster>> connected_components;
+                std::function<id_set(int)> dfs;
+                std::unordered_set<int> visited;
+
+                dfs = [&](int c_id)->id_set {
+                    if (visited.find(c_id) != visited.end()) {
+                        return {};
+                    }
+                    visited.insert(c_id);
+                    id_set connected_component = { c_id };
+                    for (const auto& neighbor_id : adjacent_cluster_ids(c_id)) {
+                        auto cc_neighbor = dfs(neighbor_id);
+                        if (!cc_neighbor.empty()) {
+                            connected_component.insert(cc_neighbor.begin(), cc_neighbor.end());
+                        }
+                    }
+                    return connected_component;
+                };
+
+                for (const auto& [index, c] : set_) {
+                    if (visited.find( c.id() ) != visited.end()) {
+                        continue;
+                    }
+                    auto ids = dfs(c.id());
+                    connected_components.push_back( 
+                        ids |
+                            rv::transform([this](int id) {return set_.at(id); }) |
+                            r::to_vector
+                    );
+                }
+
+                for (const auto& cc : connected_components) {
+                    merge_clusters( cc );
                 }
             }
         };
@@ -420,46 +490,141 @@ namespace {
         {
         }
 
-        
+        const adjacency_graph& graph() const {
+            return graph_;
+        }
+
         std::vector<cluster_info> next_layer(uchar from_gray, uchar to_gray) {
-            
             auto clusters = seed_clusters(from_gray, to_gray);
+
             std::vector<cluster> slop;
             if (!prev_layer_.empty()) {
                 slop = clusters.merge(prev_layer_);
             }
+
             auto output = clusters.contents() |
                 rv::transform(
                     [](const cluster& c)->cluster_info {
                         return c.to_cluster_info();
                     }
                 ) | r::to_vector;
-            clusters.merge(slop);
+
+            clusters.insert(slop);
             prev_layer_ = clusters;
+            prev_layer_.flatten();
+
             return output;
         }
     };
+
+    ch::polygon join_polygons(const ch::polygon& poly1, const ch::polygon& poly2) {
+        ch::polygons output;
+        boost::geometry::union_(poly1, poly2, output);
+        if (output.empty()) {
+            std::vector<std::tuple<ch::color, ch::polygon>> debug = {
+                {ch::rgb(255,0,0), poly1},
+                {ch::rgb(0,0,255), poly2}
+            };
+            ch::polygons_to_svg<ch::color>("C:\\test\\debug.svg", debug);
+            qDebug() << "boost::geometry::union_ failure";
+            return {};
+        }
+        return output[0];
+    }
+
+    ch::polygon join_polygons(const std::vector<ch::polygon>& polys, const adjacency_graph& graph,
+            const std::vector<int> ids) {
+
+        std::unordered_set<int> id_set = ids | r::to<std::unordered_set<int>>();
+        std::unordered_set<int> visited;
+
+        ch::polygon joined;
+        std::function<void(int)> dfs;
+        dfs = [&](int id) {
+            if (visited.find(id) != visited.end()) {
+                return;
+            }
+            visited.insert(id);
+            if (joined.outer().empty()) {
+                joined = polys[id];
+            } else {
+                joined = join_polygons(joined, polys[id]);
+            }
+
+            auto neighbors_in_cluster = graph.adjacent_verts(id) |
+                rv::remove_if(
+                    [&](int v) {
+                        return id_set.find(v) == id_set.end(); 
+                    }
+                );
+
+            for (auto neighbor : neighbors_in_cluster) {
+                dfs(neighbor);
+            }
+        };
+        dfs(ids.front());
+
+        return joined;
+    }
 }
 
-ch::ink_layers ch::split_into_layers(const std::vector<gray_polygon>& polys,
+ch::ink_layers ch::split_into_layers(const std::vector<gray_polygon>& cpolys,
         std::span<const uchar> gray_levels) {
-    edge_table<int> test;
-    test[std::tuple{point{ 40.0,40.0 }, point{ 60.0,120.0 }}] = 42;
 
-    auto hello = test[std::tuple{ point{  60.0,120.0 }, point{40.0,40.0 } }];
-    return {};
+    polygon_layer_factory layer_factory(cpolys);
+    auto adj_graph = layer_factory.graph();
+    auto polygons = cpolys | rv::transform([](const auto& p) {return std::get<1>(p); }) | r::to_vector;
+    int item_id = 0;
+    auto ranges = gray_ranges(gray_levels);
+    auto layers = ranges |
+        rv::transform(
+            [&](const auto& rng_tup)->ink_layer {
+                auto [from_gray, to_gray] = rng_tup;
+                auto clusters = layer_factory.next_layer(from_gray, to_gray);
+                return clusters | 
+                    rv::transform(
+                        [&](const auto& ci)->ink_layer_item {
+                            const auto& [value, poly_ids] = ci;
+                            return {
+                                item_id++,
+                                value,
+                                join_polygons(polygons, adj_graph, poly_ids),
+                                nullptr
+                            };
+                        }
+                    ) | r::to_vector;
+            }
+        ) | r::to_vector;
+
+    return layers;
 }
 
-void ch::debug_layers() {
-    auto img = cv::imread("C:\\test\\testo.png");
+void ch::debug_layers(cv::Mat img) {
     auto mat = img.clone();
     mat = ch::convert_to_1channel_gray(mat, true);
-    auto polys = ch::raster_to_vector_grayscale(mat, 1.5);
-    debug_polygons( "C:\\test\\testo_labels.png", polys);
+    auto all_polys = ch::raster_to_vector_grayscale(mat,1.4);
+    auto polys = all_polys |
+            rv::remove_if(
+                [](const gray_polygon& gp) {
+                    return std::get<0>(gp) == 0 || std::get<1>(gp).outer().size() == 2;
+                }
+        ) | r::to_vector;
 
-    polygon_layer_factory layer_factory(polys);
-    for (auto [from_gray, to_gray] : gray_ranges({ {64,128,255} }) ) {
-        auto clusters = layer_factory.next_layer(from_gray, to_gray);
+    auto layers = ch::split_into_layers(polys, { {60,128,255} });
+    for (const auto& [index, layer] : rv::enumerate(layers)) {
+        std::string fname = "C:\\test\\layers\\test-" + std::to_string(index) + ".svg";
+        auto gpolys = layer |
+            rv::transform(
+                [](const ch::ink_layer_item& ili)->ch::gray_polygon {
+                    return {
+                        255-ili.value,
+                        ili.poly
+                    };
+                }
+            ) | r::to_vector;
+        if (!gpolys.empty()) {
+            polygons_to_svg<uchar>(fname, gpolys);
+        }
     }
 
 }
