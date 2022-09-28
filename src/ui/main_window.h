@@ -25,7 +25,7 @@ namespace ui {
         std::vector<image_processing_pipeline_item*> pipeline;
         image_box* img_box;
         cv::Mat src;
-        cv::Mat current;
+        pipeline_output current;
         view_state view_state;
     };
 
@@ -142,9 +142,9 @@ namespace ui {
         QWidget* create_image_processing_pipeline_tools();
         QWidget* create_drawing_tools();
 
-        void display(cv::Mat mat = {});
+        void display(pipeline_output work_in_prog = {});
         void handle_pipeline_change(int index);
-        cv::Mat input_to_nth_stage(int index) const;
+        pipeline_output input_to_nth_stage(int index) const;
         cv::Mat segmentation() const;
         ch::crosshatching_job drawing_job() const;
         std::vector<std::tuple<ch::brush_expr_ptr, double>> brush_per_intervals() const;
@@ -152,7 +152,7 @@ namespace ui {
         std::vector<cv::Mat> layer_images() const;
         ch::parameters drawing_params() const;
         std::string image_src_filename() const;
-        cv::Mat processed_image() const;
+        pipeline_output processed_image() const;
 
         std::tuple<int, int> source_image_sz() const;
         ui::view_state view_state() const;

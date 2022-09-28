@@ -18,7 +18,7 @@ int ui::image_processing_pipeline_item::index() const {
 	return index_;
 }
 
-cv::Mat ui::image_processing_pipeline_item::output() const {
+ui::pipeline_output ui::image_processing_pipeline_item::output() const {
 	return output_;
 }
 
@@ -34,7 +34,7 @@ void ui::image_processing_pipeline_item::initialize() {
 
 }
 
-cv::Mat ui::image_processing_pipeline_item::process_image(cv::Mat input) {
+ui::pipeline_output ui::image_processing_pipeline_item::process_image(pipeline_output input) {
 	return input;
 }
 
@@ -77,8 +77,9 @@ void ui::scale_and_contrast::initialize() {
 	thresh_slider_->set(0.5);
 }
 
-cv::Mat ui::scale_and_contrast::process_image(cv::Mat input) {
+ui::pipeline_output ui::scale_and_contrast::process_image(pipeline_output inp) {
 
+	auto input = std::get<cv::Mat>(inp);
 	auto scale = scale_slider_->value();
 
 	scale /= 100.0;
@@ -123,7 +124,8 @@ void ui::anisotropic_diffusion_filter::initialize() {
 	iters_slider_->set(0);
 }
 
-cv::Mat ui::anisotropic_diffusion_filter::process_image(cv::Mat input) {
+ui::pipeline_output ui::anisotropic_diffusion_filter::process_image(pipeline_output inp) {
+	auto input = std::get<cv::Mat>(inp);
 	return output_ = ch::anisotropic_diffusion(
 		input,
 		alpha_slider_->value(),
@@ -168,7 +170,8 @@ void ui::shock_filter::initialize() {
 	iter_slider_->set(0);
 }
 
-cv::Mat ui::shock_filter::process_image(cv::Mat input) {
+ui::pipeline_output ui::shock_filter::process_image(pipeline_output inp) {
+	auto input = std::get<cv::Mat>(inp);
 	return output_ = ch::coherence_filter(
 		input,
 		2*sigma_slider_->value()+1,
@@ -207,7 +210,8 @@ void ui::mean_shift_segmentation::initialize() {
 	min_size_slider_->set(12);
 }
 
-cv::Mat ui::mean_shift_segmentation::process_image(cv::Mat input) {
+ui::pipeline_output ui::mean_shift_segmentation::process_image(pipeline_output inp) {
+	auto input = std::get<cv::Mat>(inp);
 	std::tie(output_, label_image_) = ch::meanshift_segmentation(
 		input,
 		sigmaS_slider_->value(),
@@ -234,27 +238,33 @@ ui::raster_to_vector::raster_to_vector() :
 void ui::raster_to_vector::populate() {
 	QHBoxLayout* layout = new QHBoxLayout();
 
-	layout->addWidget(param_slider_ = new ui::float_value_slider("RDP param", 1.0, 10.0, 1.0));
+	layout->addWidget(param_slider_ = new ui::float_value_slider("RDP param", 0.0, 8.0, 0.0, 100));
 	content_area_->setLayout(layout);
 
 	connect(param_slider_, &float_value_slider::slider_released, [this]() {
 		changed(this->index()); }
 	);
+
 }
 
 void ui::raster_to_vector::initialize() {
-	param_slider_->set(1.0);
+	param_slider_->set(0.0);
 }
 
-cv::Mat ui::raster_to_vector::process_image(cv::Mat input) {
+ui::pipeline_output ui::raster_to_vector::process_image(pipeline_output inp) {
+	auto input = std::get<cv::Mat>(inp);
 	auto param = param_slider_->value();
-	if (param <= 1.0) {
+	if (param == 0.0) {
 		return input;
 	}
 	auto colored_polys = ch::raster_to_vector(input, param);
-	return output_ = paint_polygons(colored_polys, ch::mat_dimensions(input));
+
+	return output_ = std::make_shared<vector_graphics>(
+		std::move(colored_polys),
+		ch::mat_dimensions(input)
+	);
 }
 
 bool ui::raster_to_vector::is_on() const {
-	return param_slider_->value() > 1.0;
+	return param_slider_->value() > 0.0;
 }

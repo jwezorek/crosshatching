@@ -1,27 +1,41 @@
 #pragma once
 
 #include <QtWidgets>
+
 #include "float_value_slider.h"
+#include "../crosshatching/geometry.hpp"
+#include "../crosshatching/raster_to_vector.hpp"
+#include "../crosshatching/util.hpp"
+#include <variant>
+#include <memory>
 #include <opencv2/core.hpp>
 #include <tuple>
 #include <functional>
 
 namespace ui {
 
+    struct vector_graphics {
+        std::vector<ch::colored_polygon> polygons;
+        ch::dimensions<int> sz;
+    };
+
+    using vector_graphics_ptr = std::shared_ptr<vector_graphics>;
+    using pipeline_output = std::variant<std::monostate, cv::Mat, vector_graphics_ptr>;
+
     class image_processing_pipeline_item : public QWidget {
         Q_OBJECT
     protected:
         int index_;
         QWidget* content_area_;
-        cv::Mat output_;
+        pipeline_output output_;
     public:
         image_processing_pipeline_item(QString title, int index);
         int index() const;
-        cv::Mat output() const;
+        pipeline_output output() const;
         void clear_output();
         virtual void populate();
         virtual void initialize();
-        virtual cv::Mat process_image(cv::Mat input);
+        virtual pipeline_output process_image(pipeline_output input);
         virtual bool is_on() const;
     signals:
         void changed(int index);
@@ -38,7 +52,7 @@ namespace ui {
         scale_and_contrast();
         void populate() override;
         void initialize() override;
-        cv::Mat process_image(cv::Mat input) override;
+        pipeline_output process_image(pipeline_output input) override;
         bool is_on() const override;
 
     };
@@ -54,7 +68,7 @@ namespace ui {
         anisotropic_diffusion_filter();
         void populate() override;
         void initialize() override;
-        cv::Mat process_image(cv::Mat input) override;
+        pipeline_output process_image(pipeline_output input) override;
         bool is_on() const override;
     };
 
@@ -69,7 +83,7 @@ namespace ui {
         shock_filter();
         void populate() override;
         void initialize() override;
-        cv::Mat process_image(cv::Mat input) override;
+        pipeline_output process_image(pipeline_output input) override;
         bool is_on() const override;
     };
 
@@ -84,7 +98,7 @@ namespace ui {
         mean_shift_segmentation();
         void populate() override;
         void initialize() override;
-        cv::Mat process_image(cv::Mat input) override;
+        pipeline_output process_image(pipeline_output input) override;
         cv::Mat labels() const;
         bool is_on() const override;
     };
@@ -97,8 +111,7 @@ namespace ui {
         raster_to_vector();
         void populate() override;
         void initialize() override;
-        cv::Mat process_image(cv::Mat input) override;
-        cv::Mat labels() const;
+        pipeline_output process_image(pipeline_output input) override;
         bool is_on() const override;
     };
 }

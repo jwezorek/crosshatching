@@ -19,6 +19,8 @@
 #include <boost/geometry/geometries/register/linestring.hpp>
 #include <boost/geometry/geometries/register/multi_linestring.hpp>
 
+/*------------------------------------------------------------------------------------------------------*/
+
 namespace ch { using point = cv::Point2d; }
 BOOST_GEOMETRY_REGISTER_POINT_2D(ch::point, double, boost::geometry::cs::cartesian, x, y);
 
@@ -60,6 +62,11 @@ namespace ch {
     template <typename T>
     dimensions<T> operator*(T left, const dimensions<T>& right) {
         return { left * right.wd, left * right.hgt };
+    }
+
+    template <typename T>
+    dimensions<T> operator*(double left, const dimensions<T>& right) {
+        return { static_cast<T>(left * right.wd), static_cast<T>(left * right.hgt) };
     }
 
     polyline make_polyline(size_t sz);

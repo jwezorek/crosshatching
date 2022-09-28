@@ -192,7 +192,7 @@ void ui::main_window::set_swatch_view(cv::Mat swatch, bool left) {
 	crosshatching_.set_view(drawing_tools::view::swatch);
 }
 
-void ui::main_window::set_layer_view() {
+void ui::main_window::set_layer_view() { /*
 	auto layers = layer_images();
 	int n = static_cast<int>(layers.size());
 	auto names = rv::concat(
@@ -209,6 +209,7 @@ void ui::main_window::set_layer_view() {
 		r::to<std::vector<std::tuple<std::string, cv::Mat>>>();
 	crosshatching_.layer_viewer->set_content(tab_content);
 	crosshatching_.set_view(drawing_tools::view::layers);
+	*/
 }
 
 void ui::main_window::set_drawing_view(cv::Mat drawing) {
@@ -218,7 +219,7 @@ void ui::main_window::set_drawing_view(cv::Mat drawing) {
 }
 
 void ui::main_window::redo_test_swatch() {
-	set_swatch_view(ui::test_swatch_picker::get_test_swatch(img_proc_ctrls_.current), true);
+	//set_swatch_view(ui::test_swatch_picker::get_test_swatch(img_proc_ctrls_.current), true);
 }
 
 void ui::main_window::generate() {
@@ -241,7 +242,8 @@ void ui::main_window::edit_settings() {
 }
 
 void ui::main_window::debug() {
-	ch::debug_layers(processed_image());
+	//ch::debug_layers(processed_image());
+	//ch::debug_raster_to_vector();
 }
 
 void ui::main_window::create_main_menu()
@@ -344,18 +346,22 @@ QWidget* ui::main_window::create_image_processing_pipeline_tools()
 	return ctrl;
 }
 
-cv::Mat ui::main_window::input_to_nth_stage(int index) const {
+bool is_pipeline_output_empty(ui::pipeline_output po) {
+	return std::holds_alternative<std::monostate>(po);
+}
+
+ui::pipeline_output ui::main_window::input_to_nth_stage(int index) const {
 	if (index == 0) {
 		return img_proc_ctrls_.src;
 	} 
 
-	cv::Mat input;
+	pipeline_output input;
 	int j = index;
 	do {
 		input = img_proc_ctrls_.pipeline.at(--j)->output();
-	} while (input.empty() && j > 0);
+	} while (is_pipeline_output_empty(input) && j > 0);
 
-	if (input.empty()) {
+	if (is_pipeline_output_empty(input)) {
 		input = img_proc_ctrls_.src;
 	}
 
@@ -378,7 +384,7 @@ std::string ui::main_window::image_src_filename() const {
 	return img_proc_ctrls_.src_filename;
 }
 
-cv::Mat ui::main_window::processed_image() const {
+ui::pipeline_output ui::main_window::processed_image() const {
 	return img_proc_ctrls_.current;
 }
 
@@ -394,12 +400,14 @@ std::vector<std::tuple<ch::brush_expr_ptr, double>> ui::main_window::brush_per_i
 		) | r::to_vector;
 }
 
-std::vector<std::tuple<ch::brush_expr_ptr, cv::Mat>> ui::main_window::layers() const {
+std::vector<std::tuple<ch::brush_expr_ptr, cv::Mat>> ui::main_window::layers() const { /*
 	if (processed_image().empty()) {
 		return {};
 	}
 	auto brush_and_threshold = brush_per_intervals();
 	return generate_ink_layer_images( processed_image(), segmentation(), brush_and_threshold );
+	*/
+	return {};
 }
 
 std::vector<cv::Mat> ui::main_window::layer_images() const {
@@ -423,32 +431,42 @@ void ui::main_window::handle_pipeline_change(int index) {
 		}
 	);
 
-	cv::Mat mat = input_to_nth_stage(index);
-	if (mat.empty()) {
+	auto work_in_prog = input_to_nth_stage(index);
+	if (is_pipeline_output_empty(work_in_prog)) {
 		return;
 	}
 	std::for_each(img_proc_ctrls_.pipeline.begin() + index, img_proc_ctrls_.pipeline.end(),
-		[&mat](ui::image_processing_pipeline_item* stage) {
+		[&work_in_prog](ui::image_processing_pipeline_item* stage) {
 			if (stage->is_on()) {
-				mat = stage->process_image(mat);
+				work_in_prog = stage->process_image(work_in_prog);
 			}
 		}
 	);
 
-	display(mat);
+	display(work_in_prog);
 }
 
-void ui::main_window::display(cv::Mat img) {
-	if (!img.empty()) {
-		img_proc_ctrls_.current = img;
+void ui::main_window::display(pipeline_output work_in_prog) {
+	if (! is_pipeline_output_empty(work_in_prog)) {
+		img_proc_ctrls_.current = work_in_prog;
 	}
-
-	cv::Mat mat = img_proc_ctrls_.current;
-	if (img_proc_ctrls_.view_state.black_and_white) {
-		mat = ch::convert_to_3channel_grayscale(mat);
-	}
-	if (img_proc_ctrls_.view_state.scale != 1.0) {
-		mat = ch::scale(mat, img_proc_ctrls_.view_state.scale);
+	const auto& current = img_proc_ctrls_.current;
+	double view_scale = img_proc_ctrls_.view_state.scale;
+	cv::Mat mat;
+	if (std::holds_alternative<cv::Mat>(current)) {
+		mat = std::get<cv::Mat>(current);
+		if (img_proc_ctrls_.view_state.black_and_white) {
+			mat = ch::convert_to_3channel_grayscale(mat);
+		}
+		if (view_scale != 1.0) {
+			mat = ch::scale(mat, view_scale);
+		}
+	} else if (std::holds_alternative<vector_graphics_ptr>(current)) {
+		auto ptr_to_vg = std::get<vector_graphics_ptr>(current);
+		std::vector<ch::colored_polygon> polys = (view_scale != 1.0) ?
+			ch::scale(ptr_to_vg->polygons, view_scale) :
+			ptr_to_vg->polygons;
+		mat = ch::paint_polygons(polys, view_scale * ptr_to_vg->sz);
 	}
 	int wd = mat.cols;
 	int hgt = mat.rows;
