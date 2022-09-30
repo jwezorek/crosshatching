@@ -569,6 +569,7 @@ namespace {
 }
 
 ch::ink_layers ch::split_into_layers(const std::vector<gray_polygon>& cpolys,
+        std::span<const ch::brush_expr_ptr> brush_expr_ptrs,
         std::span<const uchar> gray_levels) {
 
     polygon_layer_factory layer_factory(cpolys);
@@ -576,9 +577,12 @@ ch::ink_layers ch::split_into_layers(const std::vector<gray_polygon>& cpolys,
     auto polygons = cpolys | rv::transform([](const auto& p) {return std::get<1>(p); }) | r::to_vector;
     int item_id = 0;
     auto ranges = gray_ranges(gray_levels);
-    auto layers = ranges |
+    std::vector<ch::brush_expr_ptr> brushes = (!brush_expr_ptrs.empty()) ?
+        brush_expr_ptrs | r::to_vector :
+        std::vector<ch::brush_expr_ptr>(ranges.size(), nullptr);
+    auto layer_content = ranges |
         rv::transform(
-            [&](const auto& rng_tup)->ink_layer {
+            [&](const auto& rng_tup)->std::vector<ink_layer_item> {
                 auto [from_gray, to_gray] = rng_tup;
                 auto clusters = layer_factory.next_layer(from_gray, to_gray);
                 return clusters | 
@@ -594,9 +598,24 @@ ch::ink_layers ch::split_into_layers(const std::vector<gray_polygon>& cpolys,
                         }
                     ) | r::to_vector;
             }
-        ) | r::to_vector;
+        );
 
-    return layers;
+    return rv::zip(brushes, layer_content) |
+        rv::transform(
+            [](auto&& pair)->ink_layer {
+                auto&& [brush, content] = pair;
+                return { brush, content };
+            }
+    ) | r::to_vector;
+}
+
+std::vector<ch::gray_polygon> ch::to_polygons(const ink_layer& il) {
+    return il.content |
+        rv::transform(
+            [](const ink_layer_item& ili)->ch::gray_polygon {
+                return { ili.value, ili.poly };
+            }
+    ) | r::to_vector;
 }
 
 void ch::debug_layers(cv::Mat img) {
@@ -609,8 +628,8 @@ void ch::debug_layers(cv::Mat img) {
                     return std::get<0>(gp) == 0 || std::get<1>(gp).outer().size() == 2;
                 }
         ) | r::to_vector;
-
-    auto layers = ch::split_into_layers(polys, { {60,128,255} });
+    /*
+    auto layers = ch::split_into_layers(polys, {}, { {60, 128, 255} });
     for (const auto& [index, layer] : rv::enumerate(layers)) {
         std::string fname = "C:\\test\\layers\\test-" + std::to_string(index) + ".svg";
         auto gpolys = layer |
@@ -626,5 +645,5 @@ void ch::debug_layers(cv::Mat img) {
             polygons_to_svg<uchar>(fname, gpolys);
         }
     }
-
+    */
 }

@@ -150,7 +150,7 @@ void ui::main_window::open()
 	}
 }
 
-void ui::main_window::test() {
+void ui::main_window::test() { /*\
 	if (crosshatching_.swatch.empty()) {
 		redo_test_swatch();
 	} 
@@ -178,7 +178,7 @@ void ui::main_window::test() {
 		cv::resize(test_swatch, test_swatch, cv::Size(), scale, scale, cv::INTER_AREA);
 	}
 
-	set_swatch_view(test_swatch, false);
+	set_swatch_view(test_swatch, false); */
 }
 
 void ui::main_window::set_swatch_view(cv::Mat swatch, bool left) {
@@ -192,7 +192,7 @@ void ui::main_window::set_swatch_view(cv::Mat swatch, bool left) {
 	crosshatching_.set_view(drawing_tools::view::swatch);
 }
 
-void ui::main_window::set_layer_view() { /*
+void ui::main_window::set_layer_view() { 
 	auto layers = layer_images();
 	int n = static_cast<int>(layers.size());
 	auto names = rv::concat(
@@ -204,12 +204,11 @@ void ui::main_window::set_layer_view() { /*
 			), 
 			rv::single(std::string("image"))
 		);
-	auto images = rv::concat(layers, rv::single(processed_image()));
+	auto images = layers; // rv::concat(layers, rv::single(processed_image()));
 	auto tab_content = rv::zip(names, images) |
 		r::to<std::vector<std::tuple<std::string, cv::Mat>>>();
 	crosshatching_.layer_viewer->set_content(tab_content);
 	crosshatching_.set_view(drawing_tools::view::layers);
-	*/
 }
 
 void ui::main_window::set_drawing_view(cv::Mat drawing) {
@@ -374,9 +373,9 @@ cv::Mat ui::main_window::segmentation() const {
 
 ch::crosshatching_job ui::main_window::drawing_job() const {
 	return {
-		image_src_filename(),
-		layers(),
-		drawing_params()
+//		image_src_filename(),
+//		layers(),
+//		drawing_params()
 	};
 }
 
@@ -384,38 +383,69 @@ std::string ui::main_window::image_src_filename() const {
 	return img_proc_ctrls_.src_filename;
 }
 
-ui::pipeline_output ui::main_window::processed_image() const {
-	return img_proc_ctrls_.current;
+ui::vector_graphics_ptr ui::main_window::vector_output() const {
+	if (std::holds_alternative<ui::vector_graphics_ptr>(img_proc_ctrls_.current)) {
+		return std::get<ui::vector_graphics_ptr>(img_proc_ctrls_.current) ;
+	} 
+	return nullptr;
 }
 
-std::vector<std::tuple<ch::brush_expr_ptr, double>> ui::main_window::brush_per_intervals() const {
+std::tuple<std::vector<ch::brush_expr_ptr>, std::vector<double>> 
+			ui::main_window::brush_per_intervals() const {
 	auto brush_dict = static_cast<brush_panel*>(crosshatching_.brushes)->brush_dictionary();
 	auto layer_name_vals = static_cast<layer_panel*>(crosshatching_.layers)->layers();
-	return layer_name_vals |
-			rv::transform(
-				[&](const auto& p)->std::tuple<ch::brush_expr_ptr, double> {
-					const auto& [brush_name, val] = p;
-					return { brush_dict.at(brush_name), val };
-				}
-		) | r::to_vector;
+	return {
+		layer_name_vals | rv::transform(
+			[&](const auto& p)->ch::brush_expr_ptr {
+				return brush_dict.at(std::get<0>(p));
+			}
+		) | r::to_vector,
+		layer_name_vals | rv::transform(
+			[&](const auto& p)->double {
+				return std::get<1>(p);
+			}
+		) | r::to_vector,
+	}; 
 }
 
-std::vector<std::tuple<ch::brush_expr_ptr, cv::Mat>> ui::main_window::layers() const { /*
-	if (processed_image().empty()) {
+ch::ink_layers ui::main_window::layers() const {
+	if (!vector_output()) {
 		return {};
 	}
-	auto brush_and_threshold = brush_per_intervals();
-	return generate_ink_layer_images( processed_image(), segmentation(), brush_and_threshold );
-	*/
-	return {};
+	auto vo = *vector_output();
+	auto [brushes, intervals] = brush_per_intervals();
+	auto gray_value_polygons = ch::to_monochrome(vo.polygons, true);
+
+	auto gray_value_ranges = intervals |
+			rv::transform(
+				[](double val) {
+					return static_cast<uchar>(val * 255.0);
+				}
+			) | r::to_vector;
+
+	return ch::split_into_layers(gray_value_polygons, brushes, gray_value_ranges);
+}
+
+
+ch::dimensions<int> ui::main_window::dimensions() const {
+	auto curr_pipeline_output = img_proc_ctrls_.current;
+	if (std::holds_alternative<cv::Mat>(curr_pipeline_output)) {
+		return ch::mat_dimensions(std::get<cv::Mat>(curr_pipeline_output));
+	} else if (std::holds_alternative<vector_graphics_ptr>(curr_pipeline_output)) {
+		return std::get<vector_graphics_ptr>(curr_pipeline_output)->sz;
+	} else {
+		throw std::runtime_error("this shouldnt happen");
+	}
 }
 
 std::vector<cv::Mat> ui::main_window::layer_images() const {
-	auto layer_pairs = layers();
-	return layer_pairs |
+	
+	auto sz = dimensions();
+	auto layers = this->layers();
+	return layers |
 		rv::transform(
-			[](const auto& tup)->cv::Mat {
-				return std::get<1>(tup);
+			[sz](const ch::ink_layer& il)->cv::Mat {
+				return ch::paint_polygons(ch::to_polygons(il), sz, true);
 			}
 		) | r::to_vector;
 }
@@ -500,7 +530,7 @@ void ui::drawing_tools::set_view(view v)
 	viewer_stack->setCurrentIndex( static_cast<int>(v) );
 }
 
-/*------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------------------------------*/
 
 ui::layer_panel::layer_panel() :
 	ui::list_panel("layers", 3, [&]() { this->add_layer(); }, [&]() { this->delete_layer(); }) {
@@ -579,7 +609,8 @@ void ui::layer_panel::insert_layer(const std::string& brush, double end_of_range
 	sync_layers_to_ui();
 }
 
-void ui::layer_panel::setRowText(int row, const std::string& brush, const std::string& from, const std::string& to) {
+void ui::layer_panel::setRowText(int row, const std::string& brush, 
+		const std::string& from, const std::string& to) {
 	std::array<QTableWidgetItem*, 3> items = {
 		new QTableWidgetItem(brush.c_str()),
 		new QTableWidgetItem(from.c_str()),

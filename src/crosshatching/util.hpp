@@ -79,6 +79,7 @@ namespace ch {
     int max_val_in_mat(cv::Mat mat);
     void label_map_to_visualization_img(cv::Mat img, const std::string& output_file);
     dimensions<int> mat_dimensions(cv::Mat mat);
+    uchar color_to_monochrome(color col);
 
     // painting with Qt...
     QImage create_compatible_qimage(int wd, int hgt);
@@ -89,7 +90,7 @@ namespace ch {
     cv::Mat paint_polygons(const std::vector<std::tuple<color, polygon>>& polys,
         dimensions<int> sz);
     cv::Mat paint_polygons(const std::vector<std::tuple<uchar, polygon>>& polys,
-        dimensions<int> sz);
+        dimensions<int> sz, bool invert = false);
     // etc.
     std::string to_string(double val, int precision);
     std::string to_string(const point& pt);

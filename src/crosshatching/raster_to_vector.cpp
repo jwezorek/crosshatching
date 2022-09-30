@@ -482,7 +482,16 @@ namespace {
 				}
 			) |
 			rv::join |
-					r::to_<ch::ring>;
+			r::to_<ch::ring>;
+	}
+
+	bool is_degenerate_ring(const ch::ring& r) {
+		return r.size() <= 2;
+	}
+
+	template<typename T>
+	bool is_degenerate_poly_tuple(const std::tuple<T, ch::polygon>& tup) {
+		return is_degenerate_ring(std::get<1>(tup).outer());
 	}
 
 	ch::polygon simplify_polygon(const ch::polygon& poly, const ch::point_set& crit_pts,
@@ -490,11 +499,13 @@ namespace {
 		return ch::make_polygon(
 			simplify_ring(poly.outer(), crit_pts, paths, param),
 			poly.inners() |
-			rv::transform(
-				[&](const auto& hole) {
-					return simplify_ring(hole, crit_pts, paths, param);
-				}
-			) | r::to_vector
+				rv::transform(
+					[&](const auto& hole) {
+						return simplify_ring(hole, crit_pts, paths, param);
+					}
+				) | rv::remove_if(
+					is_degenerate_ring
+				) | r::to_vector
 		);
 	}
 
@@ -533,14 +544,18 @@ namespace {
 
 		polys = simplify_polygons(polys, param);
 
-		return rv::zip(
+		auto output = rv::zip(
 			blobs | rv::transform(first<T, ch::polygon>),
 			polys
 		) | rv::transform(
 			[](const auto& pair)->std::tuple<T, ch::polygon> {
 				return { pair.first, pair.second };
 			}
-		) | r::to_vector;
+		);
+
+		return output | 
+			rv::remove_if( is_degenerate_poly_tuple<T> )
+			| r::to_vector;
 	}
 
 	struct color_hasher {
@@ -611,4 +626,17 @@ std::vector<ch::color> ch::detail::unique_3channel_values(const cv::Mat& input) 
 		}
 	}
 	return colors | r::to_vector;
+}
+
+std::vector<ch::gray_polygon> ch::to_monochrome(
+		const std::vector<colored_polygon>& polys, bool invert) {
+	auto tup_to_mono = [invert](const colored_polygon& tup)->gray_polygon {
+		const auto& [col, poly] = tup;
+		auto gray_val = color_to_monochrome(col);
+		if (invert) {
+			gray_val = 255 - gray_val;
+		}
+		return { gray_val , poly };
+	};
+	return polys | rv::transform(tup_to_mono) | r::to_vector;
 }

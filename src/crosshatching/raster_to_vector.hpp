@@ -30,6 +30,9 @@ namespace ch {
         }
     }
 
+    std::vector<gray_polygon> to_monochrome(
+        const std::vector<colored_polygon>& polys, bool invert = false);
+
     template<typename T>
     std::vector<std::tuple<T, ch::polygon>> scale(
         const std::vector<std::tuple<T, ch::polygon>>& polys, double scale_factor) {

@@ -2,6 +2,7 @@
 
 #include "../crosshatching/drawing.hpp"
 #include "../crosshatching/brush_lang.hpp"
+#include "../crosshatching/ink_layers.hpp"
 #include "settingctrls.hpp"
 #include "treepanel.h"
 #include "image_box.h"
@@ -110,6 +111,8 @@ namespace ui {
         void set_view(view v);
     };
 
+    using layer_tuple = std::tuple<ch::brush_expr_ptr, std::vector<ch::gray_polygon>>;
+
     class main_window : public QMainWindow
     {
         Q_OBJECT
@@ -147,13 +150,14 @@ namespace ui {
         pipeline_output input_to_nth_stage(int index) const;
         cv::Mat segmentation() const;
         ch::crosshatching_job drawing_job() const;
-        std::vector<std::tuple<ch::brush_expr_ptr, double>> brush_per_intervals() const;
-        std::vector<std::tuple<ch::brush_expr_ptr, cv::Mat>> layers() const;
+        std::tuple<std::vector<ch::brush_expr_ptr>, std::vector<double>> 
+            brush_per_intervals() const;
+        ch::ink_layers layers() const;
         std::vector<cv::Mat> layer_images() const;
         ch::parameters drawing_params() const;
         std::string image_src_filename() const;
-        pipeline_output processed_image() const;
-
+        vector_graphics_ptr vector_output() const;
+        ch::dimensions<int> dimensions() const;
         std::tuple<int, int> source_image_sz() const;
         ui::view_state view_state() const;
 

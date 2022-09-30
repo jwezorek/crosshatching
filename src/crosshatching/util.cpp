@@ -518,15 +518,25 @@ cv::Mat ch::paint_polygons(const std::vector<std::tuple<color, polygon>>& polys,
 }
 
 cv::Mat ch::paint_polygons(const std::vector<std::tuple<uchar, ch::polygon>>& gray_polys,
-		ch::dimensions<int> sz) {
+		ch::dimensions<int> sz, bool invert) {
 	auto colored_polys = gray_polys |
 		rv::transform(
-			[](const auto& tup)->std::tuple<color, ch::polygon> {
+			[invert](const auto& tup)->std::tuple<color, ch::polygon> {
 				auto [gray, poly] = tup;
+				gray = (invert) ? 255 - gray : gray;
 				return { rgb(gray,gray,gray), poly };
 			}
 	) | r::to_vector;
 	return paint_polygons(colored_polys, sz);
+}
+
+//  0.299 R + 0.587 G + 0.114 B
+uchar ch::color_to_monochrome(ch::color col) {
+	float red = static_cast<float>(col[2]);
+	float green = static_cast<float>(col[1]);
+	float blue = static_cast<float>(col[0]);
+	float gray = 0.299 * red + 0.587 * green + 0.114 * blue;
+	return static_cast<uchar>(gray);
 }
 
 void ch::debug_polygons(const std::string& output_file, dimensions<int> sz,
