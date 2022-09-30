@@ -506,6 +506,7 @@ void ch::paint_strokes(QPainter& g, strokes str) {
 cv::Mat ch::paint_polygons(const std::vector<std::tuple<color, polygon>>& polys,
 		dimensions<int> sz) {
 	cv::Mat mat(sz.hgt, sz.wd, CV_8UC3);
+	mat.setTo(cv::Scalar(255, 255, 255));
 	QImage img = mat_to_qimage(mat, false);
 	QPainter g(&img);
 	g.setRenderHint(QPainter::Antialiasing, true);

@@ -440,14 +440,43 @@ ch::dimensions<int> ui::main_window::dimensions() const {
 
 std::vector<cv::Mat> ui::main_window::layer_images() const {
 	
-	auto sz = dimensions();
+
+	double view_scale = img_proc_ctrls_.view_state.scale;
+	auto sz = view_scale * dimensions();
 	auto layers = this->layers();
-	return layers |
+	r::reverse(layers);
+
+	auto all_polygons = layers |
 		rv::transform(
-			[sz](const ch::ink_layer& il)->cv::Mat {
-				return ch::paint_polygons(ch::to_polygons(il), sz, true);
+			[view_scale](const auto& il) {
+				return il.content |
+					rv::transform(
+						[view_scale](const ch::ink_layer_item& ili)->ch::gray_polygon {
+							return { 
+								ili.value, 
+								ch::scale(ili.poly, view_scale) 
+							};
+						}
+					);
 			}
-		) | r::to_vector;
+		) |
+		rv::join |
+		r::to_vector;
+	auto composite = ch::paint_polygons(all_polygons, sz, true );
+
+	return rv::concat(
+		layers | 
+			rv::transform(
+				[view_scale, sz](const ch::ink_layer& il)->cv::Mat {
+					return ch::paint_polygons(
+						ch::scale(ch::to_polygons(il), view_scale),
+						sz, 
+						true
+					);
+				}
+			), 
+		rv::single(composite)
+	) | r::to_vector;
 }
 
 ch::parameters ui::main_window::drawing_params() const {
@@ -512,6 +541,9 @@ std::tuple<int, int> ui::main_window::source_image_sz() const {
 void ui::main_window::handle_view_scale_change(double scale) {
 	img_proc_ctrls_.view_state.scale = scale;
 	display();
+	if (crosshatching_.layer_viewer->has_images()) {
+		set_layer_view();
+	}
 }
 
 void ui::main_window::handle_view_bw_change(bool bw) {
@@ -670,7 +702,9 @@ ui::brush_panel::brush_item::brush_item(const std::string& name, ch::brush_expr_
 {}
 
 ui::brush_panel::brush_item::brush_item(ch::brush_expr_ptr expr) :
-	QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString(expr->short_string().c_str()))),
+	QTreeWidgetItem(
+		static_cast<QTreeWidget*>(nullptr),
+		QStringList(QString(expr->short_string().c_str()))),
 	brush_expression(expr), 
 	is_toplevel(false)
 {}
@@ -687,7 +721,8 @@ void ui::brush_panel::insert_brush_item(brush_item* parent, brush_item* item) {
 	}
 }
 
-void ui::brush_panel::insert_toplevel_item(QTreeWidget* tree, const std::string& name, ch::brush_expr_ptr expr) {
+void ui::brush_panel::insert_toplevel_item(QTreeWidget* tree, 
+		const std::string& name, ch::brush_expr_ptr expr) {
 	auto toplevel_item = new brush_item(name, expr);
 	tree->addTopLevelItem(toplevel_item);
 

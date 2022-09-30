@@ -93,6 +93,7 @@ namespace ch {
     ring scale(const ring& r, double scale);
     polyline scale(const polyline& poly, double scale);
     polygon scale(const polygon& poly, double scale);
+    std::vector<polygon> scale(const std::vector<polygon>& polys, double scale);
     ch::ring simplify_rectilinear_ring(const ring& poly);
     rectangle bounding_rectangle(const polyline& poly);
     rectangle bounding_rectangle(const ring& poly);

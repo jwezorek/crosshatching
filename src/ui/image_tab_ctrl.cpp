@@ -21,6 +21,10 @@ void image_tab_ctrl::set_content(const std::vector<std::tuple<std::string, cv::M
     }
 }
 
+bool image_tab_ctrl::has_images() const {
+    return this->count() > 0;
+}
+
 void image_tab_ctrl::clear_and_delete() {
     int n = this->count();
     std::vector<QWidget*> tabs(n);

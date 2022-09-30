@@ -14,6 +14,7 @@ class image_tab_ctrl  : public QTabWidget
 public:
     image_tab_ctrl();
     void set_content(const std::vector<std::tuple<std::string, cv::Mat>>& content);
+    bool has_images() const;
 private:
     void clear_and_delete();
 };

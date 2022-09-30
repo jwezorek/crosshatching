@@ -363,6 +363,14 @@ ch::polygon ch::scale(const polygon& poly, double val) {
 	);
 }
 
+std::vector<ch::polygon> ch::scale(const std::vector<ch::polygon>& polys, double scale_factor) {
+	return polys | rv::transform(
+		[scale_factor](const auto& poly) {
+			return ch::scale(poly, scale_factor);
+		}
+	) | r::to_vector;
+}
+
 ch::ring ch::simplify_rectilinear_ring(const ch::ring& poly) {
 	return elide_adjacent_parallel_edges(poly);
 }
