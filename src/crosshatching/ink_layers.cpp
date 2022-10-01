@@ -399,6 +399,7 @@ namespace {
                 }
             }
 
+
             void flatten() {
                 for (auto& [id, val] : set_) {
                     val.set_color(0);
@@ -406,38 +407,44 @@ namespace {
 
                 using id_set = std::set<int>;
                 std::vector<std::vector<cluster>> connected_components;
-                std::function<id_set(int)> dfs;
                 std::unordered_set<int> visited;
 
-                dfs = [&](int c_id)->id_set {
-                    if (visited.find(c_id) != visited.end()) {
-                        return {};
-                    }
-                    visited.insert(c_id);
-                    id_set connected_component = { c_id };
-                    for (const auto& neighbor_id : adjacent_cluster_ids(c_id)) {
-                        auto cc_neighbor = dfs(neighbor_id);
-                        if (!cc_neighbor.empty()) {
-                            connected_component.insert(cc_neighbor.begin(), cc_neighbor.end());
+                auto dfs = [&](int start_id)->id_set {
+                    std::vector<int> stack = { start_id };
+                    
+                    id_set connected_component;
+                    while (!stack.empty()) {
+                        auto c_id = stack.back();
+                        stack.pop_back();
+
+                        if (visited.find(c_id) != visited.end()) {
+                            continue;
+                        }
+                        visited.insert(c_id);
+                        connected_component.insert(c_id);
+
+                        for (const auto& neighbor_id : adjacent_cluster_ids(c_id)) {
+                            stack.push_back(neighbor_id);
                         }
                     }
+
                     return connected_component;
                 };
 
                 for (const auto& [index, c] : set_) {
-                    if (visited.find( c.id() ) != visited.end()) {
+                    if (visited.find(c.id()) != visited.end()) {
                         continue;
                     }
                     auto ids = dfs(c.id());
-                    connected_components.push_back( 
+                    connected_components.push_back(
                         ids |
-                            rv::transform([this](int id) {return set_.at(id); }) |
-                            r::to_vector
+                        rv::transform([this](int id) {return set_.at(id); }) |
+                        r::to_vector
                     );
                 }
 
                 for (const auto& cc : connected_components) {
-                    merge_clusters( cc );
+                    merge_clusters(cc);
                 }
             }
         };
