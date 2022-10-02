@@ -5,6 +5,8 @@
 #include <opencv2/imgproc.hpp>
 #include <range/v3/all.hpp>
 
+#include "correct.hpp"
+
 namespace r = ranges;
 namespace rv = ranges::views;
 
@@ -319,8 +321,6 @@ namespace {
 		return blobs_per_gray_to_layer(blobs_per_gray);
 	}
 
-
-
 	int update_vertex_usage_count(ch::point_map<int>& vertex_count, const ch::point& pt,
 			const ch::dimensions<int>& dims) {
 		bool not_in_table = vertex_count.find(pt) == vertex_count.end();
@@ -542,20 +542,33 @@ namespace {
 			rv::transform(second<T, ch::polygon>) |
 			r::to_vector;
 
+		// fix self-intersections, spikes, etc.
+
 		polys = simplify_polygons(polys, param);
+		std::vector<std::tuple<T, ch::polygon>> output;
+		output.reserve(polys.size() + 100);
 
-		auto output = rv::zip(
-			blobs | rv::transform(first<T, ch::polygon>),
-			polys
-		) | rv::transform(
-			[](const auto& pair)->std::tuple<T, ch::polygon> {
-				return { pair.first, pair.second };
+		for (auto&& [col, poly] : rv::zip(blobs | rv::transform(first<T, ch::polygon>), polys)) {
+			if (is_degenerate_ring(poly.outer())) {
+				continue;
 			}
-		);
 
-		return output | 
-			rv::remove_if( is_degenerate_poly_tuple<T> )
-			| r::to_vector;
+			if (boost::geometry::is_valid(poly)) {
+				output.emplace_back(col, std::move(poly));
+			}
+
+			double remove_spike_threshold = 1E-7;
+			ch::polygons result;
+			geometry::correct<ch::point, ch::polygon, ch::ring, ch::polygons>(
+				ch::polygons{ poly }, result, remove_spike_threshold
+			);
+
+			for (auto&& p : result) {
+				output.emplace_back(col, std::move(p));
+			}
+		}
+
+		return output;
 	}
 
 	struct color_hasher {

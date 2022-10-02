@@ -177,6 +177,7 @@
   <ItemGroup>
     <ClInclude Include="src\crosshatching\brush.hpp" />
     <ClInclude Include="src\crosshatching\brush_lang.hpp" />
+    <ClInclude Include="src\crosshatching\correct.hpp" />
     <ClInclude Include="src\crosshatching\drawing.hpp" />
     <ClInclude Include="src\crosshatching\geometry.hpp" />
     <ClInclude Include="src\crosshatching\ink_layers.hpp" />

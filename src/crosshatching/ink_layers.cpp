@@ -144,7 +144,8 @@ namespace {
         void insert(int id) {
             auto iter = r::find_if(poly_ids, [](int id) {return id < 0; });
             if (iter == poly_ids.end()) {
-                throw std::runtime_error("error constructing polygon graph");
+                return;
+                //throw std::runtime_error("error constructing polygon graph");
             }
             *iter = id;
             if (poly_ids.back() >= 0) {
@@ -582,6 +583,7 @@ ch::ink_layers ch::split_into_layers(const std::vector<gray_polygon>& cpolys,
     polygon_layer_factory layer_factory(cpolys);
     auto adj_graph = layer_factory.graph();
     auto polygons = cpolys | rv::transform([](const auto& p) {return std::get<1>(p); }) | r::to_vector;
+    
     int item_id = 0;
     auto ranges = gray_ranges(gray_levels);
     std::vector<ch::brush_expr_ptr> brushes = (!brush_expr_ptrs.empty()) ?
