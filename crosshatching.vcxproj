@@ -81,6 +81,7 @@
     <ClCompile>
       <AdditionalIncludeDirectories>C:\libraries\vcpkg\packages\opencv4_x64-windows-static-md\include;$(BOOST_DIR);$(EIGEN3_INCLUDE_DIR);C:\libraries\vcpkg\packages\range-v3_x64-windows\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_);.\src\ui</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>C:\libraries\vcpkg\packages\libwebp_x64-windows-static-md\debug\lib;C:\libraries\vcpkg\packages\liblzma_x64-windows-static-md\debug\lib;C:\libraries\vcpkg\packages\libpng_x64-windows-static\debug\lib;C:\libraries\vcpkg\packages\tiff_x64-windows-static-md\debug\lib;C:\libraries\vcpkg\packages\libjpeg-turbo_x64-windows-static-md\debug\lib;C:\libraries\vcpkg\packages\zlib_x64-windows-static-md\debug\lib;C:\libraries\vcpkg\packages\opencv4_x64-windows-static-md\debug\lib</AdditionalLibraryDirectories>

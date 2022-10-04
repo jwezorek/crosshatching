@@ -241,8 +241,7 @@ void ui::main_window::edit_settings() {
 }
 
 void ui::main_window::debug() {
-	//ch::debug_layers(processed_image());
-	//ch::debug_raster_to_vector();
+	ch::debug_layers({});
 }
 
 void ui::main_window::create_main_menu()
