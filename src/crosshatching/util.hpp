@@ -82,15 +82,18 @@ namespace ch {
     uchar color_to_monochrome(color col);
 
     // painting with Qt...
+    QImage create_grayscale_qimage(int wd, int hgt);
     QImage create_compatible_qimage(int wd, int hgt);
     cv::Mat qimage_to_mat(QImage img, bool copy = true);
     QImage mat_to_qimage(cv::Mat mat, bool copy = true);
+    QPen create_pen(uchar color, double thickness);
     void paint_polygon(QPainter& g, const polygon& poly, color col);
     void paint_strokes(QPainter& g, strokes str);
     cv::Mat paint_polygons(const std::vector<std::tuple<color, polygon>>& polys,
         dimensions<int> sz);
     cv::Mat paint_polygons(const std::vector<std::tuple<uchar, polygon>>& polys,
         dimensions<int> sz, bool invert = false);
+
     // etc.
     std::string to_string(double val, int precision);
     std::string to_string(const point& pt);

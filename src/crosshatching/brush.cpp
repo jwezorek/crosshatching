@@ -46,20 +46,30 @@ namespace {
         cv::Mat mat = (bkgd.empty()) ?
             cv::Mat(static_cast<int>(swatch.sz.hgt), static_cast<int>(swatch.sz.wd), CV_8U, 255) :
             bkgd.clone();
+        auto qimg = ch::mat_to_qimage(mat, false);
+        QPainter g(&qimg);
+        g.setRenderHint(QPainter::Antialiasing, true);
+        ch::paint_strokes(g, swatch.content);
+        return mat;
+    }
+
+    /*
+    cv::Mat paint_swatch(ch::swatch swatch, cv::Mat bkgd) {
+        cv::Mat mat = (bkgd.empty()) ?
+            cv::Mat(static_cast<int>(swatch.sz.hgt), static_cast<int>(swatch.sz.wd), CV_8U, 255) :
+            bkgd.clone();
 
         for (const auto stroke : swatch.content) {
             paint_stroke(mat, stroke);
         }
         return mat;
     }
+    */
 
-    double measure_gray_level(ch::swatch swatch, cv::Mat bkgd)
-    {
+    double measure_gray_level(ch::swatch swatch, cv::Mat bkgd) {
         auto mat = paint_swatch(swatch, bkgd);
-        auto n = swatch.sz.wd * swatch.sz.hgt;
-        auto white_pixels = cv::countNonZero(mat);
-        auto gray = static_cast<double>(n - white_pixels) / static_cast<double>(n);
-        return  gray;
+        double mean_val = cv::mean(mat).val[0];
+        return (255.0 - mean_val) / 255.0;
     }
 
     double sample(ch::dimensions<double> sz, ch::brush_expr_ptr expr, 

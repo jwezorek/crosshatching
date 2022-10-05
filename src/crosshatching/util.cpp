@@ -467,6 +467,13 @@ ch::strokes ch::transform(ch::strokes strokes, const ch::matrix& mat) {
 	);
 }
 
+QImage ch::create_grayscale_qimage(int wd, int hgt) {
+	QImage img(wd, hgt, QImage::Format::Format_Grayscale8);
+	img.fill(Qt::white);
+	return img;
+}
+
+
 QImage ch::create_compatible_qimage(int wd, int hgt) {
 	QImage img(wd, hgt, QImage::Format::Format_BGR888);
 	img.fill(Qt::white);
@@ -474,17 +481,33 @@ QImage ch::create_compatible_qimage(int wd, int hgt) {
 }
 
 cv::Mat ch::qimage_to_mat(QImage image, bool copy) {
-	cv::Mat mat(image.height(), image.width(), CV_8UC3, (cv::Scalar*)image.scanLine(0));
-	return copy ? mat.clone() : mat;
+	if (image.format() == QImage::Format::Format_BGR888) {
+		cv::Mat mat(image.height(), image.width(), CV_8UC3, (cv::Scalar*)image.scanLine(0));
+		return copy ? mat.clone() : mat;
+	} else if (image.format() == QImage::Format::Format_Grayscale8) {
+		cv::Mat mat(image.height(), image.width(), CV_8UC1, (cv::Scalar*)image.scanLine(0));
+		return copy ? mat.clone() : mat;
+	}
+	return {};
 }
 
 QImage ch::mat_to_qimage(cv::Mat mat, bool copy) {
+	QImage img;
 	if (mat.channels() == 1) {
-		mat = ch::convert_to_3channel_grayscale(mat);
-		copy = true;
+		img = QImage(mat.data, mat.cols, mat.rows, mat.step, QImage::Format_Grayscale8);
+	} else if (mat.channels() == 3) {
+		img = QImage(mat.data, mat.cols, mat.rows, mat.step, QImage::Format_BGR888);
+	} else {
+		return {};
 	}
-	auto img = QImage(mat.data, mat.cols, mat.rows, mat.step, QImage::Format_BGR888);
 	return copy ? img.copy() : img;
+}
+
+QPen ch::create_pen(uchar color, double thickness) {
+	return QPen(
+		QBrush(QColor(color, color, color)),
+		static_cast<float>(thickness)
+	);
 }
 
 void ch::paint_polygon(QPainter& g, const polygon& poly, color col) {
@@ -499,8 +522,21 @@ void ch::paint_polygon(QPainter& g, const polygon& poly, color col) {
 	g.drawPath(path);
 }
 
-void ch::paint_strokes(QPainter& g, strokes str) {
-	//TODO
+void ch::paint_strokes(QPainter& g, ch::strokes strks) {
+	for (auto strk : strks) {
+		g.setPen(create_pen(0, strk.pen_thickness));
+
+		QList<QPointF> points = strk.polyline |
+			rv::transform(
+				[](const ch::point& pt)->QPointF {
+					return {
+						static_cast<float>(pt.x),
+						static_cast<float>(pt.y)
+					};
+				}
+			) | r::to<QList>();
+		g.drawLines(points);
+	}
 }
 
 cv::Mat ch::paint_polygons(const std::vector<std::tuple<color, polygon>>& polys,

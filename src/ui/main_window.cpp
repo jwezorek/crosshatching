@@ -241,7 +241,20 @@ void ui::main_window::edit_settings() {
 }
 
 void ui::main_window::debug() {
-	ch::debug_layers({});
+	//ch::debug_layers({});
+	auto qimg = ch::create_compatible_qimage(800, 800);
+
+	QPainter g(&qimg);
+	g.setRenderHint(QPainter::Antialiasing, true);
+
+	QPen pen(QBrush(QColor(0, 0, 0)), 0.5, Qt::DotLine);
+
+	g.setPen(pen);
+	for (float x = 5.0; x < 100; x += 2.5) {
+		g.drawLine(QPointF(x, 20), QPointF( (x * 6.666) + 200, 200+ 1.24 *x));
+	}
+
+	display({ ch::qimage_to_mat(qimg, true) });
 }
 
 void ui::main_window::create_main_menu()
