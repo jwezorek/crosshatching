@@ -2,6 +2,7 @@
 #include "util.hpp"
 #include "brush.hpp"
 #include "geometry.hpp"
+#include "ink_layers.hpp"
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <vector>
@@ -11,34 +12,28 @@
 namespace ch {
 
     struct drawing {
-        std::vector<polyline> strokes;
+        strokes content;
         dimensions<double> sz;
-        double stroke_wd;
     };
 
     struct parameters {
         double scale;
-        int stroke_width; 
         double epsilon;
         int swatch_sz;
         bool use_true_black;
-        double polygon_simplification_param;
 
-        parameters(double sc = 5.0, int sw = 1, double eps = k_epsilon,
-                int sz = k_swatch_sz, bool black = false,
-                double psp = 1.0) :
+        parameters(double sc = 5.0, double eps = k_epsilon,
+                int sz = k_swatch_sz, bool black = false) :
             scale(sc),
-            stroke_width(sw),
             epsilon(eps),
             swatch_sz(sz),
-            use_true_black(black),
-            polygon_simplification_param(psp)
+            use_true_black(black)
         {}
     };
 
     struct crosshatching_job {
         std::string title;
-        std::vector<std::tuple<ch::brush_expr_ptr, cv::Mat>> layers;
+        ink_layers layers;
         parameters params;
     };
 
@@ -48,30 +43,11 @@ namespace ch {
         std::function<void(const std::string&)> log_message_cb;
     };
 
-    std::vector<std::tuple<ch::brush_expr_ptr, cv::Mat>> generate_ink_layer_images(
-        cv::Mat img, cv::Mat label_img,
-        const std::vector<std::tuple<ch::brush_expr_ptr, double>>& brush_intervals
-    );
     drawing generate_crosshatched_drawing(const crosshatching_job& job, const callbacks& cbs = {});
     void write_to_svg(const std::string& filename, const drawing& d, 
         std::function<void(double)> update_progress_cb = {});
     drawing scale(const drawing& d, double scale);
     cv::Mat paint_drawing(const drawing& d, std::function<void(double)> update_progress_cb = {});
 
-    namespace detail {
-        std::vector<std::tuple<uchar,polygon>> to_blobs_from_1channel_image(const cv::Mat& input);
-        std::vector<std::tuple<color, polygon>> to_blobs_from_3channel_image(const cv::Mat& input);
-    }
-
-    template<typename T>
-    std::vector<std::tuple<T, polygon>> to_blobs(const cv::Mat& img) {
-        if constexpr (std::is_same<T, uchar>::value) {
-            return detail::to_blobs_from_1channel_image(img);
-        } else {
-            return detail::to_blobs_from_3channel_image(img);
-        }
-    }
-
-    void raster_to_vector(const std::string& fname, const cv::Mat& mat, double scale, double param);
-    void debug_drawing(const cv::Mat& mat);
+    void debug_drawing();
 }

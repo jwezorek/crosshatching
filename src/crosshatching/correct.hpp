@@ -10,13 +10,15 @@
  * ----------------------------------------------------------------------------
  */
 
+//Modified by jwezorek such that this code defaults to the types used herein...
+
 #include <vector>
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/geometries/multi_polygon.hpp>
 #include <boost/geometry/index/rtree.hpp>
-#include <boost/function_output_iterator.hpp>
+#include <boost/iterator/function_output_iterator.hpp>
 
 #include <boost/geometry/algorithms/detail/overlay/self_turn_points.hpp>
 #include <boost/geometry/policies/robustness/get_rescale_policy.hpp>

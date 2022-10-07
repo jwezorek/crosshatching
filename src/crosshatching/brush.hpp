@@ -6,6 +6,9 @@
 #include <range/v3/all.hpp>
 #include "brush_lang.hpp"
 
+/*------------------------------------------------------------------------------------------------------*/
+
+
 namespace ch {
 
     using bkgd_swatches = std::vector<cv::Mat>;

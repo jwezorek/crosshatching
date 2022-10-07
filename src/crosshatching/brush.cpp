@@ -4,7 +4,7 @@
 #include <future>
 #include <numeric>
 
-/*------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------------------------*/
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -35,7 +35,7 @@ namespace {
                 return cv::Point(
                     static_cast<int>(std::round(p.x)),
                     static_cast<int>(std::round(p.y))
-               );
+                );
             }
         );
         auto npts = int_pts.size();
@@ -52,19 +52,6 @@ namespace {
         ch::paint_strokes(g, swatch.content);
         return mat;
     }
-
-    /*
-    cv::Mat paint_swatch(ch::swatch swatch, cv::Mat bkgd) {
-        cv::Mat mat = (bkgd.empty()) ?
-            cv::Mat(static_cast<int>(swatch.sz.hgt), static_cast<int>(swatch.sz.wd), CV_8U, 255) :
-            bkgd.clone();
-
-        for (const auto stroke : swatch.content) {
-            paint_stroke(mat, stroke);
-        }
-        return mat;
-    }
-    */
 
     double measure_gray_level(ch::swatch swatch, cv::Mat bkgd) {
         auto mat = paint_swatch(swatch, bkgd);

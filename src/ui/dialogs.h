@@ -154,16 +154,14 @@ namespace ui {
         static std::optional<ch::parameters> edit_settings( const ch::parameters& params);
 
         void set_scale(double sc);
-        void set_stroke_width(double sw);
         void set_epsilon(double eps);
         void set_swatch_sz(int ss);
-        void set_polygon_simplification_param(double param);
+        void set_use_black(bool val);
 
         double scale() const;
-        int stroke_wd() const;
         double epsilon() const;
         int swatch_sz() const;
-        double polygon_simplification_param() const;
+        bool use_black() const;
 
     private:
 
@@ -183,10 +181,8 @@ namespace ui {
         }
 
         QLineEdit* scale_;
-        QLineEdit* stroke_width_;
         QLineEdit* epsilon_;
         QLineEdit* swatch_sz_;
-        QLineEdit* polygon_simplification_param_;
         QCheckBox* use_black_;
         QDialogButtonBox* btns_;
     };

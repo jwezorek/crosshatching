@@ -534,49 +534,31 @@ std::any ui::progress::run(const std::string& title, std::function<std::any()> j
 
 ui::settings::settings(const ch::parameters& params) {
     setWindowTitle("Crosshatching parameters");
-    this->setFixedSize(500, 500);
+    this->setFixedSize(500, 350);
 
     auto layout = new QVBoxLayout(this);
+    layout->addSpacing(10);
     layout->addWidget(new QLabel("Scale"));
     layout->addWidget(scale_ = create_double_editor(1.0, 10.0, 2));
-
     layout->addSpacing(10);
-
-    layout->addWidget(new QLabel("Stroke width"));
-    layout->addWidget(stroke_width_ = create_int_editor(1, 10));
-
-    layout->addSpacing(10);
-
     layout->addWidget(new QLabel("Epsilon"));
     layout->addWidget(epsilon_ = create_double_editor(0.0, 2.0, 7));
-
     layout->addSpacing(10);
-
     layout->addWidget(new QLabel("Swatch size"));
     layout->addWidget(swatch_sz_ = create_int_editor(10,1000));
-
     layout->addSpacing(10);
-
     layout->addWidget(use_black_ = new QCheckBox("Use full black polygons"));
-
-    layout->addSpacing(10);
-
-    layout->addWidget(new QLabel("Polygon simplification parameter"));
-    layout->addWidget(
-        polygon_simplification_param_ = create_double_editor(1.0, 8.0, 4)
-    );
-
-    layout->addSpacing(10);
-
+    layout->addSpacing(20);
     layout->addWidget(btns_ = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel));
+    layout->insertStretch(-1, 1); (-1, 1);
+
     connect(btns_, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(btns_, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
     set_scale(params.scale);
-    set_stroke_width(params.stroke_width);
     set_epsilon(params.epsilon);
     set_swatch_sz(params.swatch_sz);
-    set_polygon_simplification_param(params.polygon_simplification_param);
+    set_use_black(params.use_true_black);
 }
 
 std::optional<ch::parameters> ui::settings::edit_settings(const ch::parameters& params) {
@@ -585,11 +567,9 @@ std::optional<ch::parameters> ui::settings::edit_settings(const ch::parameters& 
     if (dlg->exec() == QDialog::Accepted) {
         return { {
             dlg->scale(),
-            dlg->stroke_wd(),
             dlg->epsilon(),
             dlg->swatch_sz(),
-            false,
-            dlg->polygon_simplification_param()
+            dlg->use_black_->isChecked()
         } };
     } else {
         return {};
@@ -619,10 +599,6 @@ void ui::settings::set_scale(double sc) {
     set_value(scale_, sc);
 }
 
-void ui::settings::set_stroke_width(double sw) {
-    set_value(stroke_width_, sw);
-}
-
 void ui::settings::set_epsilon(double eps) {
     set_value(epsilon_, eps);
 }
@@ -631,16 +607,12 @@ void ui::settings::set_swatch_sz(int ss) {
     set_value(swatch_sz_, ss);
 }
 
-void ui::settings::set_polygon_simplification_param(double param) {
-    set_value(polygon_simplification_param_, param);
+void ui::settings::set_use_black(bool val) {
+    use_black_->setChecked(val);
 }
 
 double ui::settings::scale() const {
     return get_value<double>(scale_);
-}
-
-int ui::settings::stroke_wd() const {
-    return get_value<int>(stroke_width_);
 }
 
 double ui::settings::epsilon() const {
@@ -651,6 +623,7 @@ int ui::settings::swatch_sz() const {
     return get_value<int>(swatch_sz_);
 }
 
-double ui::settings::polygon_simplification_param() const {
-    return get_value<double>(polygon_simplification_param_);
+bool ui::settings::use_black() const {
+    return use_black_->isChecked();
 }
+

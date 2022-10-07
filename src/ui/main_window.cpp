@@ -385,9 +385,9 @@ cv::Mat ui::main_window::segmentation() const {
 
 ch::crosshatching_job ui::main_window::drawing_job() const {
 	return {
-//		image_src_filename(),
-//		layers(),
-//		drawing_params()
+		image_src_filename(),
+		layers(),
+		drawing_params()
 	};
 }
 
