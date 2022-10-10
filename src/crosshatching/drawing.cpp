@@ -25,7 +25,7 @@ namespace {
 
     constexpr int k_typical_number_of_strokes = 10000;
 
-    class progress_logger {
+    class progress {
     private:
         std::string job_name_;
         std::function<void(double)> prog_fn_;
@@ -51,7 +51,7 @@ namespace {
         }
 
     public:
-        progress_logger(const std::string& job_name, const ch::callbacks& cbs) :
+        progress(const std::string& job_name, const ch::callbacks& cbs) :
             job_name_(job_name),
             prog_fn_(cbs.update_progress_cb),
             stat_fn_(cbs.update_status_cb),
@@ -60,7 +60,7 @@ namespace {
             curr_blob(0)
         {};
 
-        void set_total_blobs(size_t n) {
+        void set_polygon_count(size_t n) {
             total_blobs = n;
         }
 
@@ -100,10 +100,68 @@ namespace {
             }
         }
     };
+
+    std::tuple<size_t, size_t> drawing_job_stats(const ch::ink_layers& layers) {
+        size_t poly_count = r::accumulate(
+            layers | rv::transform([](auto&& l) {return l.content.size(); }),
+            size_t{ 0 }
+        );
+        size_t vert_count = r::accumulate(
+            layers | rv::transform(
+                [](auto&& l) {
+                    return r::accumulate(
+                        l.content | rv::transform(
+                            [](auto&& ili) {return ch::vert_count(ili.poly); }
+                        ),
+                        size_t{ 0 }
+                    );
+                }
+            ),
+            size_t{ 0 }
+        );
+        return { poly_count, vert_count };
+    }
+
+    ch::drawing draw(const ch::ink_layers& layers, const ch::parameters& params, progress& prog) {
+
+        auto [poly_count, vert_count] = drawing_job_stats(layers);
+        prog.log("  (job contains " + std::to_string(poly_count) + " polygons with " +
+            std::to_string(vert_count) + " total vertices");
+        prog.set_polygon_count(poly_count);
+
+        /*
+        std::vector<std::vector<ch::polyline>> layer_strokes(layers.size());
+        swatch_table tok_to_bkgd = create_swatch_table();
+
+        for (auto [index, layer] : rv::enumerate(stack.blobs())) {
+            ps.log(std::string("  - layer ") + std::to_string(index));
+            std::tie(layer_strokes[index], tok_to_bkgd) = paint_ink_layer(
+                layer, tok_to_bkgd, params, ps);
+        }
+
+        return ch::drawing{
+            layer_strokes | rv::join | r::to_vector,
+             params.scale * ch::dimensions<double>(ch::mat_dimensions(layers.front())),
+            static_cast<double>(params.stroke_width)
+        };
+        */
+        return {};
+    }
 }
 
 ch::drawing ch::generate_crosshatched_drawing(const ch::crosshatching_job& job, const callbacks& cbs) {
-    return {};
+    progress prog(job.title, cbs);
+
+    auto start_time = std::chrono::high_resolution_clock().now();
+
+    prog.status(std::string("drawing ") + job.title);
+    auto result = draw(job.layers, job.params, prog);
+    prog.status(std::string("complete.")); // TODO: or error
+
+    std::chrono::duration<double> elapsed = std::chrono::high_resolution_clock().now() - start_time;
+    prog.log(std::string("( ") + std::to_string(elapsed.count()) + " seconds)");
+
+    return result;
 }
 
 void ch::write_to_svg(const std::string& filename, const drawing& d,
