@@ -5,16 +5,17 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
 #include <map>
 #include <memory>
 #include <unordered_set>
 #include <sstream>
 #include <functional>
 #include <boost/geometry.hpp>
-#include <boost/geometry/geometries/polygon.hpp>
 #include <chrono>
+#include <array>
 
-/*------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------------------------*/
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -661,7 +662,7 @@ namespace {
     void populate_parents(const std::unordered_map<int, std::vector<int>>& layer_item_to_components,
             ch::ink_layers& layers) {
         std::unordered_map<int, ch::ink_layer_item*> component_id_to_layer_item;
-        for (auto& layer : layers) {
+        for (auto& layer : layers.content) {
             for (auto& item : layer.content) {
                 const auto& components = layer_item_to_components.at(item.id);
                 for (int comp_id : components) {
@@ -680,7 +681,39 @@ namespace {
     }
 }
 
-ch::ink_layers ch::split_into_layers(const std::vector<gray_polygon>& cpolys,
+/*------------------------------------------------------------------------------------------------*/
+
+ch::brush_token ch::ink_layer_item::token() const {
+    std::array<uchar, 8> values;
+    values.fill(0);
+
+    const auto* ili_ptr = this;
+    while (ili_ptr) {
+        values[ili_ptr->layer_id] = ili_ptr->value;
+        ili_ptr = ili_ptr->parent;
+    }
+
+    ch::brush_token tok = 0;
+    for (int i = 0; i < values.size(); ++i) {
+        tok |= values[i] << 8 * i;
+    }
+
+    return tok;
+}
+
+ch::brush_token ch::ink_layer_item::parent_token() const {
+    if (parent == nullptr) {
+        return 0;
+    } else {
+        return parent->token();
+    }
+}
+
+/*------------------------------------------------------------------------------------------------*/
+
+ch::ink_layers ch::split_into_layers(
+        const dimensions<int>& sz,
+        const std::vector<gray_polygon>& cpolys,
         std::span<const ch::brush_expr_ptr> brush_expr_ptrs,
         std::span<const uchar> gray_levels) {
 
@@ -689,6 +722,7 @@ ch::ink_layers ch::split_into_layers(const std::vector<gray_polygon>& cpolys,
     auto polygons = cpolys | rv::transform([](const auto& p) {return std::get<1>(p); }) | r::to_vector;
     
     int item_id = 0;
+    int layer_id = 0;
     auto ranges = gray_ranges(gray_levels);
     auto n = ranges.size();
     std::vector<ch::brush_expr_ptr> brushes = (!brush_expr_ptrs.empty()) ?
@@ -698,6 +732,7 @@ ch::ink_layers ch::split_into_layers(const std::vector<gray_polygon>& cpolys,
     auto layer_content = ranges |
         rv::transform(
             [&](const auto& rng_tup)->std::vector<ink_layer_item> {
+                auto current_layer_id = layer_id++;
                 auto [from_gray, to_gray] = rng_tup;
                 auto clusters = layer_factory.next_layer(from_gray, to_gray, n);
                 return clusters |
@@ -708,6 +743,7 @@ ch::ink_layers ch::split_into_layers(const std::vector<gray_polygon>& cpolys,
                             layer_item_to_components[item_id] = std::move(poly_ids);
                             return {
                                 item_id,
+                                current_layer_id,
                                 value,
                                 poly,
                                 nullptr
@@ -717,13 +753,16 @@ ch::ink_layers ch::split_into_layers(const std::vector<gray_polygon>& cpolys,
             }
         ) | r::to_vector;
 
-    ch::ink_layers layers = rv::zip(brushes, layer_content) |
-        rv::transform(
-            [](auto&& pair)->ink_layer {
-                auto&& [brush, content] = pair;
-                return { brush, content };
-            }
-    ) | r::to_vector;
+    ch::ink_layers layers = {
+        sz,
+        rv::zip(brushes, layer_content) |
+            rv::transform(
+                [](auto&& pair)->ink_layer {
+                    auto&& [brush, content] = pair;
+                    return { brush, content };
+                }
+            ) | r::to_vector
+    };
 
     populate_parents(layer_item_to_components, layers);
 
@@ -744,10 +783,11 @@ void ch::debug_layers(cv::Mat img) {
     auto vec = ch::raster_to_vector(mat, 0.05);
     auto bw = ch::to_monochrome(vec, true);
     auto start = std::chrono::high_resolution_clock::now();
-    auto layers = ch::split_into_layers(bw, {{nullptr,nullptr,nullptr}}, {{ 130, 242, 255}} );
+    auto layers = ch::split_into_layers(mat_dimensions(mat), bw, {{nullptr,nullptr,nullptr}}, 
+        {{ 130, 242, 255}} );
 
     int n = 0;
-    for (const auto& layer : layers) {
+    for (const auto& layer : layers.content) {
         qDebug() << "layer: " << n++;
         for (const auto& item : layer.content) {
             std::string parent = (item.parent) ? 

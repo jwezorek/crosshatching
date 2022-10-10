@@ -6,13 +6,22 @@
 #include <vector>
 #include <span>
 
+/*------------------------------------------------------------------------------------------------*/
+
 namespace ch {
+
+    using brush_token = uint64_t;
 
     struct ink_layer_item {
         int id;
+        int layer_id;
         uchar value;
         ch::polygon poly;
         ink_layer_item* parent;
+
+        brush_token token() const;
+        brush_token parent_token() const;
+
     };
 
     struct ink_layer {
@@ -20,9 +29,14 @@ namespace ch {
         std::vector<ink_layer_item> content;
     };
 
-    using ink_layers = std::vector<ink_layer>;
+    struct ink_layers {
+        dimensions<int> sz;
+        std::vector<ink_layer> content;
+    };
 
-    ink_layers split_into_layers(const std::vector<gray_polygon>& polys,
+    ink_layers split_into_layers(
+        const dimensions<int>& sz,
+        const std::vector<gray_polygon>& polys,
         std::span<const ch::brush_expr_ptr> brushes,
         std::span<const uchar> gray_levels);
 

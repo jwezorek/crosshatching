@@ -435,7 +435,7 @@ ch::ink_layers ui::main_window::layers() const {
 				}
 			) | r::to_vector;
 
-	return ch::split_into_layers(gray_value_polygons, brushes, gray_value_ranges);
+	return ch::split_into_layers(vo.sz, gray_value_polygons, brushes, gray_value_ranges);
 }
 
 
@@ -455,7 +455,7 @@ std::vector<cv::Mat> ui::main_window::layer_images() const {
 
 	double view_scale = img_proc_ctrls_.view_state.scale;
 	auto sz = view_scale * dimensions();
-	auto layers = this->layers();
+	auto layers = this->layers().content;
 	r::reverse(layers);
 
 	auto all_polygons = layers |

@@ -103,11 +103,11 @@ namespace {
 
     std::tuple<size_t, size_t> drawing_job_stats(const ch::ink_layers& layers) {
         size_t poly_count = r::accumulate(
-            layers | rv::transform([](auto&& l) {return l.content.size(); }),
+            layers.content | rv::transform([](auto&& l) {return l.content.size(); }),
             size_t{ 0 }
         );
         size_t vert_count = r::accumulate(
-            layers | rv::transform(
+            layers.content | rv::transform(
                 [](auto&& l) {
                     return r::accumulate(
                         l.content | rv::transform(
@@ -122,19 +122,38 @@ namespace {
         return { poly_count, vert_count };
     }
 
+    using swatch_table = std::unordered_map<ch::brush_token, ch::bkgd_swatches>;
+    swatch_table create_swatch_table() {
+        swatch_table tbl;
+        tbl[0] = {};
+        return tbl;
+    }
+
+    std::tuple<std::vector<ch::drawn_stroke>, swatch_table> draw_ink_layer(
+            const ch::ink_layer& layer, swatch_table& tok_to_bkgd,
+            const ch::parameters& params, progress& prog) {
+        return {};
+    }
+
+
     ch::drawing draw(const ch::ink_layers& layers, const ch::parameters& params, progress& prog) {
 
         auto [poly_count, vert_count] = drawing_job_stats(layers);
         prog.log("  (job contains " + std::to_string(poly_count) + " polygons with " +
             std::to_string(vert_count) + " total vertices");
         prog.set_polygon_count(poly_count);
+        
+        std::vector<std::vector<ch::drawn_stroke>> layer_strokes(layers.content.size());
+        swatch_table tok_to_bkgd = create_swatch_table();
+        for (auto [index, layer] : rv::enumerate(layers.content)) {
+            prog.log(std::string("  - layer ") + std::to_string(index));
+            std::tie(layer_strokes[index], tok_to_bkgd) = draw_ink_layer(
+                layer, tok_to_bkgd, params, prog);
+        }
 
         /*
-        std::vector<std::vector<ch::polyline>> layer_strokes(layers.size());
-        swatch_table tok_to_bkgd = create_swatch_table();
-
         for (auto [index, layer] : rv::enumerate(stack.blobs())) {
-            ps.log(std::string("  - layer ") + std::to_string(index));
+            
             std::tie(layer_strokes[index], tok_to_bkgd) = paint_ink_layer(
                 layer, tok_to_bkgd, params, ps);
         }
