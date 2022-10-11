@@ -70,6 +70,7 @@ namespace ch {
     }
 
     polyline make_polyline(size_t sz);
+    polyline make_polyline(std::span<const point> pts);
     ring make_ring(size_t);
     polygon make_polygon(const ring& outer, const std::vector<ring>& inners);
     polygon make_polygon(std::span<const point> verts);
@@ -89,7 +90,8 @@ namespace ch {
     void paint_polyline_aa(cv::Mat& mat, const polyline& p, double thickness, 
         int color, point offset = { 0,0 });
     double euclidean_distance(const point& pt1, const point& pt2);
-    polylines clip_lines_to_poly(const polylines& strokes, const polygon& poly);
+    polylines clip_polylines_to_poly(const polylines& strokes, const polygon& poly);
+    polylines clip_polyline_to_poly(const polyline& stroke, const polygon& poly);
     ring scale(const ring& r, double scale);
     polyline scale(const polyline& poly, double scale);
     polygon scale(const polygon& poly, double scale);
@@ -137,7 +139,6 @@ namespace ch {
             }
         );
     }
-
 
     void debug_geom(cv::Mat mat);
 }

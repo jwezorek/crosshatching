@@ -11,13 +11,8 @@
 
 namespace ch {
 
-    struct drawn_stroke {
-        std::vector<ch::point> poly;
-        double thickness;
-    };
-
     struct drawing {
-        std::vector<drawn_stroke> content;
+        drawn_strokes content;
         dimensions<double> sz;
     };
 

@@ -84,6 +84,46 @@ namespace {
         return gray;
     }
 
+    ch::drawn_stroke stroke_to_drawn_stroke(ch::stroke stroke) {
+        return {
+            stroke.polyline | r::to_vector,
+            stroke.pen_thickness
+        };
+    }
+
+    auto clip_drawn_stroke(const ch::polygon& poly, const ch::drawn_stroke& stroke) {
+        auto clipped_polylines = ch::clip_polyline_to_poly( 
+            ch::make_polyline( stroke.poly ),
+            poly
+        );
+        return clipped_polylines |
+            rv::transform(
+                [th = stroke.thickness](const ch::polyline& pl)->ch::drawn_stroke {
+                    return { pl, th };
+                }
+            );
+    }
+
+    ch::drawn_strokes clip_drawn_strokes(const ch::polygon& poly, const ch::drawn_strokes& strokes) {
+        return strokes |
+            rv::transform(
+                [&poly](const auto& ds) {return clip_drawn_stroke(poly, ds); }
+            ) |
+            rv::join |
+            r::to_vector;
+    }
+
+    ch::drawn_strokes transform(const ch::drawn_strokes& dss, const ch::matrix& mat) {
+        return dss |
+            rv::transform(
+                [&mat](const ch::drawn_stroke& ds)->ch::drawn_stroke {
+                    return {
+                        ch::transform(ds.poly, mat) | r::to_vector,
+                        ds.thickness
+                    };
+                }
+            ) | r::to_vector;
+    }
 }
 
 bool ch::brush::is_uinitiailized() const {
@@ -174,6 +214,33 @@ ch::swatch ch::brush::get_hatching(double gray_level, ch::dimensions<double> sz)
     return create_swatch(brush_expr_, sz, param);
 }
 
+ch::drawn_strokes ch::brush::draw_strokes(const polygon& poly, double gray_level, bool clip_to_poly) {
+    
+    if (is_uinitiailized()) {
+        throw std::runtime_error("brush is not built");
+    }
+
+    if (gray_level < min_gray_level()) {
+        return draw_strokes(poly, min_gray_level());
+    } else if (gray_level > max_gray_level()) {
+        return draw_strokes(poly, max_gray_level());
+    }
+
+    auto param = build_to_gray_level(gray_level);
+    auto centroid = mean_point(poly.outer());
+    auto canonicalized = ch::transform(poly, ch::translation_matrix(-centroid));
+
+    auto strokes = strokes_to_drawn_strokes(
+        brush_expr_to_strokes(brush_expr_, canonicalized, param)
+    );
+
+    if (clip_to_poly) {
+        strokes = clip_drawn_strokes(poly, strokes);
+    }
+
+    return strokes;
+}
+
 ch::bkgd_swatches ch::brush::render_swatches(double gray_value) {
     auto bkgds = bkgds_;
     if (bkgds.empty()) {
@@ -212,4 +279,8 @@ double ch::brush::max_gray_level() const {
 
 int ch::brush::num_samples() {
     return k_num_samples;
+}
+
+ch::drawn_strokes ch::strokes_to_drawn_strokes(ch::strokes strks) {
+    return strks | rv::transform(stroke_to_drawn_stroke) | r::to_vector;
 }

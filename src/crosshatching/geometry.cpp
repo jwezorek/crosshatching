@@ -179,6 +179,10 @@ ch::polyline ch::make_polyline(size_t sz)
 	return poly;
 }
 
+ch::polyline ch::make_polyline(std::span<const ch::point> pts) {
+    return pts | r::to<ch::polyline>();
+}
+
 ch::ring ch::make_ring(size_t sz) {
 	ring r;
 	r.resize(sz);
@@ -338,10 +342,16 @@ double ch::euclidean_distance(const point& pt1, const point& pt2)
 	return std::sqrt(x_diff * x_diff + y_diff * y_diff);
 }
 
-ch::polylines ch::clip_lines_to_poly(const ch::polylines& strokes, const ch::polygon& poly) {
+ch::polylines ch::clip_polylines_to_poly(const ch::polylines& strokes, const ch::polygon& poly) {
 	polylines result;
 	bg::intersection(poly, strokes, result);
 	return result;
+}
+
+ch::polylines ch::clip_polyline_to_poly(const ch::polyline& stroke, const ch::polygon& poly) {
+    polylines result;
+    bg::intersection(poly, stroke, result);
+    return result;
 }
 
 ch::ring ch::scale(const ch::ring& r, double scale)

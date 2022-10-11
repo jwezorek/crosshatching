@@ -131,11 +131,6 @@ namespace {
         return tbl;
     }
 
-    std::vector<ch::drawn_stroke> crosshatch_polygon(const ch::polygon& poly,
-            double value, ch::brush_ptr brush) {
-        return {};
-    }
-
     std::tuple<std::vector<ch::drawn_stroke>, swatch_table> draw_ink_layer(
             const ch::ink_layer& layer, swatch_table& tbl,
             const ch::parameters& params, progress& prog) {
@@ -167,7 +162,7 @@ namespace {
             }
 
             auto value = static_cast<double>(blob.value) / 255.0;
-            auto strokes = crosshatch_polygon(blob.poly, value, current_brush);
+            auto strokes = current_brush->draw_strokes(blob.poly, value);
             std::copy(strokes.begin(), strokes.end(), std::back_inserter(output));
 
             auto tok = blob.token();
@@ -180,7 +175,6 @@ namespace {
 
         return { std::move(output), std::move(output_table) };
     }
-
 
     ch::drawing draw(const ch::ink_layers& inp_layers, const ch::parameters& params, progress& prog) {
 

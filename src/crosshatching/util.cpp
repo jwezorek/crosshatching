@@ -451,6 +451,15 @@ ch::polyline_rng ch::transform(ch::polyline_rng poly, const ch::matrix& mat) {
 	);
 }
 
+std::vector<ch::point> ch::transform(const std::vector<ch::point>& pts, const ch::matrix& mat) {
+    return pts |
+        rv::transform(
+            [mat](const ch::point& pt) {
+                return ch::transform(pt, mat);
+            }
+    ) | r::to_vector;
+}
+
 ch::stroke ch::transform(ch::stroke s, const ch::matrix& mat) {
 	return ch::stroke{
 		ch::transform(s.polyline, mat),

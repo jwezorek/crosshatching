@@ -52,7 +52,8 @@ namespace ch {
         double pen_thickness;
     };
     using strokes = ranges::any_view<stroke>;
-    polyline_rng transform(polyline_rng poly, const ch::matrix& mat);
+    polyline_rng transform(polyline_rng poly, const matrix& mat);
+    std::vector<point> transform(const std::vector<point>& pts, const matrix& mat);
     stroke transform(stroke s, const ch::matrix& mat);
     strokes transform(strokes s, const ch::matrix& mat);
 
