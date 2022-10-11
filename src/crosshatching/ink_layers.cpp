@@ -679,6 +679,10 @@ namespace {
             }
         }
     }
+    
+    ch::ink_layer scale(const ch::ink_layer& il, double scale_factor) {
+        return {};
+    }
 }
 
 /*------------------------------------------------------------------------------------------------*/
@@ -711,8 +715,20 @@ ch::brush_token ch::ink_layer_item::parent_token() const {
 
 /*------------------------------------------------------------------------------------------------*/
 
+ch::ink_layers ch::scale(const ink_layers& il, double scale_factor) {
+    return {
+        scale_factor * il.sz,
+        il.content |
+            rv::transform(
+                [scale_factor](const ink_layer& il) {
+                    return ::scale(il, scale_factor);
+                }
+            ) | r::to_vector
+    };
+}
+
 ch::ink_layers ch::split_into_layers(
-        const dimensions<int>& sz,
+        const dimensions<double>& sz,
         const std::vector<gray_polygon>& cpolys,
         std::span<const ch::brush_expr_ptr> brush_expr_ptrs,
         std::span<const uchar> gray_levels) {

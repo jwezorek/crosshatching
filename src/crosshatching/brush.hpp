@@ -1,13 +1,13 @@
 #pragma once
 
-#include <map>
-#include <unordered_map>
+#include "brush_lang.hpp"
 #include <opencv2/core.hpp>
 #include <range/v3/all.hpp>
-#include "brush_lang.hpp"
+#include <map>
+#include <unordered_map>
+#include <memory>
 
 /*------------------------------------------------------------------------------------------------*/
-
 
 namespace ch {
 
@@ -52,4 +52,6 @@ namespace ch {
         double max_gray_level() const;
         static int num_samples();
     };
+
+    using brush_ptr = std::shared_ptr<brush>;
 }

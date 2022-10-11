@@ -60,7 +60,7 @@ namespace ch {
     };
 
     template <typename T>
-    dimensions<T> operator*(T left, const dimensions<T>& right) {
+    dimensions<T> operator*(int left, const dimensions<T>& right) {
         return { left * right.wd, left * right.hgt };
     }
 
@@ -123,19 +123,19 @@ namespace ch {
         namespace rv = ranges::views;
 
         return rv::concat(
-                all_edges(poly.outer()),
-                poly.inners() |
-                    rv::transform(
-                        [](const auto& r) {
-                            return all_edges(r);
-                        }
-                    ) |
+            all_edges(poly.outer()),
+            poly.inners() |
+                rv::transform(
+                    [](const auto& r) {
+                        return all_edges(r);
+                    }
+                ) |
                 rv::join
-            ) | rv::transform(
-                [](auto rng)->edge {
-                    return { rng[0], rng[1] };
-                }
-            );
+        ) | rv::transform(
+            [](auto rng)->edge {
+                return { rng[0], rng[1] };
+            }
+        );
     }
 
 

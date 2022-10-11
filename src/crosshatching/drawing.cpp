@@ -18,6 +18,8 @@
 #include "brush_lang.hpp"
 #include "raster_to_vector.hpp"
 
+/*------------------------------------------------------------------------------------------------*/
+
 namespace r = ranges;
 namespace rv = ranges::views;
 
@@ -129,19 +131,65 @@ namespace {
         return tbl;
     }
 
-    std::tuple<std::vector<ch::drawn_stroke>, swatch_table> draw_ink_layer(
-            const ch::ink_layer& layer, swatch_table& tok_to_bkgd,
-            const ch::parameters& params, progress& prog) {
+    std::vector<ch::drawn_stroke> crosshatch_polygon(const ch::polygon& poly,
+            double value, ch::brush_ptr brush) {
         return {};
     }
 
+    std::tuple<std::vector<ch::drawn_stroke>, swatch_table> draw_ink_layer(
+            const ch::ink_layer& layer, swatch_table& tbl,
+            const ch::parameters& params, progress& prog) {
 
-    ch::drawing draw(const ch::ink_layers& layers, const ch::parameters& params, progress& prog) {
+        size_t n = layer.content.size();
+        prog.start_new_layer(n);
 
-        auto [poly_count, vert_count] = drawing_job_stats(layers);
+        std::vector<ch::drawn_stroke> output;
+        output.reserve(k_typical_number_of_strokes);
+        std::unordered_map<ch::brush_token, ch::brush_ptr> brush_table;
+        swatch_table output_table = create_swatch_table();
+
+        size_t count = 0;
+        for (const auto& blob: layer.content) {
+            auto parent_tok = blob.parent_token();
+            auto iter = brush_table.find(parent_tok);
+            ch::brush_ptr current_brush;
+            if (iter != brush_table.end()) {
+                current_brush = iter->second;
+            } else {
+                current_brush = std::make_shared<ch::brush>(
+                    layer.brush,
+                    params.epsilon,
+                    ch::dimensions(static_cast<double>(params.swatch_sz)),
+                    tbl.at(parent_tok)
+                );
+                current_brush->build_n(20);
+                brush_table[parent_tok] = current_brush;
+            }
+
+            auto value = static_cast<double>(blob.value) / 255.0;
+            auto strokes = crosshatch_polygon(blob.poly, value, current_brush);
+            std::copy(strokes.begin(), strokes.end(), std::back_inserter(output));
+
+            auto tok = blob.token();
+            if (output_table.find(tok) == output_table.end()) {
+                output_table[tok] = current_brush->render_swatches(value);
+            }
+            prog.tick();
+        }
+        output.shrink_to_fit();
+
+        return { std::move(output), std::move(output_table) };
+    }
+
+
+    ch::drawing draw(const ch::ink_layers& inp_layers, const ch::parameters& params, progress& prog) {
+
+        auto [poly_count, vert_count] = drawing_job_stats(inp_layers);
         prog.log("  (job contains " + std::to_string(poly_count) + " polygons with " +
             std::to_string(vert_count) + " total vertices");
         prog.set_polygon_count(poly_count);
+
+        auto layers = scale(inp_layers, params.scale);
         
         std::vector<std::vector<ch::drawn_stroke>> layer_strokes(layers.content.size());
         swatch_table tok_to_bkgd = create_swatch_table();
@@ -150,21 +198,16 @@ namespace {
             std::tie(layer_strokes[index], tok_to_bkgd) = draw_ink_layer(
                 layer, tok_to_bkgd, params, prog);
         }
-
-        /*
-        for (auto [index, layer] : rv::enumerate(stack.blobs())) {
-            
-            std::tie(layer_strokes[index], tok_to_bkgd) = paint_ink_layer(
-                layer, tok_to_bkgd, params, ps);
+      
+        for (const auto& [index, layer] : rv::enumerate(layers.content)) {
+            std::tie(layer_strokes[index], tok_to_bkgd) = draw_ink_layer(
+                layer, tok_to_bkgd, params, prog);
         }
 
         return ch::drawing{
             layer_strokes | rv::join | r::to_vector,
-             params.scale * ch::dimensions<double>(ch::mat_dimensions(layers.front())),
-            static_cast<double>(params.stroke_width)
+            layers.sz
         };
-        */
-        return {};
     }
 }
 

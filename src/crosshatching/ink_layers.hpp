@@ -30,12 +30,14 @@ namespace ch {
     };
 
     struct ink_layers {
-        dimensions<int> sz;
+        dimensions<double> sz;
         std::vector<ink_layer> content;
     };
 
+    ink_layers scale(const ink_layers& il, double scale_factor);
+
     ink_layers split_into_layers(
-        const dimensions<int>& sz,
+        const dimensions<double>& sz,
         const std::vector<gray_polygon>& polys,
         std::span<const ch::brush_expr_ptr> brushes,
         std::span<const uchar> gray_levels);
