@@ -52,6 +52,12 @@ namespace ch {
         double pen_thickness;
     };
     using strokes = ranges::any_view<stroke>;
+    struct drawn_stroke {
+        std::vector<ch::point> poly;
+        double thickness;
+    };
+    using drawn_strokes = std::vector<drawn_stroke>;
+
     polyline_rng transform(polyline_rng poly, const matrix& mat);
     std::vector<point> transform(const std::vector<point>& pts, const matrix& mat);
     stroke transform(stroke s, const ch::matrix& mat);
@@ -91,7 +97,7 @@ namespace ch {
     QImage mat_to_qimage(cv::Mat mat, bool copy = true);
     QPen create_pen(uchar color, double thickness);
     void paint_polygon(QPainter& g, const polygon& poly, color col);
-    void paint_strokes(QPainter& g, strokes str);
+    void paint_strokes(QPainter& g, const drawn_strokes& str);
     cv::Mat paint_polygons(const std::vector<std::tuple<color, polygon>>& polys,
         dimensions<int> sz);
     cv::Mat paint_polygons(const std::vector<std::tuple<uchar, polygon>>& polys,

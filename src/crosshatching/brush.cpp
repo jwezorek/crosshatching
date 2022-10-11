@@ -1,4 +1,5 @@
 #include "brush.hpp"
+#include "brush_lang.hpp"
 #include "geometry.hpp"
 #include <opencv2/imgproc.hpp>
 #include <future>
@@ -11,65 +12,59 @@ namespace rv = ranges::views;
 
 namespace {
 
-    constexpr auto k_num_samples = 4;
-
-    ch::swatch create_swatch(ch::brush_expr_ptr expr, const ch::dimensions<double>& sz, double t) {
-        double half_wd = sz.wd / 2.0;
-        double half_hgt = sz.hgt / 2.0;
-        std::array<ch::point, 4> rect_verts = {
-            ch::point{-half_wd,-half_hgt}, ch::point{half_wd,-half_hgt},
-            ch::point{half_wd,half_hgt}, ch::point{-half_wd,half_hgt},
-        };
-        auto strokes = ch::brush_expr_to_strokes(expr, ch::make_polygon(rect_verts), t);
-        return {
-            ch::transform(strokes, ch::translation_matrix(half_wd, half_hgt)),
-            sz
-        };
-    }
-
-    void paint_stroke(cv::Mat mat, ch::stroke stroke) {
-        auto poly = stroke.polyline | r::to_vector;
-        std::vector<cv::Point> int_pts(poly.size());
-        std::transform(poly.begin(), poly.end(), int_pts.begin(),
-            [](const auto& p)->cv::Point {
-                return cv::Point(
-                    static_cast<int>(std::round(p.x)),
-                    static_cast<int>(std::round(p.y))
-                );
-            }
+    ch::polygon make_rectangle(const ch::dimensions<double>& sz) {
+        return ch::make_polygon(
+            { { {0.0,0.0}, {sz.wd, 0.0}, {sz.wd,sz.hgt}, {0.0, sz.hgt} } }
         );
-        auto npts = int_pts.size();
-        cv::polylines(mat, int_pts, false, 0, stroke.pen_thickness, 8, 0);
     }
 
-    cv::Mat paint_swatch(ch::swatch swatch, cv::Mat bkgd) {
-        cv::Mat mat = (bkgd.empty()) ?
-            cv::Mat(static_cast<int>(swatch.sz.hgt), static_cast<int>(swatch.sz.wd), CV_8U, 255) :
-            bkgd.clone();
+    ch::drawn_strokes stroke_rectangle(ch::brush_expr_ptr brush_expr, const ch::dimensions<double>& sz, double t) {
+
+        auto rect = make_rectangle(sz);
+        return ch::strokes_to_drawn_strokes(
+            ch::brush_expr_to_strokes(brush_expr, rect, t)
+        );
+    }
+
+    cv::Mat drawn_strokes_to_mat(ch::drawn_strokes strokes, cv::Mat mat) {
         auto qimg = ch::mat_to_qimage(mat, false);
         QPainter g(&qimg);
         g.setRenderHint(QPainter::Antialiasing, true);
-        ch::paint_strokes(g, swatch.content);
+        ch::paint_strokes(g, strokes);
         return mat;
     }
 
-    double measure_gray_level(ch::swatch swatch, cv::Mat bkgd) {
-        auto mat = paint_swatch(swatch, bkgd);
-        double mean_val = cv::mean(mat).val[0];
+    cv::Mat render_brush_expr_to_mat(ch::brush_expr_ptr brush_expr, cv::Mat mat, double t) {
+        return drawn_strokes_to_mat(
+            stroke_rectangle(  brush_expr, ch::mat_dimensions(mat), t), 
+            mat
+        );
+    }
+
+    double measure_gray_level(cv::Mat swatch, cv::Mat bkgd) {
+        double mean_val = cv::mean(swatch).val[0];
         return (255.0 - mean_val) / 255.0;
+    }
+
+    template<typename T>
+    cv::Mat blank_mat(const ch::dimensions<T>& sz) {
+        return cv::Mat(static_cast<int>(sz.hgt), static_cast<int>(sz.wd), CV_8U, 255);
     }
 
     double sample(ch::dimensions<double> sz, ch::brush_expr_ptr expr, 
             double t, int n, const std::vector<cv::Mat>& bkgds) {
 
         auto compute_gray_level = [sz](ch::brush_expr_ptr expr, double t, cv::Mat bkgd) -> double {
-            return measure_gray_level(create_swatch(expr, sz, t), bkgd);
+            auto swatch = render_brush_expr_to_mat(expr, bkgd, t);
+            return measure_gray_level(swatch, bkgd);
         };
 
         std::vector<std::future<double>> samples = rv::iota(0, n) |
             rv::transform(
                 [=, &bkgds](int i)->std::future<double> {
-                    cv::Mat bkgd = (bkgds.empty()) ? cv::Mat() : bkgds.at(i);
+                    cv::Mat bkgd = (bkgds.empty()) ? 
+                        blank_mat(sz) : 
+                        bkgds.at(i);
                     return std::async(std::launch::async, compute_gray_level, expr, t, bkgd);
                 }
             ) | r::to_vector;
@@ -201,19 +196,6 @@ double ch::brush::gray_value_to_param(double gray_val) {
     return build_to_gray_level(gray_val);
 }
 
-ch::swatch ch::brush::get_hatching(double gray_level, ch::dimensions<double> sz) {
-    if (is_uinitiailized()) {
-        throw std::runtime_error("brush is not built");
-    }
-    if (gray_level < min_gray_level()) {
-        return get_hatching(min_gray_level(), sz);
-    } else if (gray_level > max_gray_level()) {
-        return get_hatching(max_gray_level(), sz);
-    }
-    auto param = build_to_gray_level(gray_level);
-    return create_swatch(brush_expr_, sz, param);
-}
-
 ch::drawn_strokes ch::brush::draw_strokes(const polygon& poly, double gray_level, bool clip_to_poly) {
     
     if (is_uinitiailized()) {
@@ -221,9 +203,9 @@ ch::drawn_strokes ch::brush::draw_strokes(const polygon& poly, double gray_level
     }
 
     if (gray_level < min_gray_level()) {
-        return draw_strokes(poly, min_gray_level());
+        return draw_strokes(poly, min_gray_level(), clip_to_poly);
     } else if (gray_level > max_gray_level()) {
-        return draw_strokes(poly, max_gray_level());
+        return draw_strokes(poly, max_gray_level(), clip_to_poly);
     }
 
     auto param = build_to_gray_level(gray_level);
@@ -238,29 +220,24 @@ ch::drawn_strokes ch::brush::draw_strokes(const polygon& poly, double gray_level
         strokes = clip_drawn_strokes(poly, strokes);
     }
 
-    return strokes;
+    return ::transform(strokes, ch::translation_matrix(centroid));
 }
 
-ch::bkgd_swatches ch::brush::render_swatches(double gray_value) {
+ch::bkgd_swatches ch::brush::render_swatches(double gray_value, int n) {
     auto bkgds = bkgds_;
     if (bkgds.empty()) {
-        bkgds.resize(k_num_samples);
+        bkgds.resize(n, blank_mat(swatch_sz_));
     }
-    return rv::iota(0, k_num_samples) |
+
+    return rv::iota(0, n) |
         rv::transform(
             [&](int i)->cv::Mat {
                 auto bkgd = bkgds.at(i);
-                auto swatch = this->get_hatching(gray_value, swatch_sz_);
-                return paint_swatch(swatch, bkgd);
+                auto swatch = draw_strokes(make_rectangle(swatch_sz_), gray_value, false);
+                return drawn_strokes_to_mat(swatch, bkgd);
             }
         ) |
         r::to_vector;
-}
-
-cv::Mat ch::brush::swatch(double gray_value) {
-    cv::Mat bkgd = bkgds_.empty() ? cv::Mat() : bkgds_.at(0);
-    auto swatch = this->get_hatching(gray_value, swatch_sz_);
-    return paint_swatch(swatch, bkgd);
 }
 
 double ch::brush::min_gray_level() const {

@@ -11,21 +11,11 @@
 
 namespace ch {
 
-    struct drawn_stroke {
-        std::vector<ch::point> poly;
-        double thickness;
-    };
-    using drawn_strokes = std::vector<drawn_stroke>;
-
     using bkgd_swatches = std::vector<cv::Mat>;
 
     constexpr int k_swatch_sz = 512;
     constexpr double k_epsilon = 0.001;
-
-    struct swatch {
-        strokes content;
-        dimensions<double> sz;
-    };
+    constexpr auto k_num_samples = 4;
 
     class brush {
     private:
@@ -51,10 +41,8 @@ namespace ch {
 
         void build_n(int n);
         double gray_value_to_param(double gray_val);
-        swatch get_hatching(double gray_val, dimensions<double> sz);
-        bkgd_swatches render_swatches(double gray_level);
+        bkgd_swatches render_swatches(double gray_level, int n = k_num_samples);
         drawn_strokes draw_strokes(const polygon& poly, double gray_level, bool clip_to_poly = true);
-        cv::Mat swatch(double gray_level);
         double min_gray_level() const;
         double max_gray_level() const;
         static int num_samples();

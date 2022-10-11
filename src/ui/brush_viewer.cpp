@@ -25,7 +25,7 @@ ui::brush_viewer::brush_viewer(const std::string& brush_name, ch::brush_expr_ptr
 
 void ui::brush_viewer::update_swatch() {
     auto value = slider_->value();
-    auto swatch = brush_.swatch(value);
+    auto swatch = brush_.render_swatches(value, 1).front();
 
     swatch = ch::convert_to_3channel_grayscale(swatch);
     int wd = swatch.cols;

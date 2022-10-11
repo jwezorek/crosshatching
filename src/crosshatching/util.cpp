@@ -531,11 +531,11 @@ void ch::paint_polygon(QPainter& g, const polygon& poly, color col) {
 	g.drawPath(path);
 }
 
-void ch::paint_strokes(QPainter& g, ch::strokes strks) {
+void ch::paint_strokes(QPainter& g, const ch::drawn_strokes& strks) {
 	for (auto strk : strks) {
-		g.setPen(create_pen(0, strk.pen_thickness));
+		g.setPen(create_pen(0, strk.thickness));
 
-		QList<QPointF> points = strk.polyline |
+		QList<QPointF> points = strk.poly |
 			rv::transform(
 				[](const ch::point& pt)->QPointF {
 					return {
