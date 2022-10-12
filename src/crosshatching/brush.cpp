@@ -21,7 +21,7 @@ namespace {
     ch::drawn_strokes stroke_rectangle(ch::brush_expr_ptr brush_expr, const ch::dimensions<double>& sz, double t) {
 
         auto rect = make_rectangle(sz);
-        return ch::strokes_to_drawn_strokes(
+        return ch::to_drawn_strokes(
             ch::brush_expr_to_strokes(brush_expr, rect, t)
         );
     }
@@ -77,13 +77,6 @@ namespace {
 
         auto gray = sum / n;
         return gray;
-    }
-
-    ch::drawn_stroke stroke_to_drawn_stroke(ch::stroke stroke) {
-        return {
-            stroke.polyline | r::to_vector,
-            stroke.pen_thickness
-        };
     }
 
     auto clip_drawn_stroke(const ch::polygon& poly, const ch::drawn_stroke& stroke) {
@@ -212,7 +205,7 @@ ch::drawn_strokes ch::brush::draw_strokes(const polygon& poly, double gray_level
     auto centroid = mean_point(poly.outer());
     auto canonicalized = ch::transform(poly, ch::translation_matrix(-centroid));
 
-    auto strokes = strokes_to_drawn_strokes(
+    auto strokes = to_drawn_strokes(
         brush_expr_to_strokes(brush_expr_, canonicalized, param)
     );
 
@@ -258,6 +251,3 @@ int ch::brush::num_samples() {
     return k_num_samples;
 }
 
-ch::drawn_strokes ch::strokes_to_drawn_strokes(ch::strokes strks) {
-    return strks | rv::transform(stroke_to_drawn_stroke) | r::to_vector;
-}

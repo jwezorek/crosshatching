@@ -49,6 +49,4 @@ namespace ch {
     };
 
     using brush_ptr = std::shared_ptr<brush>;
-
-    drawn_strokes strokes_to_drawn_strokes(strokes strks);
 }

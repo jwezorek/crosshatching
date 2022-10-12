@@ -124,6 +124,22 @@ namespace {
 		auto blue = c[0];
 		return QColor(red, green, blue);
 	}
+
+    ch::polyline_rng transform(ch::polyline_rng poly, const ch::matrix& mat) {
+        return poly |
+            rv::transform(
+                [mat](const ch::point& pt) {
+                    return ch::transform(pt, mat);
+                }
+        );
+    }
+
+    ch::drawn_stroke stroke_to_drawn_stroke(ch::stroke stroke) {
+        return {
+            stroke.polyline | r::to_vector,
+            stroke.pen_thickness
+        };
+    }
 }
 
 std::string uchar_to_hex(unsigned char uc) {
@@ -442,27 +458,9 @@ ch::cbrng_state::cbrng_state(uint32_t k1, uint32_t k2, uint32_t k3, uint32_t k4)
 	keys( {k1,k2,k3,k4})
 {}
 
-ch::polyline_rng ch::transform(ch::polyline_rng poly, const ch::matrix& mat) {
-	return poly |
-		rv::transform(
-			[mat](const ch::point& pt) {
-				return ch::transform(pt, mat);
-			}
-	);
-}
-
-std::vector<ch::point> ch::transform(const std::vector<ch::point>& pts, const ch::matrix& mat) {
-    return pts |
-        rv::transform(
-            [mat](const ch::point& pt) {
-                return ch::transform(pt, mat);
-            }
-    ) | r::to_vector;
-}
-
 ch::stroke ch::transform(ch::stroke s, const ch::matrix& mat) {
 	return ch::stroke{
-		ch::transform(s.polyline, mat),
+		::transform(s.polyline, mat),
 		s.pen_thickness
 	};
 }
@@ -474,6 +472,10 @@ ch::strokes ch::transform(ch::strokes strokes, const ch::matrix& mat) {
 				return ch::transform(stroke, mat);
 			}
 	);
+}
+
+ch::drawn_strokes ch::to_drawn_strokes(ch::strokes strks) {
+    return strks | rv::transform(stroke_to_drawn_stroke) | r::to_vector;
 }
 
 QImage ch::create_grayscale_qimage(int wd, int hgt) {

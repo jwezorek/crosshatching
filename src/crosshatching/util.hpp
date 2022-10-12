@@ -58,10 +58,25 @@ namespace ch {
     };
     using drawn_strokes = std::vector<drawn_stroke>;
 
-    polyline_rng transform(polyline_rng poly, const matrix& mat);
-    std::vector<point> transform(const std::vector<point>& pts, const matrix& mat);
+    /*
+    // crosshatching strokes...
+    struct stroke_cluster {
+        ranges::any_view<ranges::any_view<ch::point>> strokes;
+        double thickness;
+    };
+    using strokes = ranges::any_view<stroke_cluster>;
+
+    struct drawn_stroke_cluster {
+        ch::polylines strokes;
+        double thickness;
+    };
+    using drawn_strokes = std::vector<drawn_stroke_cluster>;
+    
+    */
+
     stroke transform(stroke s, const ch::matrix& mat);
     strokes transform(strokes s, const ch::matrix& mat);
+    drawn_strokes to_drawn_strokes(strokes strks);
 
     // counter-based RNG...
     struct cbrng_state {
