@@ -1,6 +1,5 @@
 #include "ink_layers.hpp"
 #include "point_set.hpp"
-#include <range/v3/all.hpp>
 #include "qdebug.h"
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -679,10 +678,6 @@ namespace {
             }
         }
     }
-    
-    ch::ink_layer scale(const ch::ink_layer& il, double scale_factor) {
-        return {};
-    }
 }
 
 /*------------------------------------------------------------------------------------------------*/
@@ -715,16 +710,36 @@ ch::brush_token ch::ink_layer_item::parent_token() const {
 
 /*------------------------------------------------------------------------------------------------*/
 
+ch::ink_layers ch::ink_layers::clone() const {
+    std::unordered_map<int, ink_layer_item*> id_to_item;
+    auto cloned_ink_layers = *this;
+    for (auto& layer : cloned_ink_layers.content) {
+        for (auto& item : layer.content) {
+            id_to_item[item.id] = &item;
+        }
+    }
+    for (auto& layer : cloned_ink_layers.content) {
+        for (auto& item : layer.content) {
+            if (item.parent) {
+                auto parent_id = item.parent->id;
+                item.parent = id_to_item[parent_id];
+            }
+        }
+    }
+    return cloned_ink_layers;
+}
+
+/*------------------------------------------------------------------------------------------------*/
+
 ch::ink_layers ch::scale(const ink_layers& il, double scale_factor) {
-    return {
-        scale_factor * il.sz,
-        il.content |
-            rv::transform(
-                [scale_factor](const ink_layer& il) {
-                    return ::scale(il, scale_factor);
-                }
-            ) | r::to_vector
-    };
+    auto clone = il.clone();
+    clone.sz = scale_factor * clone.sz;
+    for (auto& layer : clone.content) { 
+        for (auto& item : layer.content) {
+            item.poly = scale(item.poly, scale_factor);
+        }
+    }
+    return clone;
 }
 
 ch::ink_layers ch::split_into_layers(

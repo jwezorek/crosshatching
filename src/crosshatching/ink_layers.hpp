@@ -32,6 +32,8 @@ namespace ch {
     struct ink_layers {
         dimensions<double> sz;
         std::vector<ink_layer> content;
+
+        ink_layers clone() const;
     };
 
     ink_layers scale(const ink_layers& il, double scale_factor);
