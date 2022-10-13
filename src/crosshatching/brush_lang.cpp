@@ -13,7 +13,7 @@
 #include <numeric>
 #include <opencv2/highgui.hpp>
 
-/*------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------------------------*/
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -198,9 +198,9 @@ namespace {
             rv::join; // flatten all the row views above into one view.
     }
 
-    ch::strokes linear_strokes(double rotation, double thickness,
-            const std::vector<ch::point>& region, ch::random_func run_length, 
-            ch::random_func space_length, ch::random_func vert_space) {
+    auto linear_strokes(double rotation, const std::vector<ch::point>& region, 
+            ch::random_func run_length,  ch::random_func space_length, 
+            ch::random_func vert_space) {
         auto seed = ch::random_seed();
         auto rot_matrix = ch::rotation_matrix(rotation);
         auto hull = ch::convex_hull(region);
@@ -219,43 +219,14 @@ namespace {
         auto inverse_rot_matrix = ch::rotation_matrix(-rotation);
         return horz_strokes_from_y_positions(seed, rows, slicer, run_length, space_length) |
             rv::transform(
-                [inverse_rot_matrix, thickness = thickness](auto polyline)->ch::stroke {
-                    return {
-                        polyline | rv::transform(
-                            [inverse_rot_matrix](const auto& pt) {
-                                return ch::transform(pt, inverse_rot_matrix); 
-                            }
-                        ),
-                        thickness
-                    };
+                [inverse_rot_matrix](auto polyline) {
+                    return polyline | rv::transform(
+                        [inverse_rot_matrix](const auto& pt) {
+                            return ch::transform(pt, inverse_rot_matrix);
+                        }
+                    );
                 }
             );
-    }
-
-    struct drawing2 {
-        ch::strokes content;
-        ch::dimensions<int> size;
-    };
-
-    void write_to_svg(const std::string& filename, drawing2 d,
-            std::function<void(double)> update_progress) {
-        std::ofstream outfile(filename);
-
-        outfile << ch::svg_header(static_cast<int>(d.size.wd), static_cast<int>(d.size.hgt));
-
-        auto strokes = d.content | r::to_vector;
-        auto n = static_cast<int>(strokes.size());
-        
-        for (const auto& [index, s] : rv::enumerate(strokes)) {
-            auto polyline = s.polyline | r::to_vector;
-            outfile << ch::polyline_to_svg(polyline, s.pen_thickness) << std::endl;
-            if (update_progress) {
-                update_progress(index / n);
-            }
-        }
-
-        outfile << "</svg>" << std::endl;
-        outfile.close();
     }
 
     constexpr auto k_brush_param_var = "<<t>>";
@@ -516,13 +487,17 @@ namespace {
                 );
             auto pen_thickness = variable_value(ctxt.variables, k_pen_thickness_var, 1.0);
             auto rotation = variable_value(ctxt.variables, k_rotation_var, 0.0);
-            return linear_strokes(
-                ch::degrees_to_radians(rotation), 
-                pen_thickness,
-                ctxt.poly.outer(), 
-                run_length, 
-                space_length, 
-                vert_space
+            return rv::single(
+                ch::stroke_cluster{
+                    linear_strokes(
+                        ch::degrees_to_radians(rotation),
+                        ctxt.poly.outer(),
+                        run_length,
+                        space_length,
+                        vert_space
+                    ),
+                    pen_thickness
+                }
             );
         }
     };
@@ -584,13 +559,21 @@ namespace {
                     [](const auto& tup) {
                         return std::get<1>(tup);
                     }
-                );
+                    );
 
-            return ch::strokes{ disintegrated };
+                    return ch::strokes{ disintegrated };
         }
     };
     
     class jiggle_expr : public op_expr<operation::jiggle> {
+        static ch::stroke_range jiggle_stroke(ch::stroke_range sr, double theta) {
+            auto points = sr | r::to_vector;
+            auto centroid = ch::mean_point(points);
+            ch::matrix mat = ch::translation_matrix(-centroid) *
+                ch::rotation_matrix(theta) *
+                ch::translation_matrix(centroid);
+            return sr | rv::transform([mat](auto pt) {return ch::transform(pt, mat); });
+        }
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto result = children_.front()->eval(ctxt);
@@ -601,19 +584,25 @@ namespace {
             auto input = *ctxt.strokes;
             ctxt.strokes = {};
 
-            return ch::strokes{
-                rv::enumerate(input) |
+            return rv::enumerate(input) |
                 rv::transform(
-                    [seed, rand = std::get<ch::random_func>(result)](const auto& tup){
-                        auto [index, stroke] = tup;
-                        auto theta = ch::degrees_to_radians(
-                            rand(ch::cbrng_state(seed, index))
-                        );
-                        auto rot_matrix = ch::rotation_matrix(theta);
-                        return ch::transform(stroke, rot_matrix);
+                    [seed, rand = std::get<ch::random_func>(result)](const auto& tup)->ch::stroke_cluster {
+                        auto [i, cluster] = tup;
+                        return {
+                            rv::enumerate(cluster.strokes) |
+                                rv::transform(
+                                    [i, seed, rand](auto tup) {
+                                        auto [j, strk] = tup;
+                                        auto theta = ch::degrees_to_radians(
+                                            rand(ch::cbrng_state(seed, i, j))
+                                        );
+                                        return jiggle_stroke(strk, theta);
+                                    }
+                                ),
+                            cluster.thickness
+                        };
                     }
-                )
-            };
+                );
         }
     };
 

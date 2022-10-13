@@ -46,22 +46,10 @@ namespace ch {
         std::span<std::tuple<uchar, polygon>> polys);
 
     // crosshatching strokes...
-    using polyline_rng = ranges::any_view<ch::point>;
-    struct stroke {
-        polyline_rng polyline;
-        double pen_thickness;
-    };
-    using strokes = ranges::any_view<stroke>;
-    struct drawn_stroke {
-        std::vector<ch::point> poly;
-        double thickness;
-    };
-    using drawn_strokes = std::vector<drawn_stroke>;
-
-    /*
-    // crosshatching strokes...
+    using stroke_range = ranges::any_view<ch::point>;
+    using stroke_ranges = ranges::any_view<stroke_range>;
     struct stroke_cluster {
-        ranges::any_view<ranges::any_view<ch::point>> strokes;
+        stroke_ranges strokes;
         double thickness;
     };
     using strokes = ranges::any_view<stroke_cluster>;
@@ -71,12 +59,11 @@ namespace ch {
         double thickness;
     };
     using drawn_strokes = std::vector<drawn_stroke_cluster>;
-    
-    */
 
-    stroke transform(stroke s, const ch::matrix& mat);
+    stroke_cluster transform(stroke_cluster s, const ch::matrix& mat);
     strokes transform(strokes s, const ch::matrix& mat);
     drawn_strokes to_drawn_strokes(strokes strks);
+    ch::polylines to_polylines(ch::stroke_ranges ranges);
 
     // counter-based RNG...
     struct cbrng_state {

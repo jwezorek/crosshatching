@@ -2,9 +2,10 @@
 #include "brush_lang.hpp"
 #include "geometry.hpp"
 #include <opencv2/imgproc.hpp>
+#include <qdebug.h>
 #include <future>
 #include <numeric>
-
+#include <sstream>
 /*------------------------------------------------------------------------------------------------*/
 
 namespace r = ranges;
@@ -79,36 +80,49 @@ namespace {
         return gray;
     }
 
-    auto clip_drawn_stroke(const ch::polygon& poly, const ch::drawn_stroke& stroke) {
-        auto clipped_polylines = ch::clip_polyline_to_poly( 
-            ch::make_polyline( stroke.poly ),
-            poly
-        );
-        return clipped_polylines |
-            rv::transform(
-                [th = stroke.thickness](const ch::polyline& pl)->ch::drawn_stroke {
-                    return { pl, th };
-                }
-            );
-    }
-
     ch::drawn_strokes clip_drawn_strokes(const ch::polygon& poly, const ch::drawn_strokes& strokes) {
         return strokes |
             rv::transform(
-                [&poly](const auto& ds) {return clip_drawn_stroke(poly, ds); }
-            ) |
-            rv::join |
-            r::to_vector;
+                [&poly](const ch::drawn_stroke_cluster& cluster)->ch::drawn_stroke_cluster {
+                    return {
+                        ch::clip_polylines_to_poly(cluster.strokes, poly),
+                        cluster.thickness
+                    };
+                }
+            ) | r::to_vector;
     }
 
-    ch::drawn_strokes transform(const ch::drawn_strokes& dss, const ch::matrix& mat) {
-        return dss |
+    ch::drawn_stroke_cluster transform(const ch::drawn_stroke_cluster& dsc, const ch::matrix& mat) {
+        auto polyline_range = dsc.strokes |
             rv::transform(
-                [&mat](const ch::drawn_stroke& ds)->ch::drawn_stroke {
-                    return {
-                        ch::transform(ds.poly, mat) | r::to_vector,
-                        ds.thickness
-                    };
+                [&mat](const ch::polyline& poly)->ch::polyline {
+                    return rv::all(poly) | 
+                        rv::transform(
+                            [&mat](ch::point pt) {
+                                return ch::transform(pt, mat);
+                            }
+                        ) |
+                        r::to< ch::polyline>;
+                }
+            );
+
+        ch::polylines output;
+        output.resize(dsc.strokes.size());
+        for (auto&& [i, poly] : rv::enumerate(polyline_range)) {
+            output[i] = std::move(poly);
+        }
+
+        return {
+            std::move(output),
+            dsc.thickness
+        };
+    }
+
+    ch::drawn_strokes transform(const ch::drawn_strokes& strokes, const ch::matrix& mat) {
+        return strokes |
+            rv::transform(
+                [&mat](const ch::drawn_stroke_cluster& dsc) {
+                    return ::transform(dsc, mat);
                 }
             ) | r::to_vector;
     }
@@ -194,7 +208,7 @@ ch::drawn_strokes ch::brush::draw_strokes(const polygon& poly, double gray_level
     if (is_uinitiailized()) {
         throw std::runtime_error("brush is not built");
     }
-
+    
     if (gray_level < min_gray_level()) {
         return draw_strokes(poly, min_gray_level(), clip_to_poly);
     } else if (gray_level > max_gray_level()) {
