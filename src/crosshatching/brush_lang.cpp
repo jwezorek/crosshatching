@@ -547,21 +547,30 @@ namespace {
             auto input = *ctxt.strokes;
             ctxt.strokes = {};
 
-            auto disintegrated =
-                rv::enumerate(input) |
-                rv::filter(
-                    [probability, seed](const auto& tup)->bool {
-                        auto [index, stroke] = tup;
-                        return ch::uniform_rnd(ch::cbrng_state(seed, index), 0.0, 1.0) <= probability;
-                    }
-                ) |
-                rv::transform(
-                    [](const auto& tup) {
-                        return std::get<1>(tup);
-                    }
-                    );
-
-                    return ch::strokes{ disintegrated };
+            auto temp = ch::strokes{ rv::enumerate(input) |
+                    rv::transform(
+                        [probability,seed](auto index_sc)->ch::stroke_cluster {
+                            auto [i, sc] = index_sc;
+                            return {
+                                rv::enumerate(sc.strokes) |
+                                    rv::transform(
+                                        [i,seed,probability](std::tuple<int,ch::stroke_range> tup) {
+                                            auto [j,rng] = tup;
+                                            ch::stroke_range output;
+                                            if (ch::uniform_rnd(ch::cbrng_state(seed, i, j), 0.0, 1.0) <= probability) {
+                                                output = rng;
+                                            } else {
+                                                output = {};
+                                            };
+                                            return output;
+                                        }
+                                    ),
+                                sc.thickness
+                            };
+                        }
+                    )
+                };
+            return temp;
         }
     };
     
