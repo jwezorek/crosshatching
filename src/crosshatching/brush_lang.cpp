@@ -169,7 +169,7 @@ namespace {
                     // turn them into possibly empty horizontal slices of the convex polygon at 
                     // the given y and also pass along the integer index which will be used as a 
                     // key in a counter-based RNG.
-                [slicer, run_length, space_length, seed](const std::tuple<size_t, double>& pair) ->
+                [slicer, run_length, space_length, seed]( std::tuple<size_t, double> pair) ->
                         std::optional<std::tuple<int, double,double,double>> {
                     auto [key, y] = pair;
                     auto slice = slicer->slice(y);
@@ -183,13 +183,13 @@ namespace {
             ) | 
             rv::remove_if( 
                     // remove any empty slices that may have occured above or below the polygon
-                [](const auto& maybe_row) {
+                []( auto maybe_row) {
                     return !maybe_row.has_value();
                 }
             ) | 
             rv::transform(  
                     // generate a range view of horizontal crosshatching in the slice
-                [seed, run_length, space_length](const auto& maybe_row) {
+                [seed, run_length, space_length]( auto maybe_row) {
 
                     auto [key, x1, x2, y] = *maybe_row;
                     return row_of_strokes(x1, x2, y, seed, key, run_length, space_length);
@@ -206,7 +206,7 @@ namespace {
         auto hull = ch::convex_hull(region);
         hull = hull |
             rv::transform(
-                    [rot_matrix](const auto& pt) {return ch::transform(pt, rot_matrix); }
+                    [rot_matrix]( auto pt) {return ch::transform(pt, rot_matrix); }
                 ) |
             r::to_vector;
         auto slicer = std::make_shared<horz_hull_slicer>(hull);
@@ -221,7 +221,7 @@ namespace {
             rv::transform(
                 [inverse_rot_matrix](auto polyline) {
                     return polyline | rv::transform(
-                        [inverse_rot_matrix](const auto& pt) {
+                        [inverse_rot_matrix]( auto pt) {
                             return ch::transform(pt, inverse_rot_matrix);
                         }
                     );
@@ -535,6 +535,24 @@ namespace {
     };
 
     class disintegrate_expr : public op_expr<operation::disintegrate> {
+
+        static ch::stroke_ranges prune_random_stroks(ch::stroke_ranges str_rngs, int i,
+                uint32_t seed, double prob) {
+            return rv::enumerate(str_rngs) |
+                rv::remove_if(
+                    [i, seed, prob](auto tup) {
+                        int j = std::get<0>(tup);
+                        auto rand = ch::uniform_rnd(ch::cbrng_state(seed, i, j), 0.0, 1.0);
+                        qDebug() << "rand=>" << rand << "  " << prob;
+                        return  rand > prob;
+                    }
+                ) | rv::transform(
+                    [](auto tup)->ch::stroke_range {
+                        return std::get<1>(tup);
+                    }
+                );
+        }
+
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto result = children_.front()->eval(ctxt);
@@ -547,29 +565,16 @@ namespace {
             auto input = *ctxt.strokes;
             ctxt.strokes = {};
 
-            auto temp = ch::strokes{ rv::enumerate(input) |
-                    rv::transform(
-                        [probability,seed](auto index_sc)->ch::stroke_cluster {
-                            auto [i, sc] = index_sc;
-                            return {
-                                rv::enumerate(sc.strokes) |
-                                    rv::transform(
-                                        [i,seed,probability](std::tuple<int,ch::stroke_range> tup) {
-                                            auto [j,rng] = tup;
-                                            ch::stroke_range output;
-                                            if (ch::uniform_rnd(ch::cbrng_state(seed, i, j), 0.0, 1.0) <= probability) {
-                                                output = rng;
-                                            } else {
-                                                output = {};
-                                            };
-                                            return output;
-                                        }
-                                    ),
-                                sc.thickness
-                            };
-                        }
-                    )
-                };
+            auto temp = rv::enumerate(input) |
+                rv::transform(
+                    [probability, seed](auto index_sc)->ch::stroke_cluster {
+                        auto [i, sc] = index_sc;
+                        return {
+                            prune_random_stroks(sc.strokes, i, seed, probability),
+                            sc.thickness
+                        };
+                    }
+                );
             return temp;
         }
     };
@@ -595,7 +600,7 @@ namespace {
 
             return rv::enumerate(input) |
                 rv::transform(
-                    [seed, rand = std::get<ch::random_func>(result)](const auto& tup)->ch::stroke_cluster {
+                    [seed, rand = std::get<ch::random_func>(result)](auto tup)->ch::stroke_cluster {
                         auto [i, cluster] = tup;
                         return {
                             rv::enumerate(cluster.strokes) |
@@ -874,5 +879,23 @@ std::string ch::pretty_print(const ch::brush_expr_ptr& expr) {
     return lines | rv::join('\n') | r::to_<std::string>();
 }
 
+ch::polygon make_rect(const ch::dimensions<double>& sz) {
+    return ch::make_polygon(
+        { { {0.0,0.0}, {sz.wd, 0.0}, {sz.wd,sz.hgt}, {0.0, sz.hgt} } }
+    );
+}
+
 void ch::debug_brushes() {
+    auto result = parse(
+        "(brush (horz_strokes (norm_rnd 400 75) (norm_rnd 100 10) (norm_rnd 4 2)) (dis 0.75) )"
+    );
+    auto expr = std::get< brush_expr_ptr>(result);
+    auto strokes = brush_expr_to_strokes(expr, make_rect({ 256.0,256.0 }), 0.25);
+    auto drawn = to_drawn_strokes(strokes);
+    cv::Mat mat(256, 256, CV_8U, 255);
+    QImage img = mat_to_qimage(mat, false);
+    QPainter g(&img);
+    g.setRenderHint(QPainter::Antialiasing, true);
+    ch::paint_strokes(g, drawn);
+    cv::imshow("foo", mat);
 }

@@ -79,7 +79,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release with Debug|x64'" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\libraries\vcpkg\packages\opencv4_x64-windows-static-md\include;$(BOOST_DIR);$(EIGEN3_INCLUDE_DIR);C:\libraries\vcpkg\packages\range-v3_x64-windows\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_);.\src\ui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\libraries\vcpkg\packages\opencv4_x64-windows-static-md\include;$(BOOST_DIR);$(EIGEN3_INCLUDE_DIR);C:\libraries\range-v3\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_);.\src\ui</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -90,7 +90,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\libraries\vcpkg\packages\opencv4_x64-windows-static-md\include;$(BOOST_DIR);$(EIGEN3_INCLUDE_DIR);C:\libraries\vcpkg\packages\range-v3_x64-windows\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_);.\src\ui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\libraries\vcpkg\packages\opencv4_x64-windows-static-md\include;$(BOOST_DIR);$(EIGEN3_INCLUDE_DIR);C:\libraries\range-v3\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_);.\src\ui</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -100,7 +100,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release with Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\libraries\vcpkg\packages\opencv4_x64-windows-static-md\include;$(BOOST_DIR);$(EIGEN3_INCLUDE_DIR);C:\libraries\vcpkg\packages\range-v3_x64-windows\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_);.\src\ui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\libraries\vcpkg\packages\opencv4_x64-windows-static-md\include;$(BOOST_DIR);$(EIGEN3_INCLUDE_DIR);C:\libraries\range-v3\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_);.\src\ui</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>

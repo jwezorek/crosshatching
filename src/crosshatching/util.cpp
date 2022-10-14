@@ -491,16 +491,22 @@ ch::strokes ch::transform(ch::strokes strokes, const ch::matrix& mat) {
 }
 
 ch::polylines ch::to_polylines(ch::stroke_ranges ranges) {
-    size_t n = r::distance(ranges);
     auto polys = ranges |
         rv::transform(
             [](ch::stroke_range sr)->ch::polyline {
+                /*
+                std::stringstream ss;
+                for (auto pt : sr) {
+                    ss << ch::to_string(pt) << " ";
+                }
+                qDebug() << ss.str().c_str();
+                */
                 return sr | r::to<ch::polyline>();
             }
         );
 
     ch::polylines output;
-    output.resize(n);
+    output.resize(r::distance(polys));
     for (auto&& [i, poly] : rv::enumerate(polys)) {
         output[i] = std::move(poly);
     }

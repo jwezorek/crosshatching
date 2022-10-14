@@ -192,11 +192,6 @@ namespace {
             std::tie(layer_strokes[index], tok_to_bkgd) = draw_ink_layer(
                 layer, tok_to_bkgd, params, prog);
         }
-      
-        for (const auto& [index, layer] : rv::enumerate(layers.content)) {
-            std::tie(layer_strokes[index], tok_to_bkgd) = draw_ink_layer(
-                layer, tok_to_bkgd, params, prog);
-        }
 
         return ch::drawing{
             layer_strokes | rv::join | r::to_vector,
