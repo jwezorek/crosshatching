@@ -45,26 +45,6 @@ namespace ch {
     void debug_polygons(const std::string& output_file, dimensions<int> sz,
         std::span<std::tuple<uchar, polygon>> polys);
 
-    // crosshatching strokes...
-    using stroke_range = ranges::any_view<ch::point>;
-    using stroke_ranges = ranges::any_view<stroke_range>;
-    struct stroke_cluster {
-        stroke_ranges strokes;
-        double thickness;
-    };
-    using strokes = ranges::any_view<stroke_cluster>;
-
-    struct drawn_stroke_cluster {
-        ch::polylines strokes;
-        double thickness;
-    };
-    using drawn_strokes = std::vector<drawn_stroke_cluster>;
-
-    stroke_cluster transform(stroke_cluster s, const ch::matrix& mat);
-    strokes transform(strokes s, const ch::matrix& mat);
-    drawn_strokes to_drawn_strokes(strokes strks);
-    ch::polylines to_polylines(ch::stroke_ranges ranges);
-
     // counter-based RNG...
     struct cbrng_state {
         std::array<uint32_t, 4> keys;
@@ -99,7 +79,6 @@ namespace ch {
     QImage mat_to_qimage(cv::Mat mat, bool copy = true);
     QPen create_pen(uchar color, double thickness);
     void paint_polygon(QPainter& g, const polygon& poly, color col);
-    void paint_strokes(QPainter& g, const drawn_strokes& str);
     cv::Mat paint_polygons(const std::vector<std::tuple<color, polygon>>& polys,
         dimensions<int> sz);
     cv::Mat paint_polygons(const std::vector<std::tuple<uchar, polygon>>& polys,

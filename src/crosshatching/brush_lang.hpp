@@ -3,6 +3,7 @@
 #include <map>
 #include "geometry.hpp"
 #include "util.hpp"
+#include "strokes.hpp"
 #include <opencv2/core.hpp>
 #include <range/v3/all.hpp>
 #include <tuple>

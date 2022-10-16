@@ -157,6 +157,7 @@
     <ClCompile Include="src\crosshatching\point_set.cpp" />
     <ClCompile Include="src\crosshatching\raster_to_vector.cpp" />
     <ClCompile Include="src\crosshatching\segmentation.cpp" />
+    <ClCompile Include="src\crosshatching\strokes.cpp" />
     <ClCompile Include="src\crosshatching\util.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\ui\brush_viewer.cpp" />
@@ -187,6 +188,7 @@
     <ClInclude Include="src\crosshatching\point_set.hpp" />
     <ClInclude Include="src\crosshatching\raster_to_vector.hpp" />
     <ClInclude Include="src\crosshatching\segmentation.hpp" />
+    <ClInclude Include="src\crosshatching\strokes.hpp" />
     <ClInclude Include="src\crosshatching\util.hpp" />
     <QtMoc Include="src\ui\image_tab_ctrl.h" />
     <QtMoc Include="src\ui\drawing_worker.h" />

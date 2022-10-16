@@ -125,33 +125,6 @@ namespace {
 		return QColor(red, green, blue);
 	}
 
-    ch::stroke_ranges transform_stroke_ranges(ch::stroke_ranges ranges, const ch::matrix& mat) {
-        return ranges |
-            rv::transform(
-                [mat](auto rng)->r::any_view<ch::point> {
-                    return rng | rv::transform(
-                        [mat]( auto pt)->ch::point {
-                            return ch::transform(pt, mat);
-                        }
-                    );
-                }
-            );
-    }
-
-    ch::drawn_stroke_cluster to_drawn_stroke_cluster(ch::stroke_cluster cluster) { 
-        return {
-            ch::to_polylines(cluster.strokes),
-            cluster.thickness
-        };
-    }
-
-    ch::stroke_range transform(ch::stroke_range sr, const ch::matrix& mat) {
-        return sr | rv::transform(
-            [mat](const auto& pt) {
-                return ch::transform(pt, mat);
-            }
-        );
-    }
 }
 
 std::string uchar_to_hex(unsigned char uc) {
@@ -470,54 +443,6 @@ ch::cbrng_state::cbrng_state(uint32_t k1, uint32_t k2, uint32_t k3, uint32_t k4)
 	keys( {k1,k2,k3,k4})
 {}
 
-ch::stroke_cluster ch::transform(stroke_cluster sc, const ch::matrix& mat) {
-    return {
-        sc.strokes | rv::transform(
-            [mat](auto sr) {
-                return ::transform(sr, mat);
-            }
-        ),
-        sc.thickness
-    }; 
-}
-
-ch::strokes ch::transform(ch::strokes strokes, const ch::matrix& mat) {
-	return strokes |
-		rv::transform(
-			[mat](auto stroke) {
-				return ch::transform(stroke, mat);
-			}
-	);
-}
-
-ch::polylines ch::to_polylines(ch::stroke_ranges ranges) {
-    auto polys = ranges |
-        rv::transform(
-            [](ch::stroke_range sr)->ch::polyline {
-                /*
-                std::stringstream ss;
-                for (auto pt : sr) {
-                    ss << ch::to_string(pt) << " ";
-                }
-                qDebug() << ss.str().c_str();
-                */
-                return sr | r::to<ch::polyline>();
-            }
-        );
-
-    ch::polylines output;
-    output.resize(r::distance(polys));
-    for (auto&& [i, poly] : rv::enumerate(polys)) {
-        output[i] = std::move(poly);
-    }
-
-    return output;
-}
-
-ch::drawn_strokes ch::to_drawn_strokes(ch::strokes strks) {
-    return strks | rv::transform(to_drawn_stroke_cluster) | r::to_vector;
-}
-
 QImage ch::create_grayscale_qimage(int wd, int hgt) {
 	QImage img(wd, hgt, QImage::Format::Format_Grayscale8);
 	img.fill(Qt::white);
@@ -571,25 +496,6 @@ void ch::paint_polygon(QPainter& g, const polygon& poly, color col) {
 	g.setPen(QPen(qcolor));
 	g.setBrush(QBrush(qcolor));
 	g.drawPath(path);
-}
-
-void ch::paint_strokes(QPainter& g, const ch::drawn_strokes& strks) {
-
-	for (const auto& cluster : strks) {
-        g.setPen(create_pen(0, cluster.thickness));
-        for (auto strk : cluster.strokes) {
-            QList<QPointF> points = strk |
-                rv::transform(
-                    [](const ch::point& pt)->QPointF {
-                        return {
-                            static_cast<float>(pt.x),
-                            static_cast<float>(pt.y)
-                        };
-                    }
-            ) | r::to<QList>();
-            g.drawLines(points);
-        }
-	}
 }
 
 cv::Mat ch::paint_polygons(const std::vector<std::tuple<color, polygon>>& polys,
