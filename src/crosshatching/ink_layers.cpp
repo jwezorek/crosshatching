@@ -757,7 +757,7 @@ ch::ink_layers ch::split_into_layers(
     auto ranges = gray_ranges(gray_levels);
     auto n = ranges.size();
     std::vector<ch::brush_expr_ptr> brushes = (!brush_expr_ptrs.empty()) ?
-        brush_expr_ptrs | r::to_vector :
+        brush_expr_ptrs | rv::reverse | r::to_vector :
         std::vector<ch::brush_expr_ptr>(ranges.size(), nullptr);
     std::unordered_map<int, std::vector<int>> layer_item_to_components;
     auto layer_content = ranges |

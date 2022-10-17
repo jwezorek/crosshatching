@@ -77,11 +77,15 @@ ch::strokes_ptr ch::transform(ch::strokes_ptr strokes, const ch::matrix& mat) {
     );
 }
 
-cv::Mat ch::strokes_to_mat(strokes_ptr strokes, cv::Mat mat) {
+cv::Mat ch::strokes_to_mat(const stroke_groups& strokes, cv::Mat mat) {
     auto qimg = ch::mat_to_qimage(mat, false);
     QPainter g(&qimg);
     g.setRenderHint(QPainter::Antialiasing, true);
     ch::paint_strokes(g, strokes);
     return mat;
+}
+
+cv::Mat ch::strokes_to_mat(strokes_ptr strokes, cv::Mat mat) {
+    return strokes_to_mat(*strokes, mat);
 }
 

@@ -86,17 +86,29 @@ double ch::brush::get_or_sample_param(double param) {
     return gray;
 }
 
-double ch::brush::build_between(double gray, gray_map_iter left, gray_map_iter right) {
+double ch::brush::build_between(double gray, gray_map_iter left, gray_map_iter right, 
+        std::deque<double>& history) {
     double mid_param = (left->second + right->second) / 2.0;
     auto mid_gray_value = get_or_sample_param(mid_param);
+
+    history.push_back(mid_gray_value);
+    if (history.size() > 4) {
+        history.pop_front();
+    }
+    if (history.size() == 4 && std::abs(history.front() - history.back()) < 1e-6) {
+        return mid_param;
+    }
+
+    qDebug() << std::abs(left->second - right->second) << " " << std::abs(mid_gray_value - gray);
+
     if (std::abs(mid_gray_value - gray) < eps_) {
         return mid_param;
     }
     auto mid_iter = gray_to_param_.find(mid_gray_value);
     if (gray < mid_gray_value) {
-        return build_between(gray, left, mid_iter);
+        return build_between(gray, left, mid_iter, history);
     } else {
-        return build_between(gray, mid_iter, right);
+        return build_between(gray, mid_iter, right, history);
     }
 }
 
@@ -113,7 +125,8 @@ double ch::brush::build_to_gray_level(double gray_level) {
     if (std::abs(gray_level - right->first) < eps_) {
         return right->second;
     }
-    return build_between(gray_level, left, right);
+    std::deque<double> history;
+    return build_between(gray_level, left, right, history);
 }
 
 ch::brush::brush() {
@@ -156,15 +169,16 @@ ch::strokes_ptr ch::brush::draw_strokes(const polygon& poly, double gray_level, 
     } else if (gray_level > max_gray_level()) {
         return draw_strokes(poly, max_gray_level(), clip_to_poly);
     }
-
+    //qDebug() << "[1]";
     auto param = build_to_gray_level(gray_level);
     auto centroid = mean_point(poly.outer());
     auto canonicalized = ch::transform(poly, ch::translation_matrix(-centroid));
 
     auto strokes = brush_expr_to_strokes(brush_expr_, canonicalized, param);
-
+    //qDebug() << "[2]";
     if (clip_to_poly) {
-        strokes = clip_strokes(poly, strokes);
+        strokes = clip_strokes(canonicalized, strokes);
+        //qDebug() << "[3]";
     }
 
     return ch::transform(strokes, ch::translation_matrix(centroid));

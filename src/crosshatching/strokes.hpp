@@ -23,7 +23,7 @@ namespace ch {
     strokes_ptr clip_strokes(const polygon& poly, strokes_ptr strokes);
     strokes_ptr transform(strokes_ptr strokes, const ch::matrix& mat);
     cv::Mat strokes_to_mat(strokes_ptr strokes, cv::Mat mat);
-    
+    cv::Mat strokes_to_mat(const stroke_groups& strokes, cv::Mat);
 
     namespace detail {
         struct to_polyline_tag {};

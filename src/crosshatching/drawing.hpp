@@ -10,11 +10,32 @@
 #include <string>
 #include <functional>
 
+/*------------------------------------------------------------------------------------------------*/
+
 namespace ch {
 
     struct drawing {
         stroke_groups content;
         dimensions<double> sz;
+        size_t stroke_count() const;
+
+        inline auto strokes() const {
+            namespace r = ranges;
+            namespace rv = ranges::views;
+            return content |
+                rv::transform(
+                    [](const stroke_group& sg) {
+                        return sg.strokes |
+                            rv::transform(
+                                [thickness = sg.thickness]
+                                (const polyline& poly)->std::tuple<polyline, double> {
+                                    return { poly, thickness };
+                                }
+                        );
+                    }
+                ) | rv::join;
+        }
+
     };
 
     struct parameters {
@@ -47,7 +68,7 @@ namespace ch {
     drawing generate_crosshatched_drawing(const crosshatching_job& job, const callbacks& cbs = {});
     void write_to_svg(const std::string& filename, const drawing& d, 
         std::function<void(double)> update_progress_cb = {});
-    drawing scale(const drawing& d, double scale);
+    //drawing scale(const drawing& d, double scale);
     cv::Mat paint_drawing(const drawing& d, std::function<void(double)> update_progress_cb = {});
 
     void debug_drawing();

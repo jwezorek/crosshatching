@@ -6,6 +6,7 @@
 #include <map>
 #include <unordered_map>
 #include <memory>
+#include <deque>
 
 /*------------------------------------------------------------------------------------------------*/
 
@@ -13,9 +14,9 @@ namespace ch {
 
     using bkgd_swatches = std::vector<cv::Mat>;
 
-    constexpr int k_swatch_sz = 512;
-    constexpr double k_epsilon = 0.001;
-    constexpr auto k_num_samples = 4;
+    constexpr int k_swatch_sz = 800;
+    constexpr double k_epsilon = 0.01;
+    constexpr auto k_num_samples = 8;
 
     class brush {
     private:
@@ -30,7 +31,8 @@ namespace ch {
 
         bool is_uinitiailized() const;
         double get_or_sample_param(double param);
-        double build_between(double v, gray_map_iter left, gray_map_iter right);
+        double build_between(double v, gray_map_iter left, gray_map_iter right,
+            std::deque<double>& history);
         double build_to_gray_level(double gray_level);
 
     public:
