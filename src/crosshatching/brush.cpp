@@ -19,24 +19,13 @@ namespace {
         );
     }
 
-    ch::drawn_strokes stroke_rectangle(ch::brush_expr_ptr brush_expr, const ch::dimensions<double>& sz, double t) {
-
+    ch::strokes_ptr stroke_rectangle(ch::brush_expr_ptr expr, const ch::dimensions<int>& sz, double t) {
         auto rect = make_rectangle(sz);
-        return ch::to_drawn_strokes(
-            ch::brush_expr_to_strokes(brush_expr, rect, t)
-        );
-    }
-
-    cv::Mat drawn_strokes_to_mat(ch::drawn_strokes strokes, cv::Mat mat) {
-        auto qimg = ch::mat_to_qimage(mat, false);
-        QPainter g(&qimg);
-        g.setRenderHint(QPainter::Antialiasing, true);
-        ch::paint_strokes(g, strokes);
-        return mat;
+        return ch::brush_expr_to_strokes(expr, rect, t);
     }
 
     cv::Mat render_brush_expr_to_mat(ch::brush_expr_ptr brush_expr, cv::Mat mat, double t) {
-        return drawn_strokes_to_mat(
+        return ch::strokes_to_mat(
             stroke_rectangle(  brush_expr, ch::mat_dimensions(mat), t), 
             mat
         );
@@ -78,53 +67,6 @@ namespace {
 
         auto gray = sum / n;
         return gray;
-    }
-
-    ch::drawn_strokes clip_drawn_strokes(const ch::polygon& poly, const ch::drawn_strokes& strokes) {
-        return strokes |
-            rv::transform(
-                [&poly](const ch::drawn_stroke_cluster& cluster)->ch::drawn_stroke_cluster {
-                    return {
-                        ch::clip_polylines_to_poly(cluster.strokes, poly),
-                        cluster.thickness
-                    };
-                }
-            ) | r::to_vector;
-    }
-
-    ch::drawn_stroke_cluster transform(const ch::drawn_stroke_cluster& dsc, const ch::matrix& mat) {
-        auto polyline_range = dsc.strokes |
-            rv::transform(
-                [&mat](const ch::polyline& poly)->ch::polyline {
-                    return rv::all(poly) | 
-                        rv::transform(
-                            [&mat](ch::point pt) {
-                                return ch::transform(pt, mat);
-                            }
-                        ) |
-                        r::to< ch::polyline>;
-                }
-            );
-
-        ch::polylines output;
-        output.resize(dsc.strokes.size());
-        for (auto&& [i, poly] : rv::enumerate(polyline_range)) {
-            output[i] = std::move(poly);
-        }
-
-        return {
-            std::move(output),
-            dsc.thickness
-        };
-    }
-
-    ch::drawn_strokes transform(const ch::drawn_strokes& strokes, const ch::matrix& mat) {
-        return strokes |
-            rv::transform(
-                [&mat](const ch::drawn_stroke_cluster& dsc) {
-                    return ::transform(dsc, mat);
-                }
-            ) | r::to_vector;
     }
 }
 
@@ -203,7 +145,7 @@ double ch::brush::gray_value_to_param(double gray_val) {
     return build_to_gray_level(gray_val);
 }
 
-ch::drawn_strokes ch::brush::draw_strokes(const polygon& poly, double gray_level, bool clip_to_poly) {
+ch::strokes_ptr ch::brush::draw_strokes(const polygon& poly, double gray_level, bool clip_to_poly) {
     
     if (is_uinitiailized()) {
         throw std::runtime_error("brush is not built");
@@ -219,15 +161,13 @@ ch::drawn_strokes ch::brush::draw_strokes(const polygon& poly, double gray_level
     auto centroid = mean_point(poly.outer());
     auto canonicalized = ch::transform(poly, ch::translation_matrix(-centroid));
 
-    auto strokes = to_drawn_strokes(
-        brush_expr_to_strokes(brush_expr_, canonicalized, param)
-    );
+    auto strokes = brush_expr_to_strokes(brush_expr_, canonicalized, param);
 
     if (clip_to_poly) {
-        strokes = clip_drawn_strokes(poly, strokes);
+        strokes = clip_strokes(poly, strokes);
     }
 
-    return ::transform(strokes, ch::translation_matrix(centroid));
+    return ch::transform(strokes, ch::translation_matrix(centroid));
 }
 
 ch::bkgd_swatches ch::brush::render_swatches(double gray_value, int n) {
@@ -241,7 +181,7 @@ ch::bkgd_swatches ch::brush::render_swatches(double gray_value, int n) {
             [&](int i)->cv::Mat {
                 auto bkgd = bkgds.at(i);
                 auto swatch = draw_strokes(make_rectangle(swatch_sz_), gray_value, false);
-                return drawn_strokes_to_mat(swatch, bkgd);
+                return strokes_to_mat(swatch, bkgd);
             }
         ) |
         r::to_vector;

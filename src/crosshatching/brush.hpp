@@ -42,7 +42,7 @@ namespace ch {
         void build_n(int n);
         double gray_value_to_param(double gray_val);
         bkgd_swatches render_swatches(double gray_level, int n = k_num_samples);
-        drawn_strokes draw_strokes(const polygon& poly, double gray_level, bool clip_to_poly = true);
+        strokes_ptr draw_strokes(const polygon& poly, double gray_level, bool clip_to_poly = true);
         double min_gray_level() const;
         double max_gray_level() const;
         static int num_samples();

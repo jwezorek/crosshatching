@@ -6,85 +6,23 @@ namespace rv = ranges::views;
 
 /*------------------------------------------------------------------------------------------------*/
 
-namespace {
-    ch::drawn_stroke_cluster to_drawn_stroke_cluster(ch::stroke_cluster cluster) {
-        return {
-            ch::to_polylines(cluster.strokes),
-            cluster.thickness
-        };
-    }
-
-    ch::stroke_range transform(ch::stroke_range sr, const ch::matrix& mat) {
-        return sr | rv::transform(
-            [mat](const auto& pt) {
-                return ch::transform(pt, mat);
-            }
-        );
-    }
-
-    ch::stroke_ranges transform_stroke_ranges(ch::stroke_ranges ranges, const ch::matrix& mat) {
-        return ranges |
-            rv::transform(
-                [mat](auto rng)->r::any_view<ch::point> {
-                    return rng | rv::transform(
-                        [mat](auto pt)->ch::point {
-                            return ch::transform(pt, mat);
+ch::stroke_groups ch::transform(const stroke_groups& s, const ch::matrix& mat) {
+    return s |
+        rv::transform(
+            [&mat](const auto& cluster)->stroke_group {
+                return {
+                    cluster.strokes | rv::transform(
+                        [&mat](const auto& poly)->ch::polyline {
+                            return ch::transform(poly, mat);
                         }
-                    );
-                }
-        );
-    }
-}
-
-ch::stroke_cluster ch::transform(stroke_cluster sc, const ch::matrix& mat) {
-    return {
-        sc.strokes | rv::transform(
-            [mat](auto sr) {
-                return ::transform(sr, mat);
+                    ) | to_polylines,
+                    cluster.thickness
+                };
             }
-        ),
-        sc.thickness
-    };
+        ) | r::to_vector;
 }
 
-ch::strokes ch::transform(ch::strokes strokes, const ch::matrix& mat) {
-    return strokes |
-        rv::transform(
-            [mat](auto stroke) {
-                return ch::transform(stroke, mat);
-            }
-    );
-}
-
-ch::polylines ch::to_polylines(ch::stroke_ranges ranges) {
-    auto polys = ranges |
-        rv::transform(
-            [](ch::stroke_range sr)->ch::polyline {
-                /*
-                std::stringstream ss;
-                for (auto pt : sr) {
-                    ss << ch::to_string(pt) << " ";
-                }
-                qDebug() << ss.str().c_str();
-                */
-                return sr | r::to<ch::polyline>();
-            }
-    );
-
-    ch::polylines output;
-    output.resize(r::distance(polys));
-    for (auto&& [i, poly] : rv::enumerate(polys)) {
-        output[i] = std::move(poly);
-    }
-
-    return output;
-}
-
-ch::drawn_strokes ch::to_drawn_strokes(ch::strokes strks) {
-    return strks | rv::transform(to_drawn_stroke_cluster) | r::to_vector;
-}
-
-void ch::paint_strokes(QPainter& g, const ch::drawn_strokes& strks) {
+void ch::paint_strokes(QPainter& g, const ch::stroke_groups& strks) {
 
     for (const auto& cluster : strks) {
         g.setPen(create_pen(0, cluster.thickness));
@@ -102,3 +40,48 @@ void ch::paint_strokes(QPainter& g, const ch::drawn_strokes& strks) {
         }
     }
 }
+
+void ch::paint_strokes(QPainter& g, strokes_ptr str_ptr) {
+    return paint_strokes(g, *str_ptr);
+}
+
+void ch::append(strokes_ptr dst, strokes_ptr src) {
+    dst->insert(
+        dst->end(),
+        std::make_move_iterator(src->begin()),
+        std::make_move_iterator(src->end())
+    );
+}
+
+std::string ch::to_svg(const ch::stroke_groups& s) {
+    return {}; //TODO
+}
+
+ch::strokes_ptr ch::clip_strokes(const polygon& poly, strokes_ptr strokes) {
+    return to_strokes(
+        *strokes |
+        rv::transform(
+            [&poly](const stroke_group& sg)->stroke_group {
+                return {
+                    clip_polylines_to_poly(sg.strokes, poly),
+                    sg.thickness
+                };
+            }
+        )
+    );
+}
+
+ch::strokes_ptr ch::transform(ch::strokes_ptr strokes, const ch::matrix& mat) {
+    return std::make_shared<stroke_groups>(
+        transform(*strokes, mat)
+    );
+}
+
+cv::Mat ch::strokes_to_mat(strokes_ptr strokes, cv::Mat mat) {
+    auto qimg = ch::mat_to_qimage(mat, false);
+    QPainter g(&qimg);
+    g.setRenderHint(QPainter::Antialiasing, true);
+    ch::paint_strokes(g, strokes);
+    return mat;
+}
+

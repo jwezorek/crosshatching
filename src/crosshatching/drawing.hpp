@@ -1,5 +1,6 @@
 #pragma once
 #include "util.hpp"
+#include "strokes.hpp"
 #include "brush.hpp"
 #include "geometry.hpp"
 #include "ink_layers.hpp"
@@ -12,7 +13,7 @@
 namespace ch {
 
     struct drawing {
-        drawn_strokes content;
+        stroke_groups content;
         dimensions<double> sz;
     };
 

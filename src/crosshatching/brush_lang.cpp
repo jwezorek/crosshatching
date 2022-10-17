@@ -219,12 +219,12 @@ namespace {
         auto inverse_rot_matrix = ch::rotation_matrix(-rotation);
         return horz_strokes_from_y_positions(seed, rows, slicer, run_length, space_length) |
             rv::transform(
-                [inverse_rot_matrix](auto polyline) {
-                    return polyline | rv::transform(
+                [inverse_rot_matrix](auto stroke) {
+                    return stroke | rv::transform(
                         [inverse_rot_matrix]( auto pt) {
                             return ch::transform(pt, inverse_rot_matrix);
                         }
-                    );
+                    ) | r::to<ch::polyline>();
                 }
             );
     }
@@ -324,9 +324,9 @@ namespace {
                 ctxt_.variables[k_brush_param_var] = value;
             }
 
-            void operator()(ch::strokes strokes) {
-                if (ctxt_.strokes) {
-                    ctxt_.strokes = rv::concat(*ctxt_.strokes, strokes);
+            void operator()(ch::strokes_ptr strokes) {
+                if (ctxt_.strokes != nullptr) {
+                    append(ctxt_.strokes, strokes);
                 } else {
                     ctxt_.strokes = strokes;
                 }
@@ -346,17 +346,17 @@ namespace {
 
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
 
-            ch::brush_context local_ctxt = ctxt;
+            ch::brush_context local_ctxt = ctxt.clone();
             expr_val_visitor visitor(local_ctxt);
 
             for (const auto& child : children_) {
                 auto value = child->eval(local_ctxt);
                 std::visit(visitor, value);
             }
-            if (!local_ctxt.strokes.has_value()) {
+            if (local_ctxt.strokes == nullptr) {
                 throw std::runtime_error("pipeline did not emit crosshatching.");
             }
-            return local_ctxt.strokes.value();
+            return local_ctxt.strokes;
         }
     };
 
@@ -487,17 +487,15 @@ namespace {
                 );
             auto pen_thickness = variable_value(ctxt.variables, k_pen_thickness_var, 1.0);
             auto rotation = variable_value(ctxt.variables, k_rotation_var, 0.0);
-            return rv::single(
-                ch::stroke_cluster{
-                    linear_strokes(
+            return ch::single_stroke_group(
+                linear_strokes(
                         ch::degrees_to_radians(rotation),
                         ctxt.poly.outer(),
                         run_length,
                         space_length,
                         vert_space
-                    ),
-                    pen_thickness
-                }
+                    ) | to_polylines,
+                pen_thickness
             );
         }
     };
@@ -536,21 +534,26 @@ namespace {
 
     class disintegrate_expr : public op_expr<operation::disintegrate> {
 
-        static ch::stroke_ranges prune_random_stroks(ch::stroke_ranges str_rngs, int i,
+        static ch::polylines prune_random_strokes(const ch::polylines& polys, int i,
                 uint32_t seed, double prob) {
-            return rv::enumerate(str_rngs) |
+            return rv::enumerate(polys) |
                 rv::remove_if(
                     [i, seed, prob](auto tup) {
                         int j = std::get<0>(tup);
-                        auto rand = ch::uniform_rnd(ch::cbrng_state(seed, i, j), 0.0, 1.0);
-                        qDebug() << "rand=>" << rand << "  " << prob;
-                        return  rand > prob;
+                        auto random_num = ch::uniform_rnd(ch::cbrng_state(seed, i, j), 0.0, 1.0);
+
+                        if (random_num <= prob) {
+                            int aaa;
+                            aaa = 5;
+                        }
+
+                        return  random_num > prob;
                     }
                 ) | rv::transform(
-                    [](auto tup)->ch::stroke_range {
+                    [](auto tup)->ch::polyline {
                         return std::get<1>(tup);
                     }
-                );
+                ) | to_polylines;
         }
 
     public:
@@ -562,31 +565,35 @@ namespace {
             auto probability = std::clamp(std::get<double>(result), 0.0, 1.0);
             auto seed = ch::random_seed();
 
-            auto input = *ctxt.strokes;
+            auto input = ctxt.strokes;
             ctxt.strokes = {};
 
-            auto temp = rv::enumerate(input) |
+            return ch::to_strokes(
+                rv::enumerate(*input) |
                 rv::transform(
-                    [probability, seed](auto index_sc)->ch::stroke_cluster {
+                    [probability, seed](auto index_sc)->ch::stroke_group {
                         auto [i, sc] = index_sc;
                         return {
-                            prune_random_stroks(sc.strokes, i, seed, probability),
+                            prune_random_strokes(sc.strokes, i, seed, probability),
                             sc.thickness
                         };
                     }
-                );
-            return temp;
+                )
+            ); 
         }
     };
     
     class jiggle_expr : public op_expr<operation::jiggle> {
-        static ch::stroke_range jiggle_stroke(ch::stroke_range sr, double theta) {
-            auto points = sr | r::to_vector;
-            auto centroid = ch::mean_point(points);
+
+        static ch::polyline jiggle_stroke(const ch::polyline& poly, double theta) {
+            auto centroid = ch::mean_point(poly);
             ch::matrix mat = ch::translation_matrix(-centroid) *
                 ch::rotation_matrix(theta) *
                 ch::translation_matrix(centroid);
-            return sr | rv::transform([mat](auto pt) {return ch::transform(pt, mat); });
+            return poly | 
+                rv::transform(
+                    [mat](auto pt) {return ch::transform(pt, mat); }
+                ) | r::to<ch::polyline>();
         }
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
@@ -595,27 +602,30 @@ namespace {
                 throw std::runtime_error("jiggle : invalid argument");
             }
             auto seed = ch::random_seed();
-            auto input = *ctxt.strokes;
+            auto input = ctxt.strokes;
             ctxt.strokes = {};
 
-            return rv::enumerate(input) |
-                rv::transform(
-                    [seed, rand = std::get<ch::random_func>(result)](auto tup)->ch::stroke_cluster {
-                        auto [i, cluster] = tup;
-                        return {
-                            rv::enumerate(cluster.strokes) |
-                                rv::transform(
-                                    [i, seed, rand](auto tup) {
-                                        auto [j, strk] = tup;
-                                        auto theta = ch::degrees_to_radians(
-                                            rand(ch::cbrng_state(seed, i, j))
-                                        );
-                                        return jiggle_stroke(strk, theta);
-                                    }
-                                ),
-                            cluster.thickness
-                        };
-                    }
+            return
+                ch::to_strokes(
+                    rv::enumerate(*input) |
+                    rv::transform(
+                        [seed, rand = std::get<ch::random_func>(result)](auto tup) {
+                            auto [i, group] = tup;
+                            return ch::stroke_group{
+                                rv::enumerate(group.strokes) |
+                                    rv::transform(
+                                        [i, seed, rand](auto tup) {
+                                            auto [j, strk] = tup;
+                                            auto theta = ch::degrees_to_radians(
+                                                rand(ch::cbrng_state(seed, i, j))
+                                            );
+                                            return jiggle_stroke(strk, theta);
+                                        }
+                                    ) | to_polylines,
+                                group.thickness
+                            };
+                        }
+                    )
                 );
         }
     };
@@ -842,6 +852,14 @@ ch::brush_context::brush_context(const ch::polygon& p, double param) :
     variables[k_brush_param_var] = param;
 }
 
+ch::brush_context ch::brush_context::clone() const {
+    auto the_clone = *this;
+    if (strokes) {
+        the_clone.strokes = to_strokes(rv::all(*strokes));
+    }
+    return the_clone;
+}
+
 void ch::brush_expr::set_children(std::span<const ch::brush_expr_ptr> children) {
     children_ = children | r::to_vector;
 }
@@ -869,9 +887,9 @@ std::variant<ch::brush_expr_ptr, std::runtime_error> ch::parse(const std::string
     return expr;
 }
 
-ch::strokes ch::brush_expr_to_strokes(const brush_expr_ptr& expr, const polygon& poly, double t) {
+ch::strokes_ptr ch::brush_expr_to_strokes(const brush_expr_ptr& expr, const polygon& poly, double t) {
     brush_context ctxt(poly, t);
-    return std::get<strokes>(expr->eval(ctxt));
+    return std::get<ch::strokes_ptr>(expr->eval(ctxt));
 }
 
 std::string ch::pretty_print(const ch::brush_expr_ptr& expr) {
@@ -885,17 +903,39 @@ ch::polygon make_rect(const ch::dimensions<double>& sz) {
     );
 }
 
-void ch::debug_brushes() {
+void ch::debug_brushes() { 
     auto result = parse(
-        "(brush (horz_strokes (norm_rnd 400 75) (norm_rnd 100 10) (norm_rnd 4 2)) (dis 0.75) )"
+        R"(
+            ( 
+            brush
+                (define lines 
+                    (quote
+                        (brush 
+                            (horz_strokes
+                                (norm_rnd (lerp 0 800) (lerp 50 100))
+                                (norm_rnd (lerp 200 0) (lerp 20 0.05))
+                                (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
+                            )
+                            (dis (ramp 0.20 false true))
+                            (jiggle (norm_rnd 4.0 1.5))
+                        )
+                    )
+                )
+                (rot 45)
+                lines
+                (rot -45)
+                (define foo 42)
+                lines
+            )
+        )"
     );
     auto expr = std::get< brush_expr_ptr>(result);
-    auto strokes = brush_expr_to_strokes(expr, make_rect({ 256.0,256.0 }), 0.25);
-    auto drawn = to_drawn_strokes(strokes);
+    auto strokes = brush_expr_to_strokes(expr, make_rect({ 256.0,256.0 }), 0.0);
     cv::Mat mat(256, 256, CV_8U, 255);
     QImage img = mat_to_qimage(mat, false);
     QPainter g(&img);
     g.setRenderHint(QPainter::Antialiasing, true);
-    ch::paint_strokes(g, drawn);
+    ch::paint_strokes(g, strokes);
     cv::imshow("foo", mat);
+    
 }

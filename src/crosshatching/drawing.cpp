@@ -131,14 +131,14 @@ namespace {
         return tbl;
     }
 
-    std::tuple<std::vector<ch::drawn_stroke_cluster>, swatch_table> draw_ink_layer(
+    std::tuple<std::vector<ch::stroke_group>, swatch_table> draw_ink_layer(
             const ch::ink_layer& layer, swatch_table& tbl,
             const ch::parameters& params, progress& prog) {
 
         size_t n = layer.content.size();
         prog.start_new_layer(n);
 
-        std::vector<ch::drawn_stroke_cluster> output;
+        std::vector<ch::stroke_group> output;
         output.reserve(k_typical_number_of_strokes);
         std::unordered_map<ch::brush_token, ch::brush_ptr> brush_table;
         swatch_table output_table = create_swatch_table();
@@ -163,7 +163,7 @@ namespace {
 
             auto value = static_cast<double>(blob.value) / 255.0;
             auto strokes = current_brush->draw_strokes(blob.poly, value);
-            std::copy(strokes.begin(), strokes.end(), std::back_inserter(output));
+            std::copy(strokes->begin(), strokes->end(), std::back_inserter(output));
 
             auto tok = blob.token();
             if (output_table.find(tok) == output_table.end()) {
@@ -185,7 +185,7 @@ namespace {
 
         auto layers = scale(inp_layers, params.scale);
         
-        std::vector<std::vector<ch::drawn_stroke_cluster>> layer_strokes(layers.content.size());
+        std::vector<std::vector<ch::stroke_group>> layer_strokes(layers.content.size());
         swatch_table tok_to_bkgd = create_swatch_table();
         for (auto [index, layer] : rv::enumerate(layers.content)) {
             prog.log(std::string("  - layer ") + std::to_string(index));

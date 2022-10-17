@@ -22,15 +22,16 @@ namespace ch {
     using brush_expr_ptr = std::shared_ptr<brush_expr>;
     
     using nil_value = std::monostate;
-    using brush_expr_value = std::variant<nil_value, double, strokes, random_func, brush_expr_ptr>;
+    using brush_expr_value = std::variant<nil_value, double, strokes_ptr, random_func, brush_expr_ptr>;
     using variables_map = std::unordered_map<std::string, brush_expr_value>;
 
     struct brush_context {
         polygon poly;
         variables_map variables;
-        std::optional<ch::strokes> strokes;
+        strokes_ptr strokes;
 
         brush_context(const polygon& poly, double param);
+        brush_context clone() const;
     };
 
     class brush_expr {
@@ -45,7 +46,7 @@ namespace ch {
     };
 
     std::variant<brush_expr_ptr, std::runtime_error> parse(const std::string& str);
-    strokes brush_expr_to_strokes(const brush_expr_ptr& expr, const polygon& poly, double t);
+    strokes_ptr brush_expr_to_strokes(const brush_expr_ptr& expr, const polygon& poly, double t);
     std::string pretty_print(const brush_expr_ptr& expr);
     void debug_brushes();
 }
