@@ -710,6 +710,10 @@ ch::brush_token ch::ink_layer_item::parent_token() const {
 
 /*------------------------------------------------------------------------------------------------*/
 
+int ch::ink_layer::index() const {
+    return content.front().layer_id;
+}
+
 ch::ink_layers ch::ink_layers::clone() const {
     std::unordered_map<int, ink_layer_item*> id_to_item;
     auto cloned_ink_layers = *this;

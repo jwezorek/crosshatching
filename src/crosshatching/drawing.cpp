@@ -125,9 +125,9 @@ namespace {
     }
 
     using swatch_table = std::unordered_map<ch::brush_token, ch::bkgd_swatches>;
-    swatch_table create_swatch_table() {
+    swatch_table create_swatch_table(int n, int dim) {
         swatch_table tbl;
-        tbl[0] = {};
+        tbl[0] = std::vector<cv::Mat>(n, ch::blank_monochrome_bitmap(dim));
         return tbl;
     }
 
@@ -137,36 +137,34 @@ namespace {
 
         size_t n = layer.content.size();
         prog.start_new_layer(n);
-        qDebug() << n << "a";
         std::vector<ch::stroke_group> output;
-        output.reserve(k_typical_number_of_strokes);
         std::unordered_map<ch::brush_token, ch::brush_ptr> brush_table;
-        swatch_table output_table = create_swatch_table();
+        swatch_table output_table = create_swatch_table(
+            ch::brush::num_samples(),
+            ch::brush::swatch_dim()
+        );
 
-        size_t count = 0;
         for (const auto& blob: layer.content) {
             auto parent_tok = blob.parent_token();
             auto iter = brush_table.find(parent_tok);
             ch::brush_ptr current_brush;
-            qDebug() << n << "b";
             if (iter != brush_table.end()) {
                 current_brush = iter->second;
             } else {
+                auto bkgds = tbl.at(parent_tok);
                 current_brush = std::make_shared<ch::brush>(
                     layer.brush,
                     params.epsilon,
                     ch::dimensions(static_cast<double>(params.swatch_sz)),
-                    tbl.at(parent_tok)
+                    bkgds
                 );
                 current_brush->build_n(20);
                 brush_table[parent_tok] = current_brush;
             }
 
             auto value = static_cast<double>(blob.value) / 255.0;
-            qDebug() << n << "c";
             auto strokes = current_brush->draw_strokes(blob.poly, value);
             std::copy(strokes->begin(), strokes->end(), std::back_inserter(output));
-            qDebug() << n << "d";
 
             auto tok = blob.token();
             if (output_table.find(tok) == output_table.end()) {
@@ -189,7 +187,10 @@ namespace {
         auto layers = scale(inp_layers, params.scale);
         
         std::vector<std::vector<ch::stroke_group>> layer_strokes(layers.content.size());
-        swatch_table tok_to_bkgd = create_swatch_table();
+        swatch_table tok_to_bkgd = create_swatch_table(
+            ch::brush::num_samples(),
+            ch::brush::swatch_dim()
+        );
         for (auto [index, layer] : rv::enumerate(layers.content | rv::reverse)) {
             prog.log(std::string("  - layer ") + std::to_string(index));
             std::tie(layer_strokes[index], tok_to_bkgd) = draw_ink_layer(
@@ -249,10 +250,6 @@ void ch::write_to_svg(const std::string& filename, const drawing& d,
     outfile << "</svg>" << std::endl;
     outfile.close();
 }
-
-//ch::drawing ch::scale(const drawing& d, double scale) {
-//    return {};
-//}
 
 cv::Mat ch::paint_drawing(const ch::drawing& d, std::function<void(double)> update_progress_cb) {
     cv::Mat mat(static_cast<int>(d.sz.hgt), static_cast<int>(d.sz.wd), CV_8U, 255);

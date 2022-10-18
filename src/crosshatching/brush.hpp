@@ -14,9 +14,9 @@ namespace ch {
 
     using bkgd_swatches = std::vector<cv::Mat>;
 
-    constexpr int k_swatch_sz = 800;
-    constexpr double k_epsilon = 0.01;
-    constexpr auto k_num_samples = 8;
+    constexpr int k_swatch_sz = 600;
+    constexpr double k_epsilon = 0.001;
+    constexpr auto k_num_samples = 4;
 
     class brush {
     private:
@@ -32,7 +32,7 @@ namespace ch {
         bool is_uinitiailized() const;
         double get_or_sample_param(double param);
         double build_between(double v, gray_map_iter left, gray_map_iter right,
-            std::deque<double>& history);
+            int depth = 0);
         double build_to_gray_level(double gray_level);
 
     public:
@@ -48,7 +48,10 @@ namespace ch {
         double min_gray_level() const;
         double max_gray_level() const;
         static int num_samples();
+        static int swatch_dim();
     };
+
+
 
     using brush_ptr = std::shared_ptr<brush>;
 }

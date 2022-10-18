@@ -673,6 +673,51 @@ ui::brush_panel::brush_panel(layer_panel& layers) :
 			[&]() {this->delete_brush_node(); }),
 		layer_panel_(layers) {
 	connect(tree(), &QTreeWidget::itemDoubleClicked, this, &brush_panel::handle_double_click);
+
+    auto brush1 = std::get<ch::brush_expr_ptr>(
+        ch::parse(
+            R"(
+                    ( 
+                    brush
+                        (define lines 
+                            (quote
+                                (brush 
+                                    (horz_strokes
+                                        (norm_rnd (lerp 0 800) (lerp 50 100))
+                                        (norm_rnd (lerp 200 0) (lerp 20 0.05))
+                                        (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
+                                    )
+                                    (dis (ramp 0.20 false true))
+                                    (jiggle (norm_rnd 0.0 0.5))
+                                )
+                            )
+                        )
+                        (rot 45)
+                        lines
+                        (rot -45)
+                        lines
+                    )
+            )"
+        )
+    );
+    auto brush2 = std::get<ch::brush_expr_ptr>(
+        ch::parse(
+            R"(
+                (brush
+                    (horz_strokes
+                        (norm_rnd (lerp 0 800) (lerp 50 100))
+                        (norm_rnd (lerp 200 0) (lerp 20 0.05))
+                        (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
+                    )
+                    (dis (ramp 0.2 0 1))
+                    (jiggle (norm_rnd 0 0.5))
+                )
+            )"
+        )
+        );
+    insert_toplevel_item(tree(), "main", brush1);
+    insert_toplevel_item(tree(), "horz", brush2); 
+    sync_layer_panel();
 }
 
 std::vector<std::string> ui::brush_panel::brush_names() const {

@@ -535,6 +535,10 @@ uchar ch::color_to_monochrome(ch::color col) {
 	return static_cast<uchar>(gray);
 }
 
+cv::Mat ch::blank_monochrome_bitmap(int dim) {
+    return  cv::Mat(dim, dim, CV_8U, 255);
+}
+
 void ch::debug_polygons(const std::string& output_file, dimensions<int> sz,
 		std::span<std::tuple<uchar, ch::polygon>> cpolys) {
 

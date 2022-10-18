@@ -44,7 +44,7 @@ namespace ch {
         int swatch_sz;
         bool use_true_black;
 
-        parameters(double sc = 5.0, double eps = k_epsilon,
+        parameters(double sc = 10.0, double eps = k_epsilon,
                 int sz = k_swatch_sz, bool black = false) :
             scale(sc),
             epsilon(eps),

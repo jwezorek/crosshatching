@@ -71,6 +71,7 @@ namespace ch {
     void label_map_to_visualization_img(cv::Mat img, const std::string& output_file);
     dimensions<int> mat_dimensions(cv::Mat mat);
     uchar color_to_monochrome(color col);
+    cv::Mat blank_monochrome_bitmap(int sz);
 
     // painting with Qt...
     QImage create_grayscale_qimage(int wd, int hgt);

@@ -13,6 +13,15 @@ namespace rv = ranges::views;
 
 namespace {
 
+    ch::bkgd_swatches clone(const ch::bkgd_swatches& bkgds) {
+        return bkgds |
+            rv::transform(
+                [](cv::Mat mat) {
+                    return mat.clone();
+                }
+        ) | r::to_vector;
+    }
+
     ch::polygon make_rectangle(const ch::dimensions<double>& sz) {
         return ch::make_polygon(
             { { {0.0,0.0}, {sz.wd, 0.0}, {sz.wd,sz.hgt}, {0.0, sz.hgt} } }
@@ -36,11 +45,6 @@ namespace {
         return (255.0 - mean_val) / 255.0;
     }
 
-    template<typename T>
-    cv::Mat blank_mat(const ch::dimensions<T>& sz) {
-        return cv::Mat(static_cast<int>(sz.hgt), static_cast<int>(sz.wd), CV_8U, 255);
-    }
-
     double sample(ch::dimensions<double> sz, ch::brush_expr_ptr expr, 
             double t, int n, const std::vector<cv::Mat>& bkgds) {
 
@@ -53,7 +57,7 @@ namespace {
             rv::transform(
                 [=, &bkgds](int i)->std::future<double> {
                     cv::Mat bkgd = (bkgds.empty()) ? 
-                        blank_mat(sz) : 
+                        ch::blank_monochrome_bitmap(static_cast<int>(sz.wd)) :
                         bkgds.at(i);
                     return std::async(std::launch::async, compute_gray_level, expr, t, bkgd);
                 }
@@ -79,7 +83,7 @@ double ch::brush::get_or_sample_param(double param) {
     if (iter != param_to_gray_.end()) {
         return iter->second;
     }
-    auto gray = sample(swatch_sz_, brush_expr_, param, k_num_samples, bkgds_);
+    auto gray = sample(swatch_sz_, brush_expr_, param, k_num_samples, clone(bkgds_));
     gray_to_param_[gray] = param;
     param_to_gray_[param] = gray;
 
@@ -87,28 +91,21 @@ double ch::brush::get_or_sample_param(double param) {
 }
 
 double ch::brush::build_between(double gray, gray_map_iter left, gray_map_iter right, 
-        std::deque<double>& history) {
+        int depth) {
     double mid_param = (left->second + right->second) / 2.0;
     auto mid_gray_value = get_or_sample_param(mid_param);
 
-    history.push_back(mid_gray_value);
-    if (history.size() > 4) {
-        history.pop_front();
-    }
-    if (history.size() == 4 && std::abs(history.front() - history.back()) < 1e-6) {
-        return mid_param;
-    }
-
-    qDebug() << std::abs(left->second - right->second) << " " << std::abs(mid_gray_value - gray);
-
-    if (std::abs(mid_gray_value - gray) < eps_) {
+    if (std::abs(mid_gray_value - gray) < eps_ || depth > 12) {
+        if (depth > 12) {
+            qDebug() << "probable brush failure.";
+        }
         return mid_param;
     }
     auto mid_iter = gray_to_param_.find(mid_gray_value);
     if (gray < mid_gray_value) {
-        return build_between(gray, left, mid_iter, history);
+        return build_between(gray, left, mid_iter, depth+1);
     } else {
-        return build_between(gray, mid_iter, right, history);
+        return build_between(gray, mid_iter, right, depth+1);
     }
 }
 
@@ -125,8 +122,7 @@ double ch::brush::build_to_gray_level(double gray_level) {
     if (std::abs(gray_level - right->first) < eps_) {
         return right->second;
     }
-    std::deque<double> history;
-    return build_between(gray_level, left, right, history);
+    return build_between(gray_level, left, right);
 }
 
 ch::brush::brush() {
@@ -169,25 +165,23 @@ ch::strokes_ptr ch::brush::draw_strokes(const polygon& poly, double gray_level, 
     } else if (gray_level > max_gray_level()) {
         return draw_strokes(poly, max_gray_level(), clip_to_poly);
     }
-    //qDebug() << "[1]";
+
     auto param = build_to_gray_level(gray_level);
     auto centroid = mean_point(poly.outer());
     auto canonicalized = ch::transform(poly, ch::translation_matrix(-centroid));
 
     auto strokes = brush_expr_to_strokes(brush_expr_, canonicalized, param);
-    //qDebug() << "[2]";
     if (clip_to_poly) {
         strokes = clip_strokes(canonicalized, strokes);
-        //qDebug() << "[3]";
     }
 
     return ch::transform(strokes, ch::translation_matrix(centroid));
 }
 
 ch::bkgd_swatches ch::brush::render_swatches(double gray_value, int n) {
-    auto bkgds = bkgds_;
+    auto bkgds = clone(bkgds_);
     if (bkgds.empty()) {
-        bkgds.resize(n, blank_mat(swatch_sz_));
+        bkgds.resize(n, blank_monochrome_bitmap(k_swatch_sz));
     }
 
     return rv::iota(0, n) |
@@ -219,3 +213,6 @@ int ch::brush::num_samples() {
     return k_num_samples;
 }
 
+int ch::brush::swatch_dim() {
+    return k_swatch_sz;
+}

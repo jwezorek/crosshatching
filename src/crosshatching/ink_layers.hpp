@@ -27,6 +27,8 @@ namespace ch {
     struct ink_layer {
         ch::brush_expr_ptr brush;
         std::vector<ink_layer_item> content;
+
+        int index() const;
     };
 
     struct ink_layers {
