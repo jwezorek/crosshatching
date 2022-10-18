@@ -156,11 +156,13 @@ namespace ui {
         void set_scale(double sc);
         void set_epsilon(double eps);
         void set_swatch_sz(int ss);
+        void set_num_samples(int ns);
         void set_use_black(bool val);
 
         double scale() const;
         double epsilon() const;
         int swatch_sz() const;
+        int num_samples() const;
         bool use_black() const;
 
     private:
@@ -183,6 +185,7 @@ namespace ui {
         QLineEdit* scale_;
         QLineEdit* epsilon_;
         QLineEdit* swatch_sz_;
+        QLineEdit* num_samples_;
         QCheckBox* use_black_;
         QDialogButtonBox* btns_;
     };

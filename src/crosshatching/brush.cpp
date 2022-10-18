@@ -83,7 +83,7 @@ double ch::brush::get_or_sample_param(double param) {
     if (iter != param_to_gray_.end()) {
         return iter->second;
     }
-    auto gray = sample(swatch_sz_, brush_expr_, param, k_num_samples, clone(bkgds_));
+    auto gray = sample(swatch_sz_, brush_expr_, param, num_samples_, clone(bkgds_));
     gray_to_param_[gray] = param;
     param_to_gray_[param] = gray;
 
@@ -128,12 +128,13 @@ double ch::brush::build_to_gray_level(double gray_level) {
 ch::brush::brush() {
 };
 
-ch::brush::brush(ch::brush_expr_ptr expr, double epsilon,
+ch::brush::brush(ch::brush_expr_ptr expr, double epsilon, int num_samples,
         ch::dimensions<double> swatch_sz, const ch::bkgd_swatches& bkgds) :
     brush_expr_(expr),
     swatch_sz_{ swatch_sz },
     eps_(epsilon),
-    bkgds_(bkgds) {
+    bkgds_(bkgds),
+    num_samples_(num_samples) {
 
 }
 
@@ -209,10 +210,10 @@ double ch::brush::max_gray_level() const {
     return std::prev(gray_to_param_.end())->first;
 }
 
-int ch::brush::num_samples() {
-    return k_num_samples;
+int ch::brush::num_samples() const {
+    return num_samples_;
 }
 
-int ch::brush::swatch_dim() {
-    return k_swatch_sz;
+int ch::brush::swatch_dim() const {
+    return static_cast<int>(swatch_sz_.wd);
 }

@@ -16,7 +16,7 @@ namespace ch {
 
     constexpr int k_swatch_sz = 600;
     constexpr double k_epsilon = 0.001;
-    constexpr auto k_num_samples = 4;
+    constexpr auto k_default_num_samples = 4;
 
     class brush {
     private:
@@ -28,6 +28,7 @@ namespace ch {
         dimensions<double> swatch_sz_;
         double eps_;
         bkgd_swatches bkgds_;
+        int num_samples_;
 
         bool is_uinitiailized() const;
         double get_or_sample_param(double param);
@@ -37,18 +38,19 @@ namespace ch {
 
     public:
         brush();
-        brush(brush_expr_ptr expr, double epsilon = k_epsilon,
+        brush(brush_expr_ptr expr, double epsilon = k_epsilon, 
+            int num_samples = k_default_num_samples,
             dimensions<double> swatch_sz = { static_cast<double>(k_swatch_sz) }, 
             const bkgd_swatches& bkgds = {});
 
         void build_n(int n);
         double gray_value_to_param(double gray_val);
-        bkgd_swatches render_swatches(double gray_level, int n = k_num_samples);
+        bkgd_swatches render_swatches(double gray_level, int n);
         strokes_ptr draw_strokes(const polygon& poly, double gray_level, bool clip_to_poly = true);
         double min_gray_level() const;
         double max_gray_level() const;
-        static int num_samples();
-        static int swatch_dim();
+        int num_samples() const;
+        int swatch_dim() const;
     };
 
 

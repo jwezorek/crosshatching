@@ -42,13 +42,16 @@ namespace ch {
         double scale;
         double epsilon;
         int swatch_sz;
+        int num_samples;
         bool use_true_black;
 
         parameters(double sc = 10.0, double eps = k_epsilon,
-                int sz = k_swatch_sz, bool black = false) :
+                int sz = k_swatch_sz, int ns = k_default_num_samples, 
+                bool black = false) :
             scale(sc),
             epsilon(eps),
             swatch_sz(sz),
+            num_samples(ns),
             use_true_black(black)
         {}
     };

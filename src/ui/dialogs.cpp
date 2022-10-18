@@ -547,6 +547,9 @@ ui::settings::settings(const ch::parameters& params) {
     layout->addWidget(new QLabel("Swatch size"));
     layout->addWidget(swatch_sz_ = create_int_editor(10,1000));
     layout->addSpacing(10);
+    layout->addWidget(new QLabel("# of samples"));
+    layout->addWidget(num_samples_ = create_int_editor(1, 20));
+    layout->addSpacing(10);
     layout->addWidget(use_black_ = new QCheckBox("Use full black polygons"));
     layout->addSpacing(20);
     layout->addWidget(btns_ = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel));
@@ -558,6 +561,7 @@ ui::settings::settings(const ch::parameters& params) {
     set_scale(params.scale);
     set_epsilon(params.epsilon);
     set_swatch_sz(params.swatch_sz);
+    set_num_samples(params.num_samples);
     set_use_black(params.use_true_black);
 }
 
@@ -569,6 +573,7 @@ std::optional<ch::parameters> ui::settings::edit_settings(const ch::parameters& 
             dlg->scale(),
             dlg->epsilon(),
             dlg->swatch_sz(),
+            dlg->num_samples(),
             dlg->use_black_->isChecked()
         } };
     } else {
@@ -607,6 +612,10 @@ void ui::settings::set_swatch_sz(int ss) {
     set_value(swatch_sz_, ss);
 }
 
+void ui::settings::set_num_samples(int ns) {
+    set_value(num_samples_, ns);
+}
+
 void ui::settings::set_use_black(bool val) {
     use_black_->setChecked(val);
 }
@@ -621,6 +630,10 @@ double ui::settings::epsilon() const {
 
 int ui::settings::swatch_sz() const {
     return get_value<int>(swatch_sz_);
+}
+
+int ui::settings::num_samples() const {
+    return get_value<int>(num_samples_);
 }
 
 bool ui::settings::use_black() const {

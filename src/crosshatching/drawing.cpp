@@ -140,8 +140,8 @@ namespace {
         std::vector<ch::stroke_group> output;
         std::unordered_map<ch::brush_token, ch::brush_ptr> brush_table;
         swatch_table output_table = create_swatch_table(
-            ch::brush::num_samples(),
-            ch::brush::swatch_dim()
+            params.num_samples,
+            params.swatch_sz
         );
 
         for (const auto& blob: layer.content) {
@@ -155,6 +155,7 @@ namespace {
                 current_brush = std::make_shared<ch::brush>(
                     layer.brush,
                     params.epsilon,
+                    params.num_samples,
                     ch::dimensions(static_cast<double>(params.swatch_sz)),
                     bkgds
                 );
@@ -168,7 +169,7 @@ namespace {
 
             auto tok = blob.token();
             if (output_table.find(tok) == output_table.end()) {
-                output_table[tok] = current_brush->render_swatches(value);
+                output_table[tok] = current_brush->render_swatches(value, params.num_samples);
             }
             prog.tick();
         }
@@ -177,20 +178,31 @@ namespace {
         return { std::move(output), std::move(output_table) };
     }
 
+    void log_settings(progress& prog, const ch::parameters& params) {
+        prog.log("        epsilon: " + std::to_string(params.epsilon));
+        prog.log("        scale: " + std::to_string(params.scale));
+        prog.log("        samples: " + std::to_string(params.num_samples));
+        prog.log("        swatch sz: " + std::to_string(params.swatch_sz));
+        prog.log("        use black: " +
+            (params.use_true_black ? std::string("yes"): std::string("no")));
+    }
+
     ch::drawing draw(const ch::ink_layers& inp_layers, const ch::parameters& params, progress& prog) {
 
         auto [poly_count, vert_count] = drawing_job_stats(inp_layers);
-        prog.log("  (job contains " + std::to_string(poly_count) + " polygons with " +
-            std::to_string(vert_count) + " total vertices");
+        prog.log("    job details");
+        prog.log("        " + std::to_string(poly_count) + " polygons with " +
+            std::to_string(vert_count) + " total vertices...");
+        log_settings(prog, params);
         prog.set_polygon_count(poly_count);
-
         auto layers = scale(inp_layers, params.scale);
         
         std::vector<std::vector<ch::stroke_group>> layer_strokes(layers.content.size());
         swatch_table tok_to_bkgd = create_swatch_table(
-            ch::brush::num_samples(),
-            ch::brush::swatch_dim()
+            params.num_samples,
+            params.swatch_sz
         );
+
         for (auto [index, layer] : rv::enumerate(layers.content | rv::reverse)) {
             prog.log(std::string("  - layer ") + std::to_string(index));
             std::tie(layer_strokes[index], tok_to_bkgd) = draw_ink_layer(
