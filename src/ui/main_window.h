@@ -109,6 +109,7 @@ namespace ui {
         QStackedWidget* viewer_stack_;
         cv::Mat swatch_;
         ch::parameters params_;
+        mutable ch::ink_layers layers_;
 
         void set_view(view v);
     };

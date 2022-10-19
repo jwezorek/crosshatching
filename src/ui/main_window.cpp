@@ -193,6 +193,7 @@ void ui::main_window::set_swatch_view(cv::Mat swatch, bool left) {
 }
 
 void ui::main_window::set_layer_view() { 
+    crosshatching_.layers_.clear();
 	auto layers = layer_images();
 	int n = static_cast<int>(layers.size());
 	auto names = rv::concat(
@@ -412,6 +413,9 @@ ch::ink_layers ui::main_window::layers() const {
 	if (!vector_output()) {
 		return {};
 	}
+    if (!crosshatching_.layers_.empty()) {
+        return crosshatching_.layers_;
+    }
 	auto vo = *vector_output();
 	auto [brushes, intervals] = brush_per_intervals();
 	auto gray_value_polygons = ch::to_monochrome(vo.polygons, true);
@@ -423,7 +427,9 @@ ch::ink_layers ui::main_window::layers() const {
 				}
 			) | r::to_vector;
 
-	return ch::split_into_layers(vo.sz, gray_value_polygons, brushes, gray_value_ranges);
+	return crosshatching_.layers_ = ch::split_into_layers(
+        vo.sz, gray_value_polygons, brushes, gray_value_ranges
+    );
 }
 
 
@@ -440,7 +446,6 @@ ch::dimensions<int> ui::main_window::dimensions() const {
 
 std::vector<cv::Mat> ui::main_window::layer_images() const {
 	
-
 	double view_scale = img_proc_ctrls_.view_state.scale;
 	auto sz = view_scale * dimensions();
 	auto layers = this->layers().content;

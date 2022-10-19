@@ -733,6 +733,14 @@ ch::ink_layers ch::ink_layers::clone() const {
     return cloned_ink_layers;
 }
 
+bool ch::ink_layers::empty() const {
+    return content.empty();
+}
+
+void ch::ink_layers::clear() {
+    return content.clear();
+}
+
 /*------------------------------------------------------------------------------------------------*/
 
 ch::ink_layers ch::scale(const ink_layers& il, double scale_factor) {

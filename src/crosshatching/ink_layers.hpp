@@ -36,6 +36,8 @@ namespace ch {
         std::vector<ink_layer> content;
 
         ink_layers clone() const;
+        bool empty() const;
+        void clear();
     };
 
     ink_layers scale(const ink_layers& il, double scale_factor);
