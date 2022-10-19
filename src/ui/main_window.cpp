@@ -183,11 +183,11 @@ void ui::main_window::test() { /*\
 
 void ui::main_window::set_swatch_view(cv::Mat swatch, bool left) {
 	if (left) {
-		crosshatching_.swatch = swatch;
-		crosshatching_.img_swatch->set_image(swatch, k_swatch_scale);
-		crosshatching_.drawing_swatch->set_image(swatch, k_swatch_scale);
+		crosshatching_.swatch_ = swatch;
+		crosshatching_.img_swatch_->set_image(swatch, k_swatch_scale);
+		crosshatching_.drawing_swatch_->set_image(swatch, k_swatch_scale);
 	} else {
-		crosshatching_.drawing_swatch->set_image(swatch);
+		crosshatching_.drawing_swatch_->set_image(swatch);
 	}
 	crosshatching_.set_view(drawing_tools::view::swatch);
 }
@@ -207,13 +207,13 @@ void ui::main_window::set_layer_view() {
 	auto images = layers; // rv::concat(layers, rv::single(processed_image()));
 	auto tab_content = rv::zip(names, images) |
 		r::to<std::vector<std::tuple<std::string, cv::Mat>>>();
-	crosshatching_.layer_viewer->set_content(tab_content);
+	crosshatching_.layer_viewer_->set_content(tab_content);
 	crosshatching_.set_view(drawing_tools::view::layers);
 }
 
 void ui::main_window::set_drawing_view(cv::Mat drawing) {
-	crosshatching_.drawing->setFixedSize(drawing.cols, drawing.rows);
-	crosshatching_.drawing->set_image(drawing);
+	crosshatching_.drawing_->setFixedSize(drawing.cols, drawing.rows);
+	crosshatching_.drawing_->set_image(drawing);
 	crosshatching_.set_view(drawing_tools::view::drawing);
 }
 
@@ -222,7 +222,7 @@ void ui::main_window::redo_test_swatch() {
 }
 
 void ui::main_window::generate() {
-	if (!crosshatching_.layers->has_content()) {
+	if (!crosshatching_.layers_panel_->has_content()) {
 		return;
 	}
 	auto progress_box = std::make_unique<ui::drawing_progress>( this, drawing_job() );
@@ -267,13 +267,13 @@ void ui::main_window::handle_source_image_change(cv::Mat& img) {
 QWidget* ui::main_window::create_drawing_tools() {
 	QSplitter* vert_splitter = new QSplitter();
 	vert_splitter->setOrientation(Qt::Orientation::Vertical);
-	crosshatching_.layers = new layer_panel();
+	crosshatching_.layers_panel_ = new layer_panel();
 	vert_splitter->addWidget(
-		crosshatching_.brushes = new brush_panel(
-			*static_cast<layer_panel*>( crosshatching_.layers )
+		crosshatching_.brushes_ = new brush_panel(
+			*static_cast<layer_panel*>( crosshatching_.layers_panel_)
 		)
 	);
-	vert_splitter->addWidget(crosshatching_.layers);
+	vert_splitter->addWidget(crosshatching_.layers_panel_);
 
 	vert_splitter->setMaximumWidth(100);
 	QSplitter* splitter = new QSplitter();
@@ -281,33 +281,33 @@ QWidget* ui::main_window::create_drawing_tools() {
 	
 	QWidget* picture_panel = new QWidget();
 	auto layout = new QHBoxLayout(picture_panel);
-	layout->addWidget( crosshatching_.img_swatch = new ui::image_box() );
-	layout->addWidget( crosshatching_.drawing_swatch = new ui::image_box());
+	layout->addWidget( crosshatching_.img_swatch_ = new ui::image_box() );
+	layout->addWidget( crosshatching_.drawing_swatch_ = new ui::image_box());
 
 	int swatch_box_sz = test_swatch_picker::swatch_sz() * k_swatch_scale;
-	crosshatching_.img_swatch->setFixedSize(QSize(swatch_box_sz, swatch_box_sz));
-	crosshatching_.drawing_swatch->setFixedSize(QSize(swatch_box_sz, swatch_box_sz));
+	crosshatching_.img_swatch_->setFixedSize(QSize(swatch_box_sz, swatch_box_sz));
+	crosshatching_.drawing_swatch_->setFixedSize(QSize(swatch_box_sz, swatch_box_sz));
 
 	QScrollArea* swatch_viewer = new QScrollArea();
 	swatch_viewer->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 	swatch_viewer->setWidget(picture_panel);
 
-	crosshatching_.layer_viewer = new image_tab_ctrl();
+	crosshatching_.layer_viewer_ = new image_tab_ctrl();
 
 	QScrollArea* drawing_scroller = new QScrollArea();
-	drawing_scroller->setWidget(crosshatching_.drawing = new image_box());
+	drawing_scroller->setWidget(crosshatching_.drawing_ = new image_box());
 	drawing_scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
-	crosshatching_.viewer_stack = new QStackedWidget();
+	crosshatching_.viewer_stack_ = new QStackedWidget();
 
-	crosshatching_.viewer_stack->addWidget(swatch_viewer);
-	crosshatching_.viewer_stack->addWidget(crosshatching_.layer_viewer);
-	crosshatching_.viewer_stack->addWidget(drawing_scroller);
+	crosshatching_.viewer_stack_->addWidget( swatch_viewer );
+	crosshatching_.viewer_stack_->addWidget( crosshatching_.layer_viewer_ );
+	crosshatching_.viewer_stack_->addWidget( drawing_scroller );
 
-	splitter->addWidget(crosshatching_.viewer_stack);
+	splitter->addWidget(crosshatching_.viewer_stack_);
 	splitter->setSizes(QList<int>({ 180,500 }));
 
-	connect(crosshatching_.layers, &layer_panel::layers_changed,
+	connect(crosshatching_.layers_panel_, &layer_panel::layers_changed,
 		this, &main_window::set_layer_view);
 
 	return splitter;
@@ -392,8 +392,8 @@ ui::vector_graphics_ptr ui::main_window::vector_output() const {
 
 std::tuple<std::vector<ch::brush_expr_ptr>, std::vector<double>> 
 			ui::main_window::brush_per_intervals() const {
-	auto brush_dict = static_cast<brush_panel*>(crosshatching_.brushes)->brush_dictionary();
-	auto layer_name_vals = static_cast<layer_panel*>(crosshatching_.layers)->layers();
+	auto brush_dict = static_cast<brush_panel*>(crosshatching_.brushes_)->brush_dictionary();
+	auto layer_name_vals = static_cast<layer_panel*>(crosshatching_.layers_panel_)->layers();
 	return {
 		layer_name_vals | rv::transform(
 			[&](const auto& p)->ch::brush_expr_ptr {
@@ -541,7 +541,7 @@ std::tuple<int, int> ui::main_window::source_image_sz() const {
 void ui::main_window::handle_view_scale_change(double scale) {
 	img_proc_ctrls_.view_state.scale = scale;
 	display();
-	if (crosshatching_.layer_viewer->has_images()) {
+	if (crosshatching_.layer_viewer_->has_images()) {
 		set_layer_view();
 	}
 }
@@ -559,7 +559,7 @@ ui::view_state ui::main_window::view_state() const {
 
 void ui::drawing_tools::set_view(view v)
 {
-	viewer_stack->setCurrentIndex( static_cast<int>(v) );
+	viewer_stack_->setCurrentIndex( static_cast<int>(v) );
 }
 
 /*------------------------------------------------------------------------------------------------------*/

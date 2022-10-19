@@ -100,14 +100,14 @@ namespace ui {
             drawing = 2
         };
 
-        brush_panel* brushes;
-        layer_panel* layers;
-        image_box* img_swatch;
-        image_box* drawing_swatch;
-        image_box* drawing;
-        image_tab_ctrl* layer_viewer;
-        QStackedWidget* viewer_stack;
-        cv::Mat swatch;
+        brush_panel* brushes_;
+        layer_panel* layers_panel_;
+        image_box* img_swatch_;
+        image_box* drawing_swatch_;
+        image_box* drawing_;
+        image_tab_ctrl* layer_viewer_;
+        QStackedWidget* viewer_stack_;
+        cv::Mat swatch_;
         ch::parameters params_;
 
         void set_view(view v);
