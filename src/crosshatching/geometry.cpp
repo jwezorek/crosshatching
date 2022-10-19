@@ -11,8 +11,10 @@
 #include <array>
 #include <numeric>
 #include <limits>
+#include <random>
 #include <qdebug.h>
 #include "drawing.hpp"
+#include "CDT/include/CDT.h"
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -169,6 +171,40 @@ namespace {
 		}
 	}
 
+    std::tuple<std::vector<CDT::V2d<float>>, std::vector<CDT::Edge>> polygon_to_cdt_types(
+        const ch::polygon& poly) {
+
+        auto n = ch::vert_count(poly);
+        ch::point_map<int> point_to_index;
+        std::vector<CDT::V2d<float>> vertices;
+        vertices.reserve(n);
+        point_to_index.reserve(n);
+
+        int index = 0;
+        for (auto pt : ch::all_vertices(poly)) {
+            if (point_to_index.find(pt) != point_to_index.end()) {
+                continue;
+            }
+            vertices.emplace_back(pt.x, pt.y);
+            point_to_index[pt] = index++;
+        }
+
+        std::vector<CDT::Edge> edges;
+        for (auto [u, v] : ch::all_edges(poly)) {
+            edges.emplace_back(point_to_index[u], point_to_index[v]);
+        }
+
+        return { std::move(vertices), std::move(edges) };
+    }
+
+    ch::triangle to_triangle(const CDT::V2d<float>& a,
+            const CDT::V2d<float>& b, const CDT::V2d<float>& c) {
+        return {
+            {a.x,a.y},
+            {b.x,b.y},
+            {c.x,c.y}
+        };
+    }
 }
 
 ch::polyline ch::make_polyline(size_t sz)
@@ -509,7 +545,57 @@ std::vector<ch::point> ch::convex_hull(std::span<const ch::point> points) {
     return hull;
 }
 
+std::vector<ch::triangle> ch::triangulate(const polygon& poly) {
+    auto [vertices, edges] = polygon_to_cdt_types(poly);
+    CDT::Triangulation<float> cdt;
+    cdt.insertVertices(vertices);
+    cdt.insertEdges(edges);
+    cdt.eraseOuterTrianglesAndHoles();
+    return cdt.triangles |
+        rv::transform(
+            [&vertices](const auto& tri)->ch::triangle {
+                const auto& a = vertices[tri.vertices[0]];
+                const auto& b = vertices[tri.vertices[1]];
+                const auto& c = vertices[tri.vertices[2]];
+                return to_triangle(a, b, c);
+            }
+    ) | r::to_vector;
+}
+
 void ch::debug_geom() {
+    auto poly = ch::make_polygon({
+            {7,4},{8,7},{9,4},{12,4},{14,8},{12,12},{9,12},{8,9},{7,12},{4,12},{2,8},{4,4}
+        }, {
+            {{6,6},{5,6},{4,8},{5,10},{6,10},{7,8}},
+            {{9,8},{12,10},{12,6}}
+        }
+    );
+    auto triangles = triangulate(poly);
+    auto polys = triangles |
+        rv::transform(
+            [](const auto& tri)->std::tuple<color, polygon> {
+                static std::random_device rd;
+                static std::mt19937_64 eng(rd());
+                static std::uniform_int_distribution<uint32_t> distr;
+
+                auto p = make_polygon(
+                    { {tri.a, tri.b, tri.c} }
+                );
+                ch::color c = {
+                    static_cast<uchar>(distr(eng) % 256),
+                    static_cast<uchar>(distr(eng) % 256),
+                    static_cast<uchar>(distr(eng) % 256)
+                };
+
+                return { c,p };
+            }
+        ) | r::to_vector;
+
+    ch::polygons_to_svg<color>(
+        "C:\\test\\test_triangulate.svg",
+        polys,
+        1.0
+    );
 
 }
 

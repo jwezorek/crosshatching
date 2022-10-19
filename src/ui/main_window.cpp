@@ -242,8 +242,7 @@ void ui::main_window::edit_settings() {
 }
 
 void ui::main_window::debug() {
-    ch::debug_brushes();
-	
+    ch::debug_geom();
 }
 
 void ui::main_window::create_main_menu()

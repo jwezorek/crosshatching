@@ -96,7 +96,7 @@ namespace {
 		);
 
 		std::ofstream outfile(output_file);
-		outfile << ch::svg_header(static_cast<int>(wd), static_cast<int>(hgt));
+		outfile << ch::svg_header(static_cast<int>(scale*wd), static_cast<int>(scale * hgt));
 		for (const auto& [color, poly] : polys) {
 			outfile << polygon_to_svg(poly, color, scale) << std::endl;
 		}

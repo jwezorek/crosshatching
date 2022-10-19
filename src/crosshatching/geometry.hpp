@@ -148,5 +148,20 @@ namespace ch {
         );
     }
 
+    inline auto all_vertices(const polygon& poly) {
+        namespace r = ranges;
+        namespace rv = ranges::views;
+
+        return rv::concat(
+            rv::all(poly.outer()),
+            poly.inners() | 
+                rv::transform(
+                    [](const auto& r) {
+                        return rv::all(r);
+                    }
+                ) | rv::join
+        ); 
+    }
+
     void debug_geom();
 }
