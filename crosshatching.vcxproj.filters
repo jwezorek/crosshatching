@@ -46,9 +46,6 @@
     <ClCompile Include="src\ui\float_value_slider.cpp">
       <Filter>Source Files\ui</Filter>
     </ClCompile>
-    <ClCompile Include="src\crosshatching\segmentation.cpp">
-      <Filter>Source Files\crosshatching</Filter>
-    </ClCompile>
     <ClCompile Include="src\ui\treepanel.cpp">
       <Filter>Source Files\ui</Filter>
     </ClCompile>
@@ -134,9 +131,6 @@
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
     <ClInclude Include="src\crosshatching\peglib.h">
-      <Filter>Source Files\crosshatching</Filter>
-    </ClInclude>
-    <ClInclude Include="src\crosshatching\segmentation.hpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
     <ClInclude Include="src\crosshatching\point_set.hpp">

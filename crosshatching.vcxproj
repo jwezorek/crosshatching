@@ -156,7 +156,6 @@
     <ClCompile Include="src\crosshatching\meanshift.cpp" />
     <ClCompile Include="src\crosshatching\point_set.cpp" />
     <ClCompile Include="src\crosshatching\raster_to_vector.cpp" />
-    <ClCompile Include="src\crosshatching\segmentation.cpp" />
     <ClCompile Include="src\crosshatching\strokes.cpp" />
     <ClCompile Include="src\crosshatching\util.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -187,7 +186,6 @@
     <ClInclude Include="src\crosshatching\peglib.h" />
     <ClInclude Include="src\crosshatching\point_set.hpp" />
     <ClInclude Include="src\crosshatching\raster_to_vector.hpp" />
-    <ClInclude Include="src\crosshatching\segmentation.hpp" />
     <ClInclude Include="src\crosshatching\strokes.hpp" />
     <ClInclude Include="src\crosshatching\util.hpp" />
     <QtMoc Include="src\ui\image_tab_ctrl.h" />

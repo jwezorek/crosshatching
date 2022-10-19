@@ -1,5 +1,4 @@
 #include "geometry.hpp"
-#include "segmentation.hpp"
 #include "util.hpp"
 #include "point_set.hpp"
 #include <opencv2/core.hpp>

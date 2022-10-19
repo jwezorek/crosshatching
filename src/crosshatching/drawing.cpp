@@ -2,7 +2,6 @@
 #include "geometry.hpp"
 #include "point_set.hpp"
 #include "brush_lang.hpp"
-#include "segmentation.hpp"
 #include "qdebug.h"
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
