@@ -40,7 +40,7 @@ namespace ch {
         brush();
         brush(brush_expr_ptr expr, double epsilon = k_epsilon, 
             int num_samples = k_default_num_samples,
-            dimensions<double> swatch_sz = { static_cast<double>(k_swatch_sz) }, 
+            dimensions<float> swatch_sz = { static_cast<float>(k_swatch_sz) }, 
             const bkgd_swatches& bkgds = {});
 
         void build_n(int n);

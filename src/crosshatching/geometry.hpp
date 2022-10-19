@@ -21,7 +21,7 @@
 
 /*------------------------------------------------------------------------------------------------------*/
 
-namespace ch { using point = cv::Point2d; }
+namespace ch { using point = cv::Point2f; }
 BOOST_GEOMETRY_REGISTER_POINT_2D(ch::point, double, boost::geometry::cs::cartesian, x, y);
 
 namespace ch {
@@ -32,8 +32,8 @@ namespace ch {
     using polyline = boost::geometry::model::linestring<point>;
     using polylines = boost::geometry::model::multi_linestring<polyline>;
     using line_segment = std::tuple<point, point>;
-    using rectangle = std::tuple<double, double, double, double>;
-    using matrix = Eigen::Matrix<double, 3, 3>;
+    using rectangle = std::tuple<float, float, float, float>;
+    using matrix = Eigen::Matrix<float, 3, 3>;
     using int_point = cv::Point;
 
     template <typename T>
@@ -113,6 +113,14 @@ namespace ch {
     std::vector<polygon> buffer(std::span<const ch::polygon> polys, double amt);
     std::vector<ch::point> convex_hull(std::span<const ch::point> points);
 
+    struct triangle {
+        ch::point a;
+        ch::point b;
+        ch::point c;
+    };
+
+    std::vector<triangle> triangulate(const polygon& poly);
+
     using edge = std::tuple<point, point>;
 
     inline auto all_edges(const ring& r) {
@@ -140,5 +148,5 @@ namespace ch {
         );
     }
 
-    void debug_geom(cv::Mat mat);
+    void debug_geom();
 }

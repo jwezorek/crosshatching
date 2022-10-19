@@ -892,7 +892,7 @@ std::string ch::pretty_print(const ch::brush_expr_ptr& expr) {
     return lines | rv::join('\n') | r::to_<std::string>();
 }
 
-ch::polygon make_rect(const ch::dimensions<double>& sz) {
+ch::polygon make_rect(const ch::dimensions<float>& sz) {
     return ch::make_polygon(
         { { {0.0,0.0}, {sz.wd, 0.0}, {sz.wd,sz.hgt}, {0.0, sz.hgt} } }
     );

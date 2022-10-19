@@ -80,14 +80,14 @@ namespace {
 		return offset_to_direction[normalize_offset(to_pt - from_pt)];
 	}
 
-	cv::Point2d get_vertex(const pixel_crawler& pc) {
-		static std::unordered_map<direction, cv::Point2d> dir_to_vert_offset = {
+	cv::Point2f get_vertex(const pixel_crawler& pc) {
+		static std::unordered_map<direction, cv::Point2f> dir_to_vert_offset = {
 			{direction::NW, {0,0} },
 			{direction::NE, {1,0}},
 			{direction::SE, {1,1}},
 			{direction::SW, {0,1}}
 		};
-		return cv::Point2d(pc.loc) + dir_to_vert_offset[pc.head];
+		return cv::Point2f(pc.loc) + dir_to_vert_offset[pc.head];
 	}
 
 	bool is_cardinal_dir(direction dir) {
@@ -604,14 +604,13 @@ std::vector<ch::colored_polygon> ch::raster_to_vector(cv::Mat mat, double param)
 std::vector<ch::point> ch::perform_douglas_peucker_simplification(
 	const std::vector<ch::point>& input, double param) {
 
-	auto points = to_float_points(input);
-	std::vector<cv::Point_<float>> output;
+	std::vector<ch::point> output;
 	bool closed = input.front() == input.back();
-	cv::approxPolyDP(points, output, param, false);
+	cv::approxPolyDP(input, output, param, false);
 	if (closed && output.front() != output.back()) {
 		output.push_back(output.front());
 	}
-	return from_float_points(output);
+	return output;
 }
 
 std::vector<uchar> ch::detail::unique_1channel_values(const cv::Mat& input) {

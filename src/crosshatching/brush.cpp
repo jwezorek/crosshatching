@@ -22,9 +22,9 @@ namespace {
         ) | r::to_vector;
     }
 
-    ch::polygon make_rectangle(const ch::dimensions<double>& sz) {
+    ch::polygon make_rectangle(const ch::dimensions<float>& sz) {
         return ch::make_polygon(
-            { { {0.0,0.0}, {sz.wd, 0.0}, {sz.wd,sz.hgt}, {0.0, sz.hgt} } }
+            { { {0.0f,0.0f}, {sz.wd, 0.0f}, {sz.wd,sz.hgt}, {0.0f, sz.hgt} } }
         );
     }
 
@@ -45,7 +45,7 @@ namespace {
         return (255.0 - mean_val) / 255.0;
     }
 
-    double sample(ch::dimensions<double> sz, ch::brush_expr_ptr expr, 
+    double sample(ch::dimensions<float> sz, ch::brush_expr_ptr expr, 
             double t, int n, const std::vector<cv::Mat>& bkgds) {
 
         auto compute_gray_level = [sz](ch::brush_expr_ptr expr, double t, cv::Mat bkgd) -> double {
@@ -129,7 +129,7 @@ ch::brush::brush() {
 };
 
 ch::brush::brush(ch::brush_expr_ptr expr, double epsilon, int num_samples,
-        ch::dimensions<double> swatch_sz, const ch::bkgd_swatches& bkgds) :
+        ch::dimensions<float> swatch_sz, const ch::bkgd_swatches& bkgds) :
     brush_expr_(expr),
     swatch_sz_{ swatch_sz },
     eps_(epsilon),

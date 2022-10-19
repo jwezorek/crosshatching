@@ -90,8 +90,6 @@ namespace ch {
     std::string to_string(const point& pt);
     double degrees_to_radians(double degrees);
     double ramp(double t, double k, bool right, bool up);
-    std::vector<cv::Point_<float>> to_float_points(std::span<const ch::point> pts);
-    std::vector<ch::point> from_float_points(std::span<const cv::Point_<float>> pts);
 
     color rgb(uchar r, uchar g, uchar b);
 }

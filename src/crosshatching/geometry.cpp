@@ -21,7 +21,7 @@ namespace bg = boost::geometry;
 
 namespace {
 
-	using vec = Eigen::Matrix<double, 3, 1>;
+	using vec = Eigen::Matrix<float, 3, 1>;
 
 	template<typename T>
 	T scale_geometry(const T& poly, double scale)
@@ -87,7 +87,7 @@ namespace {
 
 		// ASSUME THAT xmax, xmin, ymax and ymin are global constants.
 
-		out_code compute_out_code(double x, double y, double xmin, double ymin, double xmax, double ymax)
+		out_code compute_out_code(float x, float y, float xmin, float ymin, float xmax, float ymax)
 		{
 			out_code code;
 
@@ -108,8 +108,8 @@ namespace {
 		// Cohen-Sutherland clipping algorithm clips a line from
 		// P0 = (x0, y0) to P1 = (x1, y1) against a rectangle with 
 		// diagonal from (xmin, ymin) to (xmax, ymax).
-		std::optional<ch::line_segment>  clip(double x0, double y0, double x1, double y1,
-			double xmin, double ymin, double xmax, double ymax)
+		std::optional<ch::line_segment>  clip(float x0, float y0, float x1, float y1,
+            float xmin, float ymin, float xmax, float ymax)
 		{
 			// compute outcodes for P0, P1, and whatever point lies outside the clip rectangle
 			out_code outcode0 = compute_out_code(x0, y0, xmin, ymin, xmax, ymax);
@@ -128,7 +128,7 @@ namespace {
 				} else {
 					// failed both tests, so calculate the line segment to clip
 					// from an outside point to an intersection with clip edge
-					double x, y;
+                    float x, y;
 
 					// At least one endpoint is outside the clip rectangle; pick it.
 					out_code outcodeOut = outcode1 > outcode0 ? outcode1 : outcode0;
@@ -268,8 +268,8 @@ ch::point ch::mean_point(std::span<const point> points)
 		y += pt.y;
 	}
 	return {
-		x / points.size(),
-		y / points.size()
+		static_cast<float>(x / points.size()),
+        static_cast<float>(y / points.size())
 	};
 }
 
@@ -285,7 +285,7 @@ ch::polyline ch::transform(std::span<const point> poly, const matrix& mat)
 ch::point ch::transform(const point& pt, const matrix& mat)
 {
 	vec v;
-	v << pt.x, pt.y, 1.0;
+	v << pt.x, pt.y, 1.0f;
 	v = mat * v;
 	return { v[0], v[1] }; 
 }
@@ -397,7 +397,7 @@ std::optional<ch::line_segment> ch::linesegment_rectangle_intersection(
 
 ch::point ch::southeast_most_point(std::span<const ch::point> points) {
 	ch::point southeast{
-		-std::numeric_limits<double>::max(),
+		-std::numeric_limits<float>::max(),
 		-std::numeric_limits<float>::max()
 	};
 	for (const auto& pt : points) {
@@ -504,24 +504,13 @@ std::vector<ch::polygon> ch::buffer(std::span<const ch::polygon> polys, double a
 }
 
 std::vector<ch::point> ch::convex_hull(std::span<const ch::point> points) {
-	auto v = points | 
-		rv::transform(
-			[](const auto& pt) {
-				return static_cast<cv::Point_<float>>(pt);
-			}
-		) | r::to_vector;
-
-	std::vector<cv::Point_<float>> hull;
+    auto v = points | r::to_vector;
+	std::vector<ch::point> hull;
 	cv::convexHull(v, hull, true, true);
-	return hull |
-		rv::transform(
-			[](const auto& pt) {
-				return static_cast<ch::point>(pt);
-			}
-		) | r::to_vector;
+    return hull;
 }
 
-void ch::debug_geom(cv::Mat mat) {
+void ch::debug_geom() {
 
 }
 

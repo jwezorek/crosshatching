@@ -397,18 +397,6 @@ int ch::max_val_in_mat(cv::Mat mat) {
 	return static_cast<int>(max_val);
 }
 
-std::vector<cv::Point_<float>> ch::to_float_points(std::span<const ch::point> pts) {
-	return pts |
-		rv::transform([](const auto& pt)->cv::Point_<float> { return pt; }) |
-		r::to_vector;
-}
-
-std::vector<ch::point> ch::from_float_points(std::span<const cv::Point_<float>> pts) {
-	return pts |
-		rv::transform([](const auto& pt)->ch::point { return pt; }) |
-		r::to_vector;
-}
-
 double ch::normal_random(const cbrng_state& cbrng, double mean, double stddev) {
 	std::counter_based_engine<std::philox4x32_prf, 1> philox{ cbrng.keys };
 	std::normal_distribution<double> nd(mean, stddev);
