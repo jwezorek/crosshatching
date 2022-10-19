@@ -568,8 +568,7 @@ namespace {
             auto input = ctxt.strokes;
             ctxt.strokes = {};
 
-            return ch::to_strokes(
-                rv::enumerate(*input) |
+            return  rv::enumerate(*input) |
                 rv::transform(
                     [probability, seed](auto index_sc)->ch::stroke_group {
                         auto [i, sc] = index_sc;
@@ -578,8 +577,7 @@ namespace {
                             sc.thickness
                         };
                     }
-                )
-            ); 
+            ) | to_strokes;
         }
     };
     
@@ -605,9 +603,7 @@ namespace {
             auto input = ctxt.strokes;
             ctxt.strokes = {};
 
-            return
-                ch::to_strokes(
-                    rv::enumerate(*input) |
+            return  rv::enumerate(*input) |
                     rv::transform(
                         [seed, rand = std::get<ch::random_func>(result)](auto tup) {
                             auto [i, group] = tup;
@@ -625,8 +621,7 @@ namespace {
                                 group.thickness
                             };
                         }
-                    )
-                );
+                    ) | to_strokes;
         }
     };
 
@@ -855,7 +850,7 @@ ch::brush_context::brush_context(const ch::polygon& p, double param) :
 ch::brush_context ch::brush_context::clone() const {
     auto the_clone = *this;
     if (strokes) {
-        the_clone.strokes = to_strokes(rv::all(*strokes));
+        the_clone.strokes = rv::all(*strokes) | to_strokes;
     }
     return the_clone;
 }

@@ -11,6 +11,9 @@ namespace ch {
     struct stroke_group {
         ch::polylines strokes;
         double thickness;
+        bool is_stippling;
+        stroke_group();
+        stroke_group(ch::polylines&& strokes, double th = 1.0, bool s = false);
     };
     using stroke_groups = std::vector<stroke_group>;
     using strokes_ptr = std::shared_ptr<stroke_groups>;
@@ -27,9 +30,11 @@ namespace ch {
 
     namespace detail {
         struct to_polyline_tag {};
+        struct to_strokes_tag {};
     }
 }
 
+constexpr ch::detail::to_polyline_tag to_polylines = {};
 template<typename Range>
 ch::polylines operator|(Range&& lines, ch::detail::to_polyline_tag) {
     ch::polylines polys;
@@ -40,26 +45,23 @@ ch::polylines operator|(Range&& lines, ch::detail::to_polyline_tag) {
     return polys;
 }
 
-constexpr ch::detail::to_polyline_tag to_polylines = {};
+constexpr ch::detail::to_strokes_tag to_strokes = {};
+template<typename Range>
+ch::strokes_ptr operator|(Range&& sgs, ch::detail::to_strokes_tag) {
+    return std::make_shared<ch::stroke_groups>(
+        sgs | ranges::views::remove_if(
+            [](const auto& sg) {
+                return sg.strokes.empty();
+            }
+        ) | ranges::to_vector
+   );
+}
 
 namespace ch {
-
     template<typename Rng>
     strokes_ptr single_stroke_group(Rng r, double thickness) {
         auto strokes = std::make_shared<stroke_groups>();
         strokes->emplace_back(r | to_polylines, thickness);
         return strokes;
     }
-
-    template<typename Rng>
-    strokes_ptr to_strokes(Rng r) {
-        return std::make_shared<stroke_groups>(
-            r | ranges::views::remove_if(
-                [](const auto& sg) {
-                    return sg.strokes.empty();
-                }
-            ) | ranges::to_vector
-        );
-    }
-
 }

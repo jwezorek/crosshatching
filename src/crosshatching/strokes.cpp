@@ -6,6 +6,19 @@ namespace rv = ranges::views;
 
 /*------------------------------------------------------------------------------------------------*/
 
+
+ch::stroke_group::stroke_group() : 
+    thickness(0), 
+    is_stippling(false)
+{}
+
+ch::stroke_group::stroke_group(ch::polylines&& strks, double thk, bool isstip) :
+    strokes(strks),
+    thickness(thk),
+    is_stippling(isstip)
+{}
+
+
 ch::stroke_groups ch::transform(const stroke_groups& s, const ch::matrix& mat) {
     return s |
         rv::transform(
@@ -58,7 +71,7 @@ std::string ch::to_svg(const ch::stroke_groups& s) {
 }
 
 ch::strokes_ptr ch::clip_strokes(const polygon& poly, strokes_ptr strokes) {
-    return to_strokes(
+    return
         *strokes |
         rv::transform(
             [&poly](const stroke_group& sg)->stroke_group {
@@ -67,8 +80,7 @@ ch::strokes_ptr ch::clip_strokes(const polygon& poly, strokes_ptr strokes) {
                     sg.thickness
                 };
             }
-        )
-    );
+        ) | to_strokes;
 }
 
 ch::strokes_ptr ch::transform(ch::strokes_ptr strokes, const ch::matrix& mat) {
