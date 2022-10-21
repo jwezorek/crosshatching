@@ -252,8 +252,11 @@ void ch::write_to_svg(const std::string& filename, const drawing& d,
 
     auto n = static_cast<double>(d.stroke_count());
     for (const auto& [index, poly_info] :rv::enumerate(d.strokes())) {
-        const auto& [poly, thickness] = poly_info;
-        outfile << polyline_to_svg(poly, thickness) << std::endl;
+        const auto& [poly, thickness, is_stippling] = poly_info;
+        auto stroke_svg = (!is_stippling) ? 
+            polyline_to_svg(poly, thickness) :
+            stippling_to_svg(poly, thickness);
+        outfile << stroke_svg << std::endl;
         if (update_progress) {
             update_progress(index / n);
         }

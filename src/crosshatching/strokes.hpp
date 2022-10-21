@@ -13,7 +13,7 @@ namespace ch {
         double thickness;
         bool is_stippling;
         stroke_group();
-        stroke_group(ch::polylines&& strokes, double th = 1.0, bool s = false);
+        stroke_group(ch::polylines&& strokes, double th, bool s);
     };
     using stroke_groups = std::vector<stroke_group>;
     using strokes_ptr = std::shared_ptr<stroke_groups>;
@@ -59,9 +59,9 @@ ch::strokes_ptr operator|(Range&& sgs, ch::detail::to_strokes_tag) {
 
 namespace ch {
     template<typename Rng>
-    strokes_ptr single_stroke_group(Rng r, double thickness) {
+    strokes_ptr single_stroke_group(Rng r, double thickness, bool stippling = false) {
         auto strokes = std::make_shared<stroke_groups>();
-        strokes->emplace_back(r | to_polylines, thickness);
+        strokes->emplace_back(r | to_polylines, thickness, stippling);
         return strokes;
     }
 }

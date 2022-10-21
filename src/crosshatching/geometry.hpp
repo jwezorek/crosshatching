@@ -117,6 +117,8 @@ namespace ch {
         ch::point a;
         ch::point b;
         ch::point c;
+
+        double area() const;
     };
 
     std::vector<triangle> triangulate(const polygon& poly);

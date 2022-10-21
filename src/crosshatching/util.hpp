@@ -32,6 +32,7 @@ namespace ch {
     std::string svg_header(int wd, int hgt, bool bkgd_rect = false);
     std::string polyline_to_svg(std::span<const point> poly, double thickness, 
             bool closed = false);
+    std::string stippling_to_svg(std::span<const point> points, double thickness);
     std::string to_svg_color(uchar gray);
     std::string to_svg_color(const color& c);
 

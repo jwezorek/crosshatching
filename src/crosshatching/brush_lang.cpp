@@ -12,6 +12,8 @@
 #include <fstream>
 #include <numeric>
 #include <opencv2/highgui.hpp>
+#include "random/counter_based_engine.hpp"
+#include "random/philox_prf.hpp"
 
 /*------------------------------------------------------------------------------------------------*/
 
@@ -247,6 +249,7 @@ namespace {
         define,
         brush,
         horz_strokes,
+        stipple,
         norm_rnd,
         lerp,
         ramp,
@@ -500,6 +503,87 @@ namespace {
         }
     };
 
+    class stipple_expr : public op_expr<operation::stipple> {
+
+        class random_points_generator {
+            uint32_t seed_;
+            std::vector<ch::triangle> triangles_;
+            std::vector<double> tri_areas_;
+            std::discrete_distribution<> discrete_dist;
+
+            static ch::point random_point_in_triangle(
+                    const ch::triangle& tri, double r1, double r2) {
+                auto root_r1 = std::sqrt(r1);
+                return (1.0 - root_r1) * tri.a +
+                    (root_r1 * (1.0 - r2)) * tri.b +
+                    (r2 * root_r1) * tri.c;
+            }
+
+        public:
+
+            random_points_generator(uint32_t seed, const ch::polygon& poly):
+                    seed_(seed),
+                    triangles_(ch::triangulate(poly)) {
+
+                tri_areas_ = triangles_ |
+                    rv::transform(
+                        [](const auto& tri) {
+                            return tri.area();
+                        }
+                    ) | r::to_vector;
+
+                discrete_dist = std::discrete_distribution<>(
+                    tri_areas_.begin(), tri_areas_.end()
+                );
+            }
+
+            ch::point random_point(uint32_t index) {
+
+                std::counter_based_engine<std::philox4x32_prf, 1> philox{ 
+                    ch::cbrng_state{seed_, index, 0}.keys };
+                auto tri_index = discrete_dist(philox);
+                double rnd1 = uniform_rnd(ch::cbrng_state{ seed_, index, 1 }, 0.0, 1.0);
+                double rnd2 = uniform_rnd(ch::cbrng_state{ seed_, index, 2 }, 0.0, 1.0);
+                
+                return random_point_in_triangle(triangles_.at(tri_index), rnd1, rnd2);
+            }
+        };
+
+    public:
+        ch::brush_expr_value eval(ch::brush_context& ctxt) {
+            auto result = children_.front()->eval(ctxt);
+
+            int num_dots;
+            if (std::holds_alternative<double>(result)) {
+                auto dots_per_unit_area = std::get<double>(result);
+                num_dots = static_cast<int>(
+                    dots_per_unit_area * 
+                    boost::geometry::area(ctxt.poly)
+                );
+            } else if (std::holds_alternative<ch::random_func>(result)) {
+                throw std::runtime_error("TODO");
+            } else {
+                throw std::runtime_error("invalid argument to stipple expression");
+            }
+
+            random_points_generator rnd(ch::random_seed(), ctxt.poly);
+            auto pen_thickness = variable_value(ctxt.variables, k_pen_thickness_var, 1.0);
+
+            return ch::single_stroke_group(
+                rv::single(
+                    rv::iota(0, num_dots) |
+                        rv::transform(
+                            [&rnd](auto i) {
+                                return rnd.random_point(i);
+                            }
+                    ) | r::to<ch::polyline>()
+                ),
+                pen_thickness,
+                true
+            );
+        }
+    };
+
     class add_expr : public op_expr<operation::add> {
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
@@ -541,12 +625,6 @@ namespace {
                     [i, seed, prob](auto tup) {
                         int j = std::get<0>(tup);
                         auto random_num = ch::uniform_rnd(ch::cbrng_state(seed, i, j), 0.0, 1.0);
-
-                        if (random_num <= prob) {
-                            int aaa;
-                            aaa = 5;
-                        }
-
                         return  random_num > prob;
                     }
                 ) | rv::transform(
@@ -571,11 +649,17 @@ namespace {
             return  rv::enumerate(*input) |
                 rv::transform(
                     [probability, seed](auto index_sc)->ch::stroke_group {
-                        auto [i, sc] = index_sc;
-                        return {
-                            prune_random_strokes(sc.strokes, i, seed, probability),
-                            sc.thickness
-                        };
+                        auto [i, sg] = index_sc;
+                        if (!sg.is_stippling) {
+                            return {
+                                prune_random_strokes(sg.strokes, i, seed, probability),
+                                sg.thickness,
+                                false
+                            };
+                        } else {
+                            //TODO
+                            return sg;
+                        }
                     }
             ) | to_strokes;
         }
@@ -607,19 +691,24 @@ namespace {
                     rv::transform(
                         [seed, rand = std::get<ch::random_func>(result)](auto tup) {
                             auto [i, group] = tup;
-                            return ch::stroke_group{
-                                rv::enumerate(group.strokes) |
-                                    rv::transform(
-                                        [i, seed, rand](auto tup) {
-                                            auto [j, strk] = tup;
-                                            auto theta = ch::degrees_to_radians(
-                                                rand(ch::cbrng_state(seed, i, j))
-                                            );
-                                            return jiggle_stroke(strk, theta);
-                                        }
-                                    ) | to_polylines,
-                                group.thickness
-                            };
+                            if (!group.is_stippling) {
+                                return ch::stroke_group{
+                                    rv::enumerate(group.strokes) |
+                                        rv::transform(
+                                            [i, seed, rand](auto tup) {
+                                                auto [j, strk] = tup;
+                                                auto theta = ch::degrees_to_radians(
+                                                    rand(ch::cbrng_state(seed, i, j))
+                                                );
+                                                return jiggle_stroke(strk, theta);
+                                            }
+                                        ) | to_polylines,
+                                    group.thickness,
+                                    false
+                                };
+                            } else {
+                                return group;
+                            }
                         }
                     ) | to_strokes;
         }
@@ -674,6 +763,7 @@ namespace {
         {operation::disintegrate, "dis",          make_op_create_fn<disintegrate_expr>()},
         {operation::jiggle,       "jiggle",       make_op_create_fn<jiggle_expr>()},
         {operation::horz_strokes, "horz_strokes", make_op_create_fn<horz_strokes_expr>()},
+        {operation::stipple,      "stipple",      make_op_create_fn<stipple_expr>()},
         {operation::add,          "+",            make_op_create_fn<add_expr>()},
         {operation::subtract,     "-",            make_op_create_fn<subtract_expr>()},
         {operation::multiply,     "*",            make_op_create_fn<multiply_expr>()},

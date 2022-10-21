@@ -221,6 +221,17 @@ std::string ch::polyline_to_svg(std::span<const point> poly, double thickness, b
 	return ss.str();
 }
 
+std::string ch::stippling_to_svg(std::span<const ch::point> points, double diameter) {
+    std::stringstream ss;
+    auto radius = diameter / 2.0;
+    ss << "<g>";
+    for (const auto& pt : points) {
+        ss << "<circle cx=\"" << pt.x << "\" cy=\"" << pt.y << "\" r=\"" << radius << "\" />";
+    }
+    ss << "</g>";
+    return ss.str();
+}
+
 std::string ch::to_string(double val, int precision) {
 	std::stringstream ss;
 	ss << std::fixed << std::setprecision(precision) << val;

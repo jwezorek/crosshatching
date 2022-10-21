@@ -545,6 +545,17 @@ std::vector<ch::point> ch::convex_hull(std::span<const ch::point> points) {
     return hull;
 }
 
+double ch::triangle::area() const {
+    double x1 = a.x;
+    double y1 = a.y;
+    double x2 = b.x;
+    double y2 = b.y;
+    double x3 = c.x;
+    double y3 = c.y;
+
+    return 0.5 * std::abs((x1 - x3) * (y2 - y1) - (x1 - x2) * (y3 - y1));
+}
+
 std::vector<ch::triangle> ch::triangulate(const polygon& poly) {
     auto [vertices, edges] = polygon_to_cdt_types(poly);
     CDT::Triangulation<float> cdt;
@@ -590,6 +601,14 @@ void ch::debug_geom() {
                 return { c,p };
             }
         ) | r::to_vector;
+
+    auto area_by_tri = r::accumulate(
+        triangles | rv::transform([](const auto& t) { return t.area(); }),
+        0.0
+    );
+
+    qDebug() << "area_by_tri => " << area_by_tri;
+    qDebug() << "area => " << boost::geometry::area(poly);
 
     ch::polygons_to_svg<color>(
         "C:\\test\\test_triangulate.svg",

@@ -27,9 +27,9 @@ namespace ch {
                     [](const stroke_group& sg) {
                         return sg.strokes |
                             rv::transform(
-                                [thickness = sg.thickness]
-                                (const polyline& poly)->std::tuple<polyline, double> {
-                                    return { poly, thickness };
+                                [thickness = sg.thickness, stip = sg.is_stippling]
+                                (const polyline& poly)->std::tuple<polyline, double, bool> {
+                                    return { poly, thickness, stip };
                                 }
                         );
                     }
