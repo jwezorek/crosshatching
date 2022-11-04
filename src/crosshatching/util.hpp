@@ -78,6 +78,7 @@ namespace ch {
 
     cv::Mat perlin_noise(const ch::dimensions<int>& sz, uint32_t seed, int octaves, double freq);
     cv::Mat float_noise_to_grayscale(const cv::Mat mat);
+    float interpolate_float_mat(const cv::Mat mat, const point& pt);
 
     // painting with Qt...
     QImage create_grayscale_qimage(int wd, int hgt);
@@ -96,6 +97,9 @@ namespace ch {
     std::string to_string(const point& pt);
     double degrees_to_radians(double degrees);
     double ramp(double t, double k, bool right, bool up);
+    float bilinear_interpolation(float q11, float q12, float q21, float q22,
+        float x1, float x2, float y1, float y2,
+        float x, float y);
 
     color rgb(uchar r, uchar g, uchar b);
 }
