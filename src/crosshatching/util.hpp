@@ -74,6 +74,11 @@ namespace ch {
     uchar color_to_monochrome(color col);
     cv::Mat blank_monochrome_bitmap(int sz);
 
+    // perlin noise
+
+    cv::Mat perlin_noise(const ch::dimensions<int>& sz, uint32_t seed, int octaves, double freq);
+    cv::Mat float_noise_to_grayscale(const cv::Mat mat);
+
     // painting with Qt...
     QImage create_grayscale_qimage(int wd, int hgt);
     QImage create_compatible_qimage(int wd, int hgt);

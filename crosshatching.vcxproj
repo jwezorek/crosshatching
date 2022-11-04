@@ -184,6 +184,7 @@
     <ClInclude Include="src\crosshatching\ink_layers.hpp" />
     <ClInclude Include="src\crosshatching\meanshift.hpp" />
     <ClInclude Include="src\crosshatching\peglib.h" />
+    <ClInclude Include="src\crosshatching\perlin_noise.hpp" />
     <ClInclude Include="src\crosshatching\point_set.hpp" />
     <ClInclude Include="src\crosshatching\raster_to_vector.hpp" />
     <ClInclude Include="src\crosshatching\strokes.hpp" />

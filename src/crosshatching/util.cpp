@@ -2,6 +2,7 @@
 #include "meanshift.hpp"
 #include "random/counter_based_engine.hpp"
 #include "random/philox_prf.hpp"
+#include "perlin_noise.hpp"
 #include "qpainterpath.h"
 #include "qvector.h"
 #include <opencv2/imgproc.hpp>
@@ -15,7 +16,7 @@
 #include <unordered_set>
 #include <qdebug.h>
 
-/*------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------------------------*/
 
 namespace r = ranges;
 namespace rv = ranges::views;
@@ -586,4 +587,28 @@ void ch::debug_polygons(const std::string& output_file, dimensions<int> sz,
 
 ch::color ch::rgb(uchar r, uchar g, uchar b) {
 	return { b,g,r };
+}
+
+cv::Mat ch::perlin_noise(const ch::dimensions<int>& sz, uint32_t seed, int octaves, double freq) {
+    auto noise = cv::Mat(sz.hgt, sz.wd, CV_32FC1, 0.0f);
+
+    siv::PerlinNoise perlin{ seed };
+    double fx = (freq / sz.wd);
+    double fy = (freq / sz.hgt);
+
+    for (auto y = 0; y < sz.hgt; ++y) {
+        for (auto x = 0; x < sz.wd; ++x) {
+            auto value = perlin.octave2D_01((x * fx), (y * fy), octaves);
+            noise.at<float>(x, y) = value;
+        }
+    }
+
+    return noise;
+}
+
+cv::Mat ch::float_noise_to_grayscale(const cv::Mat mat) {
+    cv::Mat scaled = 255.0f * mat;
+    cv::Mat output;
+    scaled.convertTo(output, CV_8UC1);
+    return output;
 }

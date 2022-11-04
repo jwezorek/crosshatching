@@ -154,5 +154,8 @@
     <ClInclude Include="src\crosshatching\strokes.hpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClInclude>
+    <ClInclude Include="src\crosshatching\perlin_noise.hpp">
+      <Filter>Source Files\crosshatching</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -242,7 +242,9 @@ void ui::main_window::edit_settings() {
 }
 
 void ui::main_window::debug() {
-    ch::debug_geom();
+    auto perlin = ch::perlin_noise({ 512,512 }, 12345, 8, 8.0);
+    auto gray_perlin = ch::float_noise_to_grayscale(perlin);
+    display(gray_perlin);
 }
 
 void ui::main_window::create_main_menu()
