@@ -928,6 +928,55 @@ namespace {
             pretty_printed_children,
             rv::single( ")")
         );
+    };
+
+    class perlin_flow {
+        cv::Mat x_field_;
+        cv::Mat y_field_;
+
+        static float sample(const cv::Mat& noise, const ch::point& pt) {
+            auto val = ch::interpolate_float_mat(noise, pt);
+            return 2.0f * (val - 0.5f);
+        }
+
+    public:
+        perlin_flow(const ch::dimensions<int>& sz, uint32_t seed1, uint32_t seed2,
+                    int octaves, double freq) :
+            x_field_( ch::perlin_noise(sz, seed1, octaves, freq) ),
+            y_field_( ch::perlin_noise(sz, seed2, octaves, freq) ) {
+        }
+
+        float flow_theta(const ch::point& pt) const {
+            auto x = sample(x_field_, pt);
+            auto y = sample(y_field_, pt);
+            return std::atan2(y, x);
+        }
+
+        ch::dimensions<int> size() const {
+            return ch::mat_dimensions(x_field_);
+        }
+    };
+
+    ch::polylines generate_perlin_flow(float scale, const perlin_flow& flow, uint32_t seed, int n, float step_sz) {
+        int wd = flow.size().wd;
+        int hgt = flow.size().hgt;
+        auto sz = scale * ch::dimensions<int>(wd-1, hgt-1);
+        const auto bounds = ch::rectangle{ 0.0, 0.0, sz.wd, sz.hgt };
+        return rv::iota(0, n) |
+            rv::transform(
+                [&](uint32_t j)->ch::polyline {
+                    ch::point pt = {
+                        (float) ch::uniform_rnd(ch::cbrng_state{seed,j,0}, 0, sz.wd),
+                        (float) ch::uniform_rnd(ch::cbrng_state{seed,j,1}, 0, sz.hgt)
+                    };
+                    ch::polyline poly;
+                    while (ch::is_point_in_rect(pt, bounds) && poly.size() < 1000) {
+                        poly.push_back(pt);
+                        pt = pt + step_sz * ch::unit_vector(flow.flow_theta(pt/scale));
+                    }
+                    return poly;
+                }
+        ) | to_polylines;
     }
 
 }
@@ -989,38 +1038,14 @@ ch::polygon make_rect(const ch::dimensions<float>& sz) {
 }
 
 void ch::debug_brushes() { 
-    auto result = parse(
-        R"(
-            ( 
-            brush
-                (define lines 
-                    (quote
-                        (brush 
-                            (horz_strokes
-                                (norm_rnd (lerp 0 800) (lerp 50 100))
-                                (norm_rnd (lerp 200 0) (lerp 20 0.05))
-                                (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
-                            )
-                            (dis (ramp 0.20 false true))
-                            (jiggle (norm_rnd 4.0 1.5))
-                        )
-                    )
-                )
-                (rot 45)
-                lines
-                (rot -45)
-                (define foo 42)
-                lines
-            )
-        )"
-    );
-    auto expr = std::get< brush_expr_ptr>(result);
-    auto strokes = brush_expr_to_strokes(expr, make_rect({ 256.0,256.0 }), 0.0);
-    cv::Mat mat(256, 256, CV_8U, 255);
-    QImage img = mat_to_qimage(mat, false);
-    QPainter g(&img);
-    g.setRenderHint(QPainter::Antialiasing, true);
-    ch::paint_strokes(g, strokes);
-    cv::imshow("foo", mat);
-    
+    perlin_flow flow({ 256,256 }, 12345, 67890, 8, 1.5);
+    auto lines = generate_perlin_flow(4.0, flow, 12243, 4000, 2.5);
+
+    std::ofstream outfile("C:\\test\\flow.svg");
+    outfile << ch::svg_header(1024,1024);
+    for (const auto&  poly : lines) {
+        outfile << polyline_to_svg(poly, 1.0, false) << "\n";
+    }
+    outfile << "</svg>" << std::endl;
+    outfile.close();
 }

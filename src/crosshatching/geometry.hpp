@@ -112,6 +112,8 @@ namespace ch {
     std::vector<polygon> buffer(const ch::polygon& poly, double amt);
     std::vector<polygon> buffer(std::span<const ch::polygon> polys, double amt);
     std::vector<ch::point> convex_hull(std::span<const ch::point> points);
+    bool is_point_in_rect(const point& pt, const rectangle& rect);
+    point unit_vector(float theta);
 
     struct triangle {
         ch::point a;

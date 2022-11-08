@@ -5,6 +5,7 @@
 #include "../crosshatching/drawing.hpp"
 #include "../crosshatching/util.hpp"
 #include "../crosshatching/ink_layers.hpp"
+#include "../crosshatching/brush_lang.hpp"
 #include <QtWidgets>
 #include <QSlider>
 #include <opencv2/core.hpp>
@@ -245,6 +246,8 @@ void ui::main_window::debug() {
     auto perlin = ch::perlin_noise({ 512,512 }, 12345, 8, 8.0);
     auto gray_perlin = ch::float_noise_to_grayscale(perlin);
     display(gray_perlin);
+
+    ch::debug_brushes();
 }
 
 void ui::main_window::create_main_menu()

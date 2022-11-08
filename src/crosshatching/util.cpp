@@ -593,13 +593,13 @@ cv::Mat ch::perlin_noise(const ch::dimensions<int>& sz, uint32_t seed, int octav
     auto noise = cv::Mat(sz.hgt, sz.wd, CV_32FC1, 0.0f);
 
     siv::PerlinNoise perlin{ seed };
-    double fx = (freq / sz.wd);
-    double fy = (freq / sz.hgt);
+    auto dim = std::max(sz.wd, sz.hgt);
+    double freq_per_pix = freq / dim;
 
     for (auto y = 0; y < sz.hgt; ++y) {
         for (auto x = 0; x < sz.wd; ++x) {
-            auto value = perlin.octave2D_01((x * fx), (y * fy), octaves);
-            noise.at<float>(x, y) = value;
+            auto value = perlin.octave2D_01(x * freq_per_pix, y * freq_per_pix, octaves);
+            noise.at<float>(y,x) = value;
         }
     }
 

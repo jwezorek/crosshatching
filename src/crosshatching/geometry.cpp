@@ -545,6 +545,20 @@ std::vector<ch::point> ch::convex_hull(std::span<const ch::point> points) {
     return hull;
 }
 
+bool ch::is_point_in_rect(const ch::point& pt, const ch::rectangle& rect) {
+    auto x = pt.x;
+    auto y = pt.y;
+    const auto& [x1, y1, x2, y2] = rect;
+    if (x < x1 || y < y1 || x > x2 || y > y2) {
+        return false;
+    }
+    return true;
+}
+
+ch::point ch::unit_vector(float theta) {
+    return { std::cos(theta), std::sin(theta) };
+}
+
 double ch::triangle::area() const {
     double x1 = a.x;
     double y1 = a.y;
