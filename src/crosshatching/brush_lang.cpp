@@ -930,37 +930,11 @@ namespace {
         );
     };
 
-    class perlin_flow {
-        cv::Mat x_field_;
-        cv::Mat y_field_;
-
-        static float sample(const cv::Mat& noise, const ch::point& pt) {
-            auto val = ch::interpolate_float_mat(noise, pt);
-            return 2.0f * (val - 0.5f);
-        }
-
-    public:
-        perlin_flow(const ch::dimensions<int>& sz, uint32_t seed1, uint32_t seed2,
-                    int octaves, double freq) :
-            x_field_( ch::perlin_noise(sz, seed1, octaves, freq) ),
-            y_field_( ch::perlin_noise(sz, seed2, octaves, freq) ) {
-        }
-
-        float flow_theta(const ch::point& pt) const {
-            auto x = sample(x_field_, pt);
-            auto y = sample(y_field_, pt);
-            return std::atan2(y, x);
-        }
-
-        ch::dimensions<int> size() const {
-            return ch::mat_dimensions(x_field_);
-        }
-    };
-
-    ch::polylines generate_perlin_flow(float scale, const perlin_flow& flow, uint32_t seed, int n, float step_sz) {
-        int wd = flow.size().wd;
-        int hgt = flow.size().hgt;
-        auto sz = scale * ch::dimensions<int>(wd-1, hgt-1);
+    ch::polylines flow_lines(float scale, const cv::Mat& flow, uint32_t seed, int n, float step_sz,
+                int max_count) {
+        int wd = flow.cols;
+        int hgt = flow.rows;
+        auto sz = scale * ch::dimensions<int>(wd-2, hgt-2);
         const auto bounds = ch::rectangle{ 0.0, 0.0, sz.wd, sz.hgt };
         return rv::iota(0, n) |
             rv::transform(
@@ -970,9 +944,10 @@ namespace {
                         (float) ch::uniform_rnd(ch::cbrng_state{seed,j,1}, 0, sz.hgt)
                     };
                     ch::polyline poly;
-                    while (ch::is_point_in_rect(pt, bounds) && poly.size() < 1000) {
+                    while (ch::is_point_in_rect(pt, bounds) && poly.size() < max_count) {
                         poly.push_back(pt);
-                        pt = pt + step_sz * ch::unit_vector(flow.flow_theta(pt/scale));
+                        auto dx_dy = ch::interpolate_vector_field(flow, pt / scale);
+                        pt = pt + ch::point(step_sz * dx_dy);
                     }
                     return poly;
                 }
@@ -1038,8 +1013,12 @@ ch::polygon make_rect(const ch::dimensions<float>& sz) {
 }
 
 void ch::debug_brushes() { 
-    perlin_flow flow({ 256,256 }, 12345, 67890, 8, 1.5);
-    auto lines = generate_perlin_flow(4.0, flow, 12243, 4000, 2.5);
+    auto random_flow = ch::perlin_flow_vector_field({ 256,256 }, 17563, 42142, 8, 8);
+    auto smooth_flow = ch::uniform_direction_vector_field({ 256,256 }, 3.14159 / 4.0);
+
+    cv::Mat flow_field = 0.35 * random_flow + 0.65 * smooth_flow;
+
+    auto lines = flow_lines(4.0, flow_field, 12243, 2000, 2.5, 5000);
 
     std::ofstream outfile("C:\\test\\flow.svg");
     outfile << ch::svg_header(1024,1024);

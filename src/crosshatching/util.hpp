@@ -74,9 +74,14 @@ namespace ch {
     uchar color_to_monochrome(color col);
     cv::Mat blank_monochrome_bitmap(int sz);
 
-    // perlin noise
+    // vector fields, perlin noise, perlin flow, etc.
 
     cv::Mat perlin_noise(const ch::dimensions<int>& sz, uint32_t seed, int octaves, double freq);
+    cv::Mat perlin_flow_vector_field(const ch::dimensions<int>& sz, uint32_t seed1, uint32_t seed2,
+        int octaves, double freq);
+    cv::Mat uniform_direction_vector_field(const ch::dimensions<int>& sz, double theta);
+    cv::Mat normalize_vector_field(const cv::Mat& input);
+    cv::Vec2f interpolate_vector_field(const cv::Mat& field, const point& pt);
     cv::Mat float_noise_to_grayscale(const cv::Mat mat);
     float interpolate_float_mat(const cv::Mat mat, const point& pt);
 

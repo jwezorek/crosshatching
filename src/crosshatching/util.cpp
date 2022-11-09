@@ -606,6 +606,59 @@ cv::Mat ch::perlin_noise(const ch::dimensions<int>& sz, uint32_t seed, int octav
     return noise;
 }
 
+cv::Mat ch::perlin_flow_vector_field(const ch::dimensions<int>& sz, uint32_t seed1, uint32_t seed2,
+        int octaves, double freq) {
+
+    static auto to_flow_units = [](float v)->float {
+        return 2.0f * (v - 0.5f);
+    };
+
+    auto field = cv::Mat( sz.hgt, sz.wd, CV_32FC2, cv::Vec2f(0,0) );
+    siv::PerlinNoise perlin_x{ seed1 };
+    siv::PerlinNoise perlin_y{ seed2 };
+    auto dim = std::max(sz.wd, sz.hgt);
+    double freq_per_pix = freq / dim;
+
+    for (auto y = 0; y < sz.hgt; ++y) {
+        for (auto x = 0; x < sz.wd; ++x) {
+            auto x_value = perlin_x.octave2D_01(x * freq_per_pix, y * freq_per_pix, octaves);
+            auto y_value = perlin_y.octave2D_01(x * freq_per_pix, y * freq_per_pix, octaves);
+            field.at<cv::Vec2f>(y, x) = { to_flow_units(x_value), to_flow_units(y_value) };
+        }
+    }
+
+    return field;
+}
+
+cv::Mat ch::uniform_direction_vector_field(const ch::dimensions<int>& sz, double theta) {
+    auto x_value = std::cosf(theta);
+    auto y_value = std::sinf(theta);
+    return cv::Mat(sz.hgt, sz.wd, CV_32FC2, cv::Vec2f(x_value, y_value));
+}
+
+cv::Mat ch::normalize_vector_field(const cv::Mat& input) {
+    auto magnitude = [](const cv::Vec2f v)->float {
+        return std::sqrtf(v[0] * v[0] + v[1] * v[1]);
+    };
+    auto largest_magnitude = 0.0f;
+    for (auto y = 0; y < input.rows; ++y) {
+        for (auto x = 0; x < input.cols; ++x) {
+            auto mag = magnitude(input.at<cv::Vec2f>(y, x));
+            if (mag > largest_magnitude) {
+                largest_magnitude = mag;
+            }
+        }
+    }
+    auto normalized = input.clone();
+    for (auto y = 0; y < input.rows; ++y) {
+        for (auto x = 0; x < input.cols; ++x) {
+            auto old = input.at<cv::Vec2f>(y, x);
+            normalized.at<cv::Vec2f>(y, x) = old / largest_magnitude;
+        }
+    }
+    return normalized;
+}
+
 cv::Mat ch::float_noise_to_grayscale(const cv::Mat mat) {
     cv::Mat scaled = 255.0f * mat;
     cv::Mat output;
@@ -626,6 +679,30 @@ float ch::interpolate_float_mat(const cv::Mat mat, const ch::point& pt) {
         noise_fn(pt2.x, pt1.y), noise_fn(pt2.x, pt2.y),
         pt1.x, pt2.x, pt1.y, pt2.y,
         pt.x, pt.y
+    );
+}
+
+cv::Vec2f ch::interpolate_vector_field(const cv::Mat& field, const ch::point& pt) {
+    ch::point pt1 = { std::trunc(pt.x), std::trunc(pt.y) };
+    ch::point pt2 = pt1 + point{ 1.0f,1.0f };
+
+    auto get_val = [&field](float x, float y, int i)->float {
+        return field.at<cv::Vec2f>(static_cast<int>(x), static_cast<int>(y))[i];
+    };
+
+    return cv::Vec2f(
+        bilinear_interpolation(
+            get_val(pt1.x, pt1.y, 0), get_val(pt1.x, pt2.y, 0),
+            get_val(pt2.x, pt1.y, 0), get_val(pt2.x, pt2.y, 0),
+            pt1.x, pt2.x, pt1.y, pt2.y,
+            pt.x, pt.y
+        ),
+        bilinear_interpolation(
+            get_val(pt1.x, pt1.y, 1), get_val(pt1.x, pt2.y, 1),
+            get_val(pt2.x, pt1.y, 1), get_val(pt2.x, pt2.y, 1),
+            pt1.x, pt2.x, pt1.y, pt2.y,
+            pt.x, pt.y
+        )
     );
 }
 
