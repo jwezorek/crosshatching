@@ -445,6 +445,11 @@ ch::point ch::southeast_most_point(std::span<const ch::point> points) {
 	return southeast;
 }
 
+
+ch::rectangle ch::bounding_rectangle(std::span<const ch::point> poly) {
+    return bounding_rect_of_geometry(poly);
+}
+
 ch::rectangle ch::bounding_rectangle(const ch::polyline& poly) {
 	return bounding_rect_of_geometry(poly);
 }

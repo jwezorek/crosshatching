@@ -613,14 +613,14 @@ cv::Mat ch::perlin_flow_vector_field(const ch::dimensions<int>& sz, uint32_t see
         return 2.0f * (v - 0.5f);
     };
 
-    auto field = cv::Mat( sz.hgt, sz.wd, CV_32FC2, cv::Vec2f(0,0) );
+    auto field = cv::Mat( sz.hgt+1, sz.wd+1, CV_32FC2, cv::Vec2f(0,0) );
     siv::PerlinNoise perlin_x{ seed1 };
     siv::PerlinNoise perlin_y{ seed2 };
     auto dim = std::max(sz.wd, sz.hgt);
     double freq_per_pix = freq / dim;
 
-    for (auto y = 0; y < sz.hgt; ++y) {
-        for (auto x = 0; x < sz.wd; ++x) {
+    for (auto y = 0; y <= sz.hgt; ++y) {
+        for (auto x = 0; x <= sz.wd; ++x) {
             auto x_value = perlin_x.octave2D_01(x * freq_per_pix, y * freq_per_pix, octaves);
             auto y_value = perlin_y.octave2D_01(x * freq_per_pix, y * freq_per_pix, octaves);
             field.at<cv::Vec2f>(y, x) = { to_flow_units(x_value), to_flow_units(y_value) };
@@ -630,10 +630,17 @@ cv::Mat ch::perlin_flow_vector_field(const ch::dimensions<int>& sz, uint32_t see
     return field;
 }
 
+ch::dimensions<int> ch::vector_field_size(const cv::Mat& vector_field) {
+    return {
+        vector_field.cols - 1,
+        vector_field.rows - 1
+    };
+}
+
 cv::Mat ch::uniform_direction_vector_field(const ch::dimensions<int>& sz, double theta) {
     auto x_value = std::cosf(theta);
     auto y_value = std::sinf(theta);
-    return cv::Mat(sz.hgt, sz.wd, CV_32FC2, cv::Vec2f(x_value, y_value));
+    return cv::Mat(sz.hgt+1, sz.wd+1, CV_32FC2, cv::Vec2f(x_value, y_value));
 }
 
 cv::Mat ch::normalize_vector_field(const cv::Mat& input) {

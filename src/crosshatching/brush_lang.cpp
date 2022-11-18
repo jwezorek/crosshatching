@@ -51,7 +51,7 @@ namespace {
             }
             auto left = intersecting_line_segment(left_side_, y);
             auto right = intersecting_line_segment(right_side_, y);
-            return {{ x_on_line_segement_at_y(y, left), x_on_line_segement_at_y(y, right) }};
+            return { { x_on_line_segement_at_y(y, left), x_on_line_segement_at_y(y, right) } };
         }
 
     private:
@@ -73,7 +73,7 @@ namespace {
                     [](auto rng)->std::tuple< ch::point, ch::point> {
                         return { rng[0], rng[1] };
                     }
-                );
+            );
             ch::point_map<ch::point> left_side_set;
             ch::point_map<ch::point> right_side_set;
             for (const auto& [pt1, pt2] : edges | rv::take(hull.size())) {
@@ -85,7 +85,7 @@ namespace {
                     right_side_set[pt2] = pt2;
                 }
             }
-            left_side_ = left_side_set | 
+            left_side_ = left_side_set |
                 rv::transform([](const auto& p) {return p.second; }) | r::to_vector;
             right_side_ = right_side_set |
                 rv::transform([](const auto& p) {return p.second; }) | r::to_vector;
@@ -99,23 +99,23 @@ namespace {
     };
 
     auto running_sum(uint32_t seed, const ch::random_func& gen_fn,
-            double init_sum, uint32_t initial_counter) {
-        return 
+        double init_sum, uint32_t initial_counter) {
+        return
             rv::concat(
                 rv::single(0),
                 rv::iota(initial_counter) |
-                    rv::transform(
-                        [seed, gen_fn](int counter)->double {
-                            return  gen_fn(ch::cbrng_state(seed, counter));
-                        }
-                    )
-            )|
+                rv::transform(
+                    [seed, gen_fn](int counter)->double {
+                        return  gen_fn(ch::cbrng_state(seed, counter));
+                    }
+                )
+            ) |
             rv::partial_sum() |
-            rv::transform(
-                [init_sum](double sum) {
-                    return sum + init_sum;
-                }
-            );
+                        rv::transform(
+                            [init_sum](double sum) {
+                                return sum + init_sum;
+                            }
+                    );
     }
 
     struct run_and_space {
@@ -124,9 +124,9 @@ namespace {
         double x;
     };
 
-    auto row_of_strokes(double x1, double x2, double y, 
-            uint32_t seed, uint32_t rnd_key_1,
-            const ch::random_func& run_length, const ch::random_func& space_length) {
+    auto row_of_strokes(double x1, double x2, double y,
+        uint32_t seed, uint32_t rnd_key_1,
+        const ch::random_func& run_length, const ch::random_func& space_length) {
         x1 -= run_length(ch::cbrng_state(seed, rnd_key_1, 1));
         x2 += run_length(ch::cbrng_state(seed, rnd_key_1, 2));
         return rv::iota(1) |
@@ -144,35 +144,35 @@ namespace {
                     return { b.run, b.space, a.x + a.run + a.space };
                 }
             ) |
-            rv::transform(
-                    [y](run_and_space rs) {
-                        auto x1 = rs.x;
-                        auto x2 = rs.x + rs.run - 1;
-                        return rv::concat(
-                            rv::single(ch::point(x1, y)),
-                            rv::single(ch::point(x2, y))
+                    rv::transform(
+                        [y](run_and_space rs) {
+                            auto x1 = rs.x;
+                            auto x2 = rs.x + rs.run - 1;
+                            return rv::concat(
+                                rv::single(ch::point(x1, y)),
+                                rv::single(ch::point(x2, y))
+                            );
+                        }
+                    ) |
+                    rv::take_while(
+                        [x2](auto line_segment) {
+                            return line_segment[1].x < x2;
+                        }
                         );
-                    }
-            ) |
-            rv::take_while(
-                [x2](auto line_segment) {
-                    return line_segment[1].x < x2;
-                }
-            );
     }
 
     template<typename R>
-    auto horz_strokes_from_y_positions(uint32_t seed, R row_y_positions, 
-            std::shared_ptr<horz_hull_slicer> slicer, ch::random_func run_length, 
-            ch::random_func space_length) {
+    auto horz_strokes_from_y_positions(uint32_t seed, R row_y_positions,
+        std::shared_ptr<horz_hull_slicer> slicer, ch::random_func run_length,
+        ch::random_func space_length) {
         return row_y_positions | // given a view of y-positions
             rv::enumerate | // tag each with an integer index
-            rv::transform(  
-                    // turn them into possibly empty horizontal slices of the convex polygon at 
-                    // the given y and also pass along the integer index which will be used as a 
-                    // key in a counter-based RNG.
-                [slicer, run_length, space_length, seed]( std::tuple<size_t, double> pair) ->
-                        std::optional<std::tuple<int, double,double,double>> {
+            rv::transform(
+                // turn them into possibly empty horizontal slices of the convex polygon at 
+                // the given y and also pass along the integer index which will be used as a 
+                // key in a counter-based RNG.
+                [slicer, run_length, space_length, seed](std::tuple<size_t, double> pair) ->
+                std::optional<std::tuple<int, double, double, double>> {
                     auto [key, y] = pair;
                     auto slice = slicer->slice(y);
                     if (!slice) {
@@ -182,53 +182,53 @@ namespace {
                         return { {static_cast<int>(key), x1, x2, y } };
                     }
                 }
-            ) | 
-            rv::remove_if( 
-                    // remove any empty slices that may have occured above or below the polygon
-                []( auto maybe_row) {
+            ) |
+            rv::remove_if(
+                // remove any empty slices that may have occured above or below the polygon
+                [](auto maybe_row) {
                     return !maybe_row.has_value();
                 }
-            ) | 
-            rv::transform(  
-                    // generate a range view of horizontal crosshatching in the slice
-                [seed, run_length, space_length]( auto maybe_row) {
-
-                    auto [key, x1, x2, y] = *maybe_row;
-                    return row_of_strokes(x1, x2, y, seed, key, run_length, space_length);
-                }
             ) |
-            rv::join; // flatten all the row views above into one view.
+                    rv::transform(
+                        // generate a range view of horizontal crosshatching in the slice
+                        [seed, run_length, space_length](auto maybe_row) {
+
+                            auto [key, x1, x2, y] = *maybe_row;
+                            return row_of_strokes(x1, x2, y, seed, key, run_length, space_length);
+                        }
+                    ) |
+                    rv::join; // flatten all the row views above into one view.
     }
 
-    auto linear_strokes(double rotation, const std::vector<ch::point>& region, 
-            ch::random_func run_length,  ch::random_func space_length, 
-            ch::random_func vert_space) {
+    auto linear_strokes(double rotation, const std::vector<ch::point>& region,
+        ch::random_func run_length, ch::random_func space_length,
+        ch::random_func vert_space) {
         auto seed = ch::random_seed();
         auto rot_matrix = ch::rotation_matrix(rotation);
         auto hull = ch::convex_hull(region);
         hull = hull |
             rv::transform(
-                    [rot_matrix]( auto pt) {return ch::transform(pt, rot_matrix); }
-                ) |
+                [rot_matrix](auto pt) {return ch::transform(pt, rot_matrix); }
+            ) |
             r::to_vector;
         auto slicer = std::make_shared<horz_hull_slicer>(hull);
         auto [bottom, top] = slicer->vertical_extent();
         bottom -= vert_space(ch::cbrng_state(seed, 0));
         top += vert_space(ch::cbrng_state(seed, 1));
         auto rows = running_sum(seed, vert_space, bottom, 2) |
-            rv::take_while( [top](double y) {return y < top;} );
+            rv::take_while([top](double y) {return y < top; });
 
         auto inverse_rot_matrix = ch::rotation_matrix(-rotation);
         return horz_strokes_from_y_positions(seed, rows, slicer, run_length, space_length) |
             rv::transform(
                 [inverse_rot_matrix](auto stroke) {
                     return stroke | rv::transform(
-                        [inverse_rot_matrix]( auto pt) {
+                        [inverse_rot_matrix](auto pt) {
                             return ch::transform(pt, inverse_rot_matrix);
                         }
                     ) | r::to<ch::polyline>();
                 }
-            );
+        );
     }
 
     constexpr auto k_brush_param_var = "<<t>>";
@@ -236,7 +236,7 @@ namespace {
     constexpr auto k_pen_thickness_var = "<<pen_thickness>>";
 
     template<typename T>
-    T variable_value(const ch::variables_map& vars,  const std::string& key, T default_val) {
+    T variable_value(const ch::variables_map& vars, const std::string& key, T default_val) {
         auto iter = vars.find(key);
         if (iter == vars.end()) {
             return default_val;
@@ -282,7 +282,7 @@ namespace {
 
     template<typename... Ts>
     std::tuple<Ts...> evaluate_to_tuple(ch::brush_context& ctxt,
-            const std::vector<ch::brush_expr_ptr>& exprs, const std::string& err_tag = "") {
+        const std::vector<ch::brush_expr_ptr>& exprs, const std::string& err_tag = "") {
         if (sizeof...(Ts) != exprs.size()) {
             throw std::runtime_error(error_msg_from_tag("wrong number of args", err_tag));
         }
@@ -298,7 +298,7 @@ namespace {
 
     template<typename T>
     std::vector<T> evaluate_to_vector(ch::brush_context& ctxt,
-            const std::vector<ch::brush_expr_ptr>& exprs, const std::string& err_tag = "") {
+        const std::vector<ch::brush_expr_ptr>& exprs, const std::string& err_tag = "") {
         try {
             return exprs |
                 rv::transform(
@@ -340,7 +340,7 @@ namespace {
                 std::visit(*this, results);
             }
 
-            void operator()(ch::random_func rnd){
+            void operator()(ch::random_func rnd) {
                 throw std::runtime_error("random number generator at pipeline scope.");
             }
         };
@@ -415,7 +415,7 @@ namespace {
     };
 
     class define_expr : public op_expr<operation::define> {
-    
+
     public:
 
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
@@ -437,10 +437,10 @@ namespace {
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             if (children_.size() == 4) {
                 auto [k, right, up, t] = evaluate_to_tuple<double, double, double, double>(
-                    ctxt, children_,"ramp"
-                );
+                    ctxt, children_, "ramp"
+                    );
                 return ch::ramp(t, k, right != 0.0, up != 0.0);
-            } 
+            }
             auto [k, right, up] = evaluate_to_tuple<double, double, double>(ctxt, children_);
             auto t = variable_value(ctxt.variables, k_brush_param_var, 0.0);
             return ch::ramp(t, k, right != 0.0, up != 0.0);
@@ -454,7 +454,7 @@ namespace {
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
             auto [mean, stddev] = evaluate_to_tuple<double, double>(
                 ctxt, children_, "norm_rnd"
-            );
+                );
             return [=](const ch::cbrng_state& rnd)->double {
                 return ch::normal_random(rnd, mean, stddev);
             };
@@ -469,12 +469,12 @@ namespace {
             if (children_.size() == 3) {
                 auto [from, to, t] = evaluate_to_tuple<double, double, double>(
                     ctxt, children_, "lerp"
-                );
+                    );
                 return std::lerp(from, to, t);
             }
             auto [from, to] = evaluate_to_tuple<double, double>(
                 ctxt, children_, "lerp"
-            );
+                );
             auto t = variable_value(ctxt.variables, k_brush_param_var, 0.0);
             return std::lerp(from, to, t);
         }
@@ -487,17 +487,17 @@ namespace {
             auto [run_length, space_length, vert_space] =
                 evaluate_to_tuple<ch::random_func, ch::random_func, ch::random_func>(
                     ctxt, children_, "strokes"
-                );
+                    );
             auto pen_thickness = variable_value(ctxt.variables, k_pen_thickness_var, 1.0);
             auto rotation = variable_value(ctxt.variables, k_rotation_var, 0.0);
             return ch::single_stroke_group(
                 linear_strokes(
-                        ch::degrees_to_radians(rotation),
-                        ctxt.poly.outer(),
-                        run_length,
-                        space_length,
-                        vert_space
-                    ) | to_polylines,
+                    ch::degrees_to_radians(rotation),
+                    ctxt.poly.outer(),
+                    run_length,
+                    space_length,
+                    vert_space
+                ) | to_polylines,
                 pen_thickness
             );
         }
@@ -512,7 +512,7 @@ namespace {
             std::discrete_distribution<> discrete_dist;
 
             static ch::point random_point_in_triangle(
-                    const ch::triangle& tri, double r1, double r2) {
+                const ch::triangle& tri, double r1, double r2) {
                 auto root_r1 = std::sqrt(r1);
                 return (1.0 - root_r1) * tri.a +
                     (root_r1 * (1.0 - r2)) * tri.b +
@@ -521,30 +521,30 @@ namespace {
 
         public:
 
-            random_points_generator(uint32_t seed, const ch::polygon& poly):
-                    seed_(seed),
-                    triangles_(ch::triangulate(poly)) {
+            random_points_generator(uint32_t seed, const ch::polygon& poly) :
+                seed_(seed),
+                triangles_(ch::triangulate(poly)) {
 
                 tri_areas_ = triangles_ |
                     rv::transform(
                         [](const auto& tri) {
                             return tri.area();
                         }
-                    ) | r::to_vector;
+                ) | r::to_vector;
 
                 discrete_dist = std::discrete_distribution<>(
                     tri_areas_.begin(), tri_areas_.end()
-                );
+                    );
             }
 
             ch::point random_point(uint32_t index) {
 
-                std::counter_based_engine<std::philox4x32_prf, 1> philox{ 
+                std::counter_based_engine<std::philox4x32_prf, 1> philox{
                     ch::cbrng_state{seed_, index, 0}.keys };
                 auto tri_index = discrete_dist(philox);
                 double rnd1 = uniform_rnd(ch::cbrng_state{ seed_, index, 1 }, 0.0, 1.0);
                 double rnd2 = uniform_rnd(ch::cbrng_state{ seed_, index, 2 }, 0.0, 1.0);
-                
+
                 return random_point_in_triangle(triangles_.at(tri_index), rnd1, rnd2);
             }
         };
@@ -557,9 +557,9 @@ namespace {
             if (std::holds_alternative<double>(result)) {
                 auto dots_per_unit_area = std::get<double>(result);
                 num_dots = static_cast<int>(
-                    dots_per_unit_area * 
+                    dots_per_unit_area *
                     boost::geometry::area(ctxt.poly)
-                );
+                    );
             } else if (std::holds_alternative<ch::random_func>(result)) {
                 throw std::runtime_error("TODO");
             } else {
@@ -572,15 +572,15 @@ namespace {
             return ch::single_stroke_group(
                 rv::single(
                     rv::iota(0, num_dots) |
-                        rv::transform(
-                            [&rnd](auto i) {
-                                return rnd.random_point(i);
-                            }
+                    rv::transform(
+                        [&rnd](auto i) {
+                            return rnd.random_point(i);
+                        }
                     ) | r::to<ch::polyline>()
-                ),
+                            ),
                 pen_thickness,
-                true
-            );
+                            true
+                            );
         }
     };
 
@@ -619,7 +619,7 @@ namespace {
     class disintegrate_expr : public op_expr<operation::disintegrate> {
 
         static ch::polylines prune_random_strokes(const ch::polylines& polys, int i,
-                uint32_t seed, double prob) {
+            uint32_t seed, double prob) {
             return rv::enumerate(polys) |
                 rv::remove_if(
                     [i, seed, prob](auto tup) {
@@ -631,7 +631,7 @@ namespace {
                     [](auto tup)->ch::polyline {
                         return std::get<1>(tup);
                     }
-                ) | to_polylines;
+                    ) | to_polylines;
         }
 
     public:
@@ -664,7 +664,7 @@ namespace {
             ) | to_strokes;
         }
     };
-    
+
     class jiggle_expr : public op_expr<operation::jiggle> {
 
         static ch::polyline jiggle_stroke(const ch::polyline& poly, double theta) {
@@ -672,10 +672,10 @@ namespace {
             ch::matrix mat = ch::translation_matrix(-centroid) *
                 ch::rotation_matrix(theta) *
                 ch::translation_matrix(centroid);
-            return poly | 
+            return poly |
                 rv::transform(
                     [mat](auto pt) {return ch::transform(pt, mat); }
-                ) | r::to<ch::polyline>();
+            ) | r::to<ch::polyline>();
         }
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
@@ -688,29 +688,29 @@ namespace {
             ctxt.strokes = {};
 
             return  rv::enumerate(*input) |
-                    rv::transform(
-                        [seed, rand = std::get<ch::random_func>(result)](auto tup) {
-                            auto [i, group] = tup;
-                            if (!group.is_stippling) {
-                                return ch::stroke_group{
-                                    rv::enumerate(group.strokes) |
-                                        rv::transform(
-                                            [i, seed, rand](auto tup) {
-                                                auto [j, strk] = tup;
-                                                auto theta = ch::degrees_to_radians(
-                                                    rand(ch::cbrng_state(seed, i, j))
-                                                );
-                                                return jiggle_stroke(strk, theta);
-                                            }
-                                        ) | to_polylines,
-                                    group.thickness,
-                                    false
-                                };
-                            } else {
-                                return group;
-                            }
-                        }
-                    ) | to_strokes;
+                rv::transform(
+                    [seed, rand = std::get<ch::random_func>(result)](auto tup) {
+                auto [i, group] = tup;
+                if (!group.is_stippling) {
+                    return ch::stroke_group{
+                        rv::enumerate(group.strokes) |
+                            rv::transform(
+                                [i, seed, rand](auto tup) {
+                                    auto [j, strk] = tup;
+                                    auto theta = ch::degrees_to_radians(
+                                        rand(ch::cbrng_state(seed, i, j))
+                                    );
+                                    return jiggle_stroke(strk, theta);
+                                }
+                            ) | to_polylines,
+                        group.thickness,
+                        false
+                    };
+                } else {
+                    return group;
+                }
+            }
+            ) | to_strokes;
         }
     };
 
@@ -836,7 +836,7 @@ namespace {
         };
 
         parser["Expr"] = [](const peg::SemanticValues& vs)->ch::brush_expr_ptr {
-            std::vector<ch::brush_expr_ptr> args(vs.size()-1);
+            std::vector<ch::brush_expr_ptr> args(vs.size() - 1);
             std::transform(std::next(vs.begin()), vs.end(), args.begin(),
                 [](auto vsi)->ch::brush_expr_ptr {
                     return std::any_cast<ch::brush_expr_ptr>(vsi);
@@ -852,10 +852,10 @@ namespace {
             auto quoted_strings =
                 g_ops |
                 rv::transform(
-                     [](const op_info& opi)->std::string {
-                         return " '" + opi.str + "' ";
-                     }
-                ) | r::to_vector;
+                    [](const op_info& opi)->std::string {
+                        return " '" + opi.str + "' ";
+                    }
+            ) | r::to_vector;
             std::string rhs = quoted_strings | rv::join('|') | r::to_<std::string>();
             return "Op <-" + rhs;
         };
@@ -884,11 +884,11 @@ namespace {
         }
         int highest_child_hgt = r::max(
             expr->children() |
-                rv::transform(
-                    [](ch::brush_expr_ptr child)->int {
-                        return expr_height(child);
-                    }
-                )
+            rv::transform(
+                [](ch::brush_expr_ptr child)->int {
+                    return expr_height(child);
+                }
+            )
         );
         return highest_child_hgt + 1;
     }
@@ -909,39 +909,37 @@ namespace {
 
     r::any_view<std::string> pretty_print(const ch::brush_expr_ptr& expr) {
         if (expr_height(expr) <= 2) {
-            return rv::single( single_line_pretty_print(expr) );
+            return rv::single(single_line_pretty_print(expr));
         }
         auto pretty_printed_children = expr->children() |
-                rv::transform(
-                    [](const auto& child)->r::any_view<std::string> {
-                        return ::pretty_print(child) |
-                            rv::transform(
-                                [](const std::string& str)->std::string {
-                                    return "    " + str;
-                                }
-                        );
-                    }
-                ) | 
-                rv::join;
-        return rv::concat(
-            rv::single( "(" + expr->short_string()),
-            pretty_printed_children,
-            rv::single( ")")
-        );
+            rv::transform(
+                [](const auto& child)->r::any_view<std::string> {
+                    return ::pretty_print(child) |
+                        rv::transform(
+                            [](const std::string& str)->std::string {
+                                return "    " + str;
+                            }
+                    );
+                }
+            ) |
+            rv::join;
+                return rv::concat(
+                    rv::single("(" + expr->short_string()),
+                    pretty_printed_children,
+                    rv::single(")")
+                );
     };
 
     ch::polylines flow_lines(float scale, const cv::Mat& flow, uint32_t seed, int n, float step_sz,
-                int max_count) {
-        int wd = flow.cols;
-        int hgt = flow.rows;
-        auto sz = scale * ch::dimensions<int>(wd-2, hgt-2);
+            int max_count) {
+        auto sz = scale * ch::vector_field_size(flow);
         const auto bounds = ch::rectangle{ 0.0, 0.0, sz.wd, sz.hgt };
         return rv::iota(0, n) |
             rv::transform(
                 [&](uint32_t j)->ch::polyline {
                     ch::point pt = {
-                        (float) ch::uniform_rnd(ch::cbrng_state{seed,j,0}, 0, sz.wd),
-                        (float) ch::uniform_rnd(ch::cbrng_state{seed,j,1}, 0, sz.hgt)
+                        (float)ch::uniform_rnd(ch::cbrng_state{seed,j,0}, 0, sz.wd-1),
+                        (float)ch::uniform_rnd(ch::cbrng_state{seed,j,1}, 0, sz.hgt-1)
                     };
                     ch::polyline poly;
                     while (ch::is_point_in_rect(pt, bounds) && poly.size() < max_count) {
@@ -954,6 +952,71 @@ namespace {
         ) | to_polylines;
     }
 
+    ch::polylines flow_lines(float scale, const cv::Mat& flow, uint32_t seed, int n, float step_sz) {
+
+        int recent_count = 10;
+
+        auto sz = scale * ch::vector_field_size(flow);
+        const auto bounds = ch::rectangle{ 0.0, 0.0, sz.wd, sz.hgt };
+
+        return rv::iota(0, n) |
+            rv::transform(
+                [&](uint32_t j)->ch::polyline {
+                    ch::point pt = {
+                        (float)ch::uniform_rnd(ch::cbrng_state{seed,j,0}, 0, sz.wd-1),
+                        (float)ch::uniform_rnd(ch::cbrng_state{seed,j,1}, 0, sz.hgt-1)
+                    };
+                    ch::polyline poly;
+                    while (ch::is_point_in_rect(pt, bounds)) {
+
+                        if (poly.size() > recent_count) {
+                            auto recent = poly | rv::reverse | rv::take(recent_count) | r::to_vector;
+                            auto [x1, y1, x2, y2] = ch::bounding_rectangle(recent);
+                            if (x2 - x1 < 2 * step_sz && y2 - y1 < 2 * step_sz) {
+                                return poly;
+                            }
+                        }
+
+                        poly.push_back(pt);
+                        auto dx_dy = ch::interpolate_vector_field(flow, pt / scale);
+                        pt = pt + ch::point(step_sz * dx_dy);
+                    }
+                    return poly;
+                }
+        ) | to_polylines;
+    }
+
+    ch::polylines flow_lines(float scale, const cv::Mat& flow, float freq, float step_sz) {
+        constexpr int recent_count = 10;
+        auto sz = scale * ch::vector_field_size(flow);
+        const auto bounds = ch::rectangle{ 0.0, 0.0, sz.wd-1, sz.hgt-1 };
+        return rv::concat(
+            ch::points_on_linesegment( ch::point( 0,0 ), ch::point( sz.wd-1, 0 ), freq),
+            ch::points_on_linesegment( ch::point( sz.wd-1, 0 ), ch::point( sz.wd-1, sz.hgt-1), freq),
+            ch::points_on_linesegment( ch::point(sz.wd-1, sz.hgt-1), ch::point(0, sz.hgt-1), freq),
+            ch::points_on_linesegment( ch::point(0, sz.hgt-1), ch::point(0, 0), freq)
+        ) | rv::transform(
+            [&](const ch::point& seed_pt)->ch::polyline {
+                ch::point pt = seed_pt;
+                ch::polyline poly;
+                while (ch::is_point_in_rect(pt, bounds)) {
+
+                    if (poly.size() > recent_count) {
+                        auto recent = poly | rv::reverse | rv::take(recent_count) | r::to_vector;
+                        auto [x1, y1, x2, y2] = ch::bounding_rectangle(recent);
+                        if (x2 - x1 < 2 * step_sz && y2 - y1 < 2 * step_sz) {
+                            return poly;
+                        }
+                    }
+
+                    poly.push_back(pt);
+                    auto dx_dy = ch::interpolate_vector_field(flow, pt / scale);
+                    pt = pt + ch::point(step_sz * dx_dy);
+                }
+                return poly;
+            }
+        ) | to_polylines;
+    }
 }
 
 ch::brush_context::brush_context(const ch::polygon& p, double param) :
@@ -1013,12 +1076,12 @@ ch::polygon make_rect(const ch::dimensions<float>& sz) {
 }
 
 void ch::debug_brushes() { 
-    auto random_flow = ch::perlin_flow_vector_field({ 256,256 }, 17563, 42142, 8, 8);
-    auto smooth_flow = ch::uniform_direction_vector_field({ 256,256 }, 3.14159 / 4.0);
+    auto random_flow = ch::perlin_flow_vector_field({ 256,256 }, 17563, 42142, 16, 8);
+    auto smooth_flow = ch::uniform_direction_vector_field({ 256,256 }, -3.14159 / 4.0);
 
     cv::Mat flow_field = 0.35 * random_flow + 0.65 * smooth_flow;
 
-    auto lines = flow_lines(4.0, flow_field, 12243, 2000, 2.5, 5000);
+    auto lines = flow_lines(4.0, flow_field, 4.0, 2.5);
 
     std::ofstream outfile("C:\\test\\flow.svg");
     outfile << ch::svg_header(1024,1024);

@@ -79,6 +79,7 @@ namespace ch {
     cv::Mat perlin_noise(const ch::dimensions<int>& sz, uint32_t seed, int octaves, double freq);
     cv::Mat perlin_flow_vector_field(const ch::dimensions<int>& sz, uint32_t seed1, uint32_t seed2,
         int octaves, double freq);
+    dimensions<int> vector_field_size(const cv::Mat& vector_field);
     cv::Mat uniform_direction_vector_field(const ch::dimensions<int>& sz, double theta);
     cv::Mat normalize_vector_field(const cv::Mat& input);
     cv::Vec2f interpolate_vector_field(const cv::Mat& field, const point& pt);

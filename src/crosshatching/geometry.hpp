@@ -97,6 +97,7 @@ namespace ch {
     polygon scale(const polygon& poly, double scale);
     std::vector<polygon> scale(const std::vector<polygon>& polys, double scale);
     ch::ring simplify_rectilinear_ring(const ring& poly);
+    rectangle bounding_rectangle(std::span<const ch::point> poly);
     rectangle bounding_rectangle(const polyline& poly);
     rectangle bounding_rectangle(const ring& poly);
     rectangle bounding_rectangle(const polygon& poly);
@@ -165,6 +166,21 @@ namespace ch {
                     }
                 ) | rv::join
         ); 
+    }
+
+    inline auto points_on_linesegment(const point& u, const point& v, float delta) {
+        namespace r = ranges;
+        namespace rv = ranges::views;
+
+        auto length = euclidean_distance(u, v);
+        auto n = static_cast<int>(length / delta);
+        ch::point vec = delta * ((v - u) / length);
+        return rv::iota(0, n) |
+            rv::transform(
+                [=](int i)->ch::point {
+                    return u + i * vec;
+                }
+        );
     }
 
     void debug_geom();
