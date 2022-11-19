@@ -19,7 +19,7 @@
 #include <boost/geometry/geometries/register/linestring.hpp>
 #include <boost/geometry/geometries/register/multi_linestring.hpp>
 
-/*------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------------------------------*/
 
 namespace ch { using point = cv::Point2f; }
 BOOST_GEOMETRY_REGISTER_POINT_2D(ch::point, double, boost::geometry::cs::cartesian, x, y);
@@ -114,6 +114,7 @@ namespace ch {
     std::vector<polygon> buffer(std::span<const ch::polygon> polys, double amt);
     std::vector<ch::point> convex_hull(std::span<const ch::point> points);
     bool is_point_in_rect(const point& pt, const rectangle& rect);
+    bool is_point_in_polygon(const point& pt, const polygon& poly);
     point unit_vector(float theta);
 
     struct triangle {

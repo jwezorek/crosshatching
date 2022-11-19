@@ -560,6 +560,10 @@ bool ch::is_point_in_rect(const ch::point& pt, const ch::rectangle& rect) {
     return true;
 }
 
+bool ch::is_point_in_polygon(const ch::point& pt, const ch::polygon& poly) {
+    return bg::within(pt, poly);
+}
+
 ch::point ch::unit_vector(float theta) {
     return { std::cos(theta), std::sin(theta) };
 }

@@ -1017,6 +1017,51 @@ namespace {
             }
         ) | to_polylines;
     }
+
+    ch::polylines flow_lines(const cv::Mat& flow, const ch::polygon& poly2,
+        const ch::dimensions<int>& sz, float freq, float step_sz) {
+        constexpr int recent_count = 10;
+        auto field_sz = ch::vector_field_size(flow);
+        auto horz_scale = static_cast<float>(field_sz.wd) / sz.wd;
+        auto vert_scale = static_cast<float>(field_sz.hgt) / sz.hgt;
+        const auto bounds = ch::rectangle{ 0.0, 0.0, sz.wd - 1, sz.hgt - 1 };
+        return ch::all_edges(poly2.outer()) |
+            rv::transform(
+                [&](auto edge) {
+                    auto u = edge[0];
+                    auto v = edge[1];
+                    return ch::points_on_linesegment(u, v, freq) |
+                        rv::transform(
+                            [&](const ch::point& seed_pt)->ch::polyline {
+                                ch::point pt = seed_pt;
+                                ch::polyline stroke;
+                                do {
+                                    stroke.push_back(pt);
+                                    if (stroke.size() > recent_count) {
+                                        auto recent = stroke | rv::reverse | rv::take(recent_count) | r::to_vector;
+                                        auto [x1, y1, x2, y2] = ch::bounding_rectangle(recent);
+                                        if (x2 - x1 < 2 * step_sz && y2 - y1 < 2 * step_sz) {
+                                            return stroke;
+                                        }
+                                    }
+                                    ch::point sample_pt = {
+                                        horz_scale * pt.x,
+                                        vert_scale * pt.y
+                                    };
+                                    auto dx_dy = ch::interpolate_vector_field(flow, sample_pt);
+                                    pt = pt + ch::point(step_sz * dx_dy);
+                                } while (ch::is_point_in_rect(pt, bounds) &&
+                                    ch::is_point_in_polygon(pt, poly2));
+                                return stroke;
+                            }
+                    );
+                }
+            ) |  rv::join | rv::remove_if(
+                [](const ch::polyline& p)->bool {
+                    return p.size() < 2;
+                }
+            ) | to_polylines;
+    }
 }
 
 ch::brush_context::brush_context(const ch::polygon& p, double param) :
@@ -1075,6 +1120,7 @@ ch::polygon make_rect(const ch::dimensions<float>& sz) {
     );
 }
 
+/*
 void ch::debug_brushes() { 
     auto random_flow = ch::perlin_flow_vector_field({ 256,256 }, 17563, 42142, 16, 8);
     auto smooth_flow = ch::uniform_direction_vector_field({ 256,256 }, -3.14159 / 4.0);
@@ -1086,6 +1132,36 @@ void ch::debug_brushes() {
     std::ofstream outfile("C:\\test\\flow.svg");
     outfile << ch::svg_header(1024,1024);
     for (const auto&  poly : lines) {
+        outfile << polyline_to_svg(poly, 1.0, false) << "\n";
+    }
+    outfile << "</svg>" << std::endl;
+    outfile.close();
+}
+*/
+
+void ch::debug_brushes() {
+    auto random_flow = ch::perlin_flow_vector_field({ 256,256 }, 17563, 42142, 16, 8);
+    auto smooth_flow = ch::uniform_direction_vector_field({ 256,256 }, -3.14159 / 4.0);
+
+    cv::Mat flow_field = 0.35 * random_flow + 0.65 * smooth_flow;
+
+    auto pentagon = rv::iota(0, 5) |
+        rv::transform(
+            [](int i)->ch::point {
+                auto seventy_two_degrees = (2.0f * 3.141592f) / 5.0f;
+                auto theta = seventy_two_degrees * i;
+                return {
+                    512.0f + 150.0f * std::cos(theta),
+                    512.0f + 150.0f * std::sin(theta)
+                };
+            }
+        ) | r::to_<ring>();
+    auto poly = make_polygon(pentagon);
+    auto lines = flow_lines(flow_field, poly, { 1024,1024 }, 4.0, 2.5);
+
+    std::ofstream outfile("C:\\test\\flow_poly.svg");
+    outfile << ch::svg_header(1024, 1024);
+    for (const auto& poly : lines) {
         outfile << polyline_to_svg(poly, 1.0, false) << "\n";
     }
     outfile << "</svg>" << std::endl;
