@@ -8,6 +8,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/ximgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/photo.hpp>
 #include <sstream>
 #include <random>
 #include <iomanip>
@@ -331,6 +332,18 @@ cv::Mat ch::coherence_filter(cv::Mat img, int sigma, int str_sigma, float blend,
 		I = I * (1.0 - blend) + img1 * blend;
 	}
 	return I;
+}
+
+cv::Mat ch::stylize(cv::Mat img, double sigma_s, double sigma_r) {
+    cv::Mat output;
+    cv::stylization(img, output, sigma_s, sigma_r);
+    return output;
+}
+
+cv::Mat ch::edge_preserving_smoothing(cv::Mat img, int flag, double sigma_s, double sigma_r) {
+    cv::Mat output;
+    cv::edgePreservingFilter(img, output, flag, sigma_s, sigma_r);
+    return output;
 }
 
 cv::Mat ch::anisotropic_diffusion(cv::Mat img, double alpha, double k, int iters) {

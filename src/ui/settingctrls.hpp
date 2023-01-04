@@ -72,6 +72,34 @@ namespace ui {
         bool is_on() const override;
     };
 
+    class edge_preserving_filter : public image_processing_pipeline_item {
+        Q_OBJECT
+    private:
+        float_value_slider* sigma_s_;
+        float_value_slider* sigma_r_;
+        QComboBox* flag_;
+    public:
+        edge_preserving_filter();
+        void populate() override;
+        void initialize() override;
+        pipeline_output process_image(pipeline_output input) override;
+        bool is_on() const override;
+    };
+
+    class stylization_filter : public image_processing_pipeline_item {
+        Q_OBJECT
+    private:
+        float_value_slider* sigma_s_;
+        float_value_slider* sigma_r_;
+
+    public:
+        stylization_filter();
+        void populate() override;
+        void initialize() override;
+        pipeline_output process_image(pipeline_output input) override;
+        bool is_on() const override;
+    };
+
     class shock_filter : public image_processing_pipeline_item {
         Q_OBJECT
     private:

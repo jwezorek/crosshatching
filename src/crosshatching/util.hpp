@@ -65,6 +65,8 @@ namespace ch {
     cv::Mat convert_to_3channel_grayscale(cv::Mat img);
     cv::Mat convert_to_1channel_gray(const cv::Mat& img, bool invert = false);
     cv::Mat coherence_filter(cv::Mat img, int sigma, int str_sigma, float blend, int iter);
+    cv::Mat stylize(cv::Mat img, double sigma_s, double sigma_r);
+    cv::Mat edge_preserving_smoothing(cv::Mat img, int flag, double sigma_s, double sigma_r);
     cv::Mat anisotropic_diffusion(cv::Mat img, double alpha, double k, int iters);
     std::tuple<cv::Mat,cv::Mat> meanshift_segmentation(
         const cv::Mat& input, int sigmaS, float sigmaR, int minSize);

@@ -99,6 +99,88 @@ bool ui::scale_and_contrast::is_on() const {
 		thresh_slider_->value() != 0.5;
 }
 
+
+
+/*------------------------------------------------------------------------------------------------------*/
+ui::edge_preserving_filter::edge_preserving_filter() :
+    ui::image_processing_pipeline_item("Smoothing", 1) {
+}
+
+void ui::edge_preserving_filter::populate() {
+    QVBoxLayout* v_layout = new QVBoxLayout();
+    QHBoxLayout* h_layout = new QHBoxLayout();
+
+    h_layout->addWidget(sigma_s_ = new float_value_slider("sigma S", 0, 200, 60));
+    h_layout->addWidget(sigma_r_ = new float_value_slider("sigma R", 0, 1.0, 0.4));
+    v_layout->addLayout(h_layout);
+    v_layout->addWidget(flag_ = new QComboBox());
+
+    flag_->addItem("Off");
+    flag_->addItem("Recursive Filtering");
+    flag_->addItem("Normalized Convolution Filtering");
+
+    content_area_->setLayout(v_layout);
+
+    connect(sigma_s_, &float_value_slider::slider_released, [this]() { changed(this->index()); });
+    connect(sigma_r_, &float_value_slider::slider_released, [this]() { changed(this->index()); });
+    connect(flag_, &QComboBox::currentIndexChanged, [this]() { changed(this->index()); });
+}
+
+void ui::edge_preserving_filter::initialize() {
+    sigma_s_->set(60);
+    sigma_r_->set(0.4);
+    flag_->setCurrentIndex(0);
+}
+
+ui::pipeline_output ui::edge_preserving_filter::process_image(pipeline_output inp) {
+    auto input = std::get<cv::Mat>(inp);
+    return output_ = ch::edge_preserving_smoothing(
+        input,
+        flag_->currentIndex(),
+        sigma_s_->value(),
+        sigma_r_->value()
+    );
+}
+
+bool ui::edge_preserving_filter::is_on() const {
+    return flag_->currentIndex() > 0;
+}
+
+/*------------------------------------------------------------------------------------------------------*/
+
+ui::stylization_filter::stylization_filter() :
+    ui::image_processing_pipeline_item("Stylization", 1) {
+}
+
+void ui::stylization_filter::populate() {
+    QHBoxLayout* layout = new QHBoxLayout();
+
+    layout->addWidget(sigma_s_ = new float_value_slider("sigma S", 0, 200, 60));
+    layout->addWidget(sigma_r_ = new float_value_slider("sigma R", 0, 1.0, 0.0));
+    content_area_->setLayout(layout);
+
+    connect(sigma_s_, &float_value_slider::slider_released, [this]() { changed(this->index()); });
+    connect(sigma_r_, &float_value_slider::slider_released, [this]() { changed(this->index()); });
+}
+
+void ui::stylization_filter::initialize() {
+    sigma_s_->set(60);
+    sigma_r_->set(0);
+}
+
+ui::pipeline_output ui::stylization_filter::process_image(pipeline_output inp) {
+    auto input = std::get<cv::Mat>(inp);
+    return output_ = ch::stylize(
+        input,
+        sigma_s_->value(),
+        sigma_r_->value()
+    );
+}
+
+bool ui::stylization_filter::is_on() const {
+    return sigma_r_->value() > 0;
+}
+
 /*------------------------------------------------------------------------------------------------------*/
 
 ui::anisotropic_diffusion_filter::anisotropic_diffusion_filter() :

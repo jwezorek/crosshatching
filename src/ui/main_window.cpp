@@ -325,7 +325,7 @@ QWidget* ui::main_window::create_image_processing_pipeline_tools()
 
 	img_proc_ctrls_.pipeline = std::vector<ui::image_processing_pipeline_item*>{
 		new ui::scale_and_contrast(),
-		new ui::anisotropic_diffusion_filter(),
+		new ui::edge_preserving_filter(),
 		new ui::shock_filter(),
 		new ui::mean_shift_segmentation(),
 		new ui::raster_to_vector()
@@ -351,7 +351,13 @@ QWidget* ui::main_window::create_image_processing_pipeline_tools()
 }
 
 bool is_pipeline_output_empty(ui::pipeline_output po) {
-	return std::holds_alternative<std::monostate>(po);
+    if (std::holds_alternative<std::monostate>(po)) {
+        return true;
+    }
+    if (std::holds_alternative<cv::Mat>(po) && std::get<cv::Mat>(po).empty()) {
+        return true;
+    }
+    return false;
 }
 
 ui::pipeline_output ui::main_window::input_to_nth_stage(int index) const {
