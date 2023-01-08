@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QtWidgets>
-
+#include "RangeSlider.h"
 #include "float_value_slider.h"
 #include "../crosshatching/geometry.hpp"
 #include "../crosshatching/raster_to_vector.hpp"
@@ -47,6 +47,9 @@ namespace ui {
         float_value_slider* scale_slider_;
         float_value_slider* contrast_slider_;
         float_value_slider* thresh_slider_;
+        RangeSlider* black_white_cutoff_;
+        QLabel* white_cutoff_;
+        QLabel* black_cutoff_;
 
     public:
         scale_and_contrast();
@@ -54,7 +57,7 @@ namespace ui {
         void initialize() override;
         pipeline_output process_image(pipeline_output input) override;
         bool is_on() const override;
-
+        std::tuple<float, float> bw_cutoff() const;
     };
 
     class anisotropic_diffusion_filter : public image_processing_pipeline_item {

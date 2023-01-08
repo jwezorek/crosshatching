@@ -82,6 +82,9 @@
     <ClCompile Include="src\crosshatching\strokes.cpp">
       <Filter>Source Files\crosshatching</Filter>
     </ClCompile>
+    <ClCompile Include="src\ui\RangeSlider.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="src\ui\crosshatching.qrc">
@@ -114,6 +117,9 @@
       <Filter>Source Files\ui</Filter>
     </QtMoc>
     <QtMoc Include="src\ui\image_tab_ctrl.h">
+      <Filter>Source Files\ui</Filter>
+    </QtMoc>
+    <QtMoc Include="src\ui\RangeSlider.h">
       <Filter>Source Files\ui</Filter>
     </QtMoc>
   </ItemGroup>

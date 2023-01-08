@@ -46,11 +46,20 @@ namespace {
 		);
 	}
 
-	std::vector<uchar> make_contrast_lookup_table(double beta, double sigma) {
+	std::vector<uchar> make_contrast_lookup_table(double beta, double sigma, 
+            double white_cutoff, double black_cutoff) {
+        uchar white = static_cast<uchar>((1.0 - white_cutoff) * 255.0);
+        uchar black = static_cast<uchar>((1.0 - black_cutoff) * 255.0);
 		return rv::iota(0,256) |
 			rv::transform(
-				[beta, sigma](int u) {
-					return sigmoidal_contrast(static_cast<uchar>(u), beta, sigma);
+				[beta, sigma, white, black](int u)->uchar {
+                    auto val = sigmoidal_contrast(static_cast<uchar>(u), beta, sigma);
+                    if (val <= black) {
+                        return 0;
+                    } else if (val >= white) {
+                        return 255;
+                    }
+                    return val;
 				}
 			) | 
 			r::to_vector;
@@ -167,9 +176,9 @@ double ch::ramp(double t, double k, bool right, bool up) {
 	}
 }
 
-cv::Mat ch::apply_contrast(cv::Mat img, double beta, double sigma) {
+cv::Mat ch::apply_contrast(cv::Mat img, double beta, double sigma, double white_cutoff, double black_cutoff) {
 	using hsv_pixel = cv::Point3_<uchar>;
-	auto lookup_table = make_contrast_lookup_table(beta, sigma);
+	auto lookup_table = make_contrast_lookup_table(beta, sigma, white_cutoff, black_cutoff);
 	cv::Mat hsv;
 	cv::cvtColor(img, hsv, cv::COLOR_BGR2HSV);
 

@@ -60,7 +60,7 @@ namespace ch {
     random_func const_rnd_func(double val);
 
     // image processing
-    cv::Mat apply_contrast(cv::Mat img, double beta, double sigma);
+    cv::Mat apply_contrast(cv::Mat img, double beta, double sigma, double white_cutoff, double black_cutoff);
     cv::Mat scale(cv::Mat mat, double scale);
     cv::Mat convert_to_3channel_grayscale(cv::Mat img);
     cv::Mat convert_to_1channel_gray(const cv::Mat& img, bool invert = false);

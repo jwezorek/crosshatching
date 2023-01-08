@@ -48,6 +48,16 @@ ui::scale_and_contrast::scale_and_contrast() :
 	ui::image_processing_pipeline_item("Scale & Contrast", 0)
 {}
 
+
+std::tuple<float, float> ui::scale_and_contrast::bw_cutoff() const {
+    float upper = static_cast<float>(black_white_cutoff_->GetUpperValue());
+    float lower = static_cast<float>(black_white_cutoff_->GetLowerValue());
+    return {
+        1.0 - upper / 255.0,
+        1.0 - lower / 255.0
+    };
+}
+
 void ui::scale_and_contrast::populate() {
 	QHBoxLayout* layout = new QHBoxLayout();
 
@@ -61,6 +71,16 @@ void ui::scale_and_contrast::populate() {
 
 	layout->addWidget(scale_slider_ = new ui::float_value_slider("scale", 20, 100, 100), 1);
 	layout->addWidget(contrast_box, 2);
+
+    QVBoxLayout* bw_layout = new QVBoxLayout();
+    bw_layout->addWidget(new QLabel("b/w cutoff"));
+    bw_layout->addWidget(black_white_cutoff_ = new RangeSlider(Qt::Orientation::Vertical));
+    bw_layout->addWidget(black_cutoff_ = new QLabel("1.0"));
+    bw_layout->addWidget(white_cutoff_ = new QLabel("0.0"));
+    black_white_cutoff_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+    black_white_cutoff_->SetRange(0, 255);
+    layout->addLayout(bw_layout);
+
 	content_area_->setLayout(layout);
 
 	connect(scale_slider_, &float_value_slider::slider_released, 
@@ -69,6 +89,29 @@ void ui::scale_and_contrast::populate() {
 		[this]() { this->changed(this->index_); });
 	connect(thresh_slider_, &float_value_slider::slider_released, 
 		[this]() { this->changed(this->index_); });
+
+
+    connect(black_white_cutoff_, &RangeSlider::upperValueChanged,
+        [this]() {
+            float val = static_cast<float>(black_white_cutoff_->GetUpperValue());
+            val = 1.0 - val / 255.0;
+            white_cutoff_->setText(
+                std::to_string(val).c_str()
+            );
+            this->changed(this->index_); 
+        }
+    );
+
+    connect(black_white_cutoff_, &RangeSlider::lowerValueChanged,
+        [this]() {
+            float val = static_cast<float>(black_white_cutoff_->GetLowerValue());
+            val = 1.0 - val / 255.0;
+            black_cutoff_->setText(
+                std::to_string(val).c_str()
+            );
+            this->changed(this->index_);
+        }
+    );
 }
 
 void ui::scale_and_contrast::initialize() {
@@ -88,15 +131,26 @@ ui::pipeline_output ui::scale_and_contrast::process_image(pipeline_output inp) {
 	int scaled_wd = static_cast<int>(scale * src_wd);
 	int scaled_hgt = static_cast<int>(scale * src_hgt);
 
+    auto [white, black] = bw_cutoff();
+
 	cv::Mat scaled = ch::scale(input, scale);
-	output_ = ch::apply_contrast(scaled, contrast_slider_->value(), thresh_slider_->value());
+	output_ = ch::apply_contrast(
+        scaled, 
+        contrast_slider_->value(), 
+        thresh_slider_->value(),
+        white, 
+        black
+    );
 	return output_;
 }
 
 bool ui::scale_and_contrast::is_on() const {
-	return scale_slider_->value() != 100.0 ||
-		contrast_slider_->value() != 1.0 ||
-		thresh_slider_->value() != 0.5;
+    auto [white, black] = bw_cutoff();
+    return scale_slider_->value() != 100.0 ||
+        contrast_slider_->value() != 1.0 ||
+        thresh_slider_->value() != 0.5 ||
+        white != 0.0f ||
+        black != 1.0f;
 }
 
 
