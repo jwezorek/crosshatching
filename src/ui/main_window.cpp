@@ -623,10 +623,11 @@ std::tuple<std::string, double> ui::layer_panel::row(int n) const {
 
 void ui::layer_panel::add_layer() {
 	auto result = ui::layer_dialog::create_layer_item(brush_names_, list()->rowCount() == 0);
-	if (result) {
-		auto [brush, end_of_range] = *result;
-		insert_layer(brush, end_of_range);
-	}
+    if (!result) {
+        return;
+    }
+	auto [brush, end_of_range] = *result;
+	insert_layer(brush, end_of_range);
 	emit layers_changed();
 }
 
