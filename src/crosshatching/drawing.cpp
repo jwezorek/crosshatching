@@ -144,6 +144,10 @@ namespace {
         );
 
         for (const auto& blob: layer.content) {
+            if (blob.value == 255 && params.use_true_black) {
+                prog.tick();
+                continue;
+            }
             auto parent_tok = blob.parent_token();
             auto iter = brush_table.find(parent_tok);
             ch::brush_ptr current_brush;
@@ -186,6 +190,25 @@ namespace {
             (params.use_true_black ? std::string("yes"): std::string("no")));
     }
 
+    std::vector<ch::polygon> black_regions(const std::vector<ch::ink_layer>& layers) {
+        return layers |
+            rv::transform(
+                [](auto&& layer) {
+                    return layer.content |
+                        rv::remove_if(
+                            [](auto&& lyi) {
+                                return lyi.value != 255;
+                            }
+                        ) |
+                        rv::transform(
+                            [](auto&& lyi) {
+                                return lyi.poly;
+                            }
+                        );
+                }
+        ) | rv::join | r::to_vector;
+    }
+
     ch::drawing draw(const ch::ink_layers& inp_layers, const ch::parameters& params, progress& prog) {
 
         auto [poly_count, vert_count] = drawing_job_stats(inp_layers);
@@ -201,7 +224,10 @@ namespace {
             params.num_samples,
             params.swatch_sz
         );
-
+        std::vector<ch::polygon> black;
+        if (params.use_true_black) {
+            black = black_regions(layers.content);
+        }
         for (auto [index, layer] : rv::enumerate(layers.content | rv::reverse)) {
             prog.log(std::string("  - layer ") + std::to_string(index));
             std::tie(layer_strokes[index], tok_to_bkgd) = draw_ink_layer(
@@ -209,6 +235,7 @@ namespace {
         }
 
         return ch::drawing{
+            black,
             layer_strokes | rv::join | r::to_vector,
             layers.sz
         };
@@ -260,6 +287,9 @@ void ch::write_to_svg(const std::string& filename, const drawing& d,
         if (update_progress) {
             update_progress(index / n);
         }
+    }
+    for (auto&& black_poly : d.black_regions_) {
+        outfile << polygon_to_svg(black_poly, to_svg_color(static_cast<uchar>(0)), 1.0) << std::endl;
     }
     outfile << "</svg>" << std::endl;
     outfile.close();

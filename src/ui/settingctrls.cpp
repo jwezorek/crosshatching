@@ -91,7 +91,7 @@ void ui::scale_and_contrast::populate() {
 		[this]() { this->changed(this->index_); });
 
 
-    connect(black_white_cutoff_, &RangeSlider::upperValueChanged,
+    connect(black_white_cutoff_, &RangeSlider::upperHandleReleased,
         [this]() {
             float val = static_cast<float>(black_white_cutoff_->GetUpperValue());
             val = 1.0 - val / 255.0;
@@ -102,7 +102,7 @@ void ui::scale_and_contrast::populate() {
         }
     );
 
-    connect(black_white_cutoff_, &RangeSlider::lowerValueChanged,
+    connect(black_white_cutoff_, &RangeSlider::lowerHandleReleased,
         [this]() {
             float val = static_cast<float>(black_white_cutoff_->GetLowerValue());
             val = 1.0 - val / 255.0;

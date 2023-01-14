@@ -23,36 +23,36 @@ namespace r = ranges;
 namespace rv = ranges::views;
 
 namespace {
-	std::random_device rd;
-	std::mt19937 random(rd());
+    std::random_device rd;
+    std::mt19937 random(rd());
 
-	uint32_t random_uint32() {
-		std::uniform_int_distribution<uint32_t> distr;
-		return distr(random);
-	}
+    uint32_t random_uint32() {
+        std::uniform_int_distribution<uint32_t> distr;
+        return distr(random);
+    }
 
-	double ramp_up_right(double t, double k) {
-		return (t <= k) ? 0.0 : (t - k) / (1.0 - k);
-	}
+    double ramp_up_right(double t, double k) {
+        return (t <= k) ? 0.0 : (t - k) / (1.0 - k);
+    }
 
-	uchar sigmoidal_contrast(uchar u, double contrast, double thresh) {
-		using namespace std;
-		auto sigmoidal_contrast = [k = contrast, mu = thresh](double u) {
-			return (1.0 / (1.0 + exp(k * (mu - u))) - 1.0 / (1.0 + exp(k * mu))) /
-				   (1.0 / (1.0 + exp(k * (mu - 1.0))) - 1.0 / (1.0 + exp(k * mu)));
-		};
-		return static_cast<uchar>(
-			255.0 * sigmoidal_contrast( static_cast<double>(u) / 255.0 )
-		);
-	}
+    uchar sigmoidal_contrast(uchar u, double contrast, double thresh) {
+        using namespace std;
+        auto sigmoidal_contrast = [k = contrast, mu = thresh](double u) {
+            return (1.0 / (1.0 + exp(k * (mu - u))) - 1.0 / (1.0 + exp(k * mu))) /
+                (1.0 / (1.0 + exp(k * (mu - 1.0))) - 1.0 / (1.0 + exp(k * mu)));
+        };
+        return static_cast<uchar>(
+            255.0 * sigmoidal_contrast(static_cast<double>(u) / 255.0)
+            );
+    }
 
-	std::vector<uchar> make_contrast_lookup_table(double beta, double sigma, 
-            double white_cutoff, double black_cutoff) {
+    std::vector<uchar> make_contrast_lookup_table(double beta, double sigma,
+        double white_cutoff, double black_cutoff) {
         uchar white = static_cast<uchar>((1.0 - white_cutoff) * 255.0);
         uchar black = static_cast<uchar>((1.0 - black_cutoff) * 255.0);
-		return rv::iota(0,256) |
-			rv::transform(
-				[beta, sigma, white, black](int u)->uchar {
+        return rv::iota(0, 256) |
+            rv::transform(
+                [beta, sigma, white, black](int u)->uchar {
                     auto val = sigmoidal_contrast(static_cast<uchar>(u), beta, sigma);
                     if (val <= black) {
                         return 0;
@@ -60,40 +60,29 @@ namespace {
                         return 255;
                     }
                     return val;
-				}
-			) | 
-			r::to_vector;
-	}
+                }
+            ) |
+            r::to_vector;
+    }
 
-	std::string loop_to_path_commands(std::span<const ch::point> poly, double scale) {
-		std::stringstream ss;
-		ss << "M " << scale * poly[0].x << "," << scale * poly[0].y << " L";
-		for (const auto& pt : rv::tail(poly)) {
-			ss << " " << scale * pt.x << "," << scale * pt.y;
-		}
-		ss << " Z";
-		return ss.str();
-	}
+    std::string loop_to_path_commands(std::span<const ch::point> poly, double scale) {
+        std::stringstream ss;
+        ss << "M " << scale * poly[0].x << "," << scale * poly[0].y << " L";
+        for (const auto& pt : rv::tail(poly)) {
+            ss << " " << scale * pt.x << "," << scale * pt.y;
+        }
+        ss << " Z";
+        return ss.str();
+    }
 
-	std::string svg_path_commands(const ch::polygon& poly, double scale) {
-		std::stringstream ss;
-		ss << loop_to_path_commands(poly.outer(), scale);
-		for (const auto& hole : poly.inners()) {
-			ss << " " << loop_to_path_commands( hole, scale);
-		}
-		return ss.str();
-	}
-
-	template<typename T>
-	std::string polygon_to_svg(const ch::polygon& poly, T color, double scale) {
-		std::stringstream ss;
-		ss << "<path fill-rule=\"evenodd\" stroke=\"";
-		ss << "none" << "\" fill=\""; 
-		ss << ch::to_svg_color(color) << "\" d=\"";
-		ss << svg_path_commands(poly, scale);
-		ss << "\" />";
-		return ss.str();
-	}
+    std::string svg_path_commands(const ch::polygon& poly, double scale) {
+        std::stringstream ss;
+        ss << loop_to_path_commands(poly.outer(), scale);
+        for (const auto& hole : poly.inners()) {
+            ss << " " << loop_to_path_commands(hole, scale);
+        }
+        return ss.str();
+    }
 
 	template<typename T>
 	void polygons_to_svg(const std::string& output_file,
@@ -109,7 +98,7 @@ namespace {
 		std::ofstream outfile(output_file);
 		outfile << ch::svg_header(static_cast<int>(scale*wd), static_cast<int>(scale * hgt));
 		for (const auto& [color, poly] : polys) {
-			outfile << polygon_to_svg(poly, color, scale) << std::endl;
+			outfile << ch::polygon_to_svg(poly, ch::to_svg_color(color), scale) << std::endl;
 		}
 		outfile << "</svg>" << std::endl;
 		outfile.close();
@@ -136,12 +125,21 @@ namespace {
 		return QColor(red, green, blue);
 	}
 
+    std::string uchar_to_hex(unsigned char uc) {
+        std::stringstream ss;
+        ss << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(uc);
+        return ss.str();
+    }
 }
 
-std::string uchar_to_hex(unsigned char uc) {
-	std::stringstream ss;
-	ss << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(uc);
-	return ss.str();
+std::string ch::polygon_to_svg(const ch::polygon& poly, const std::string& color, double scale) {
+    std::stringstream ss;
+    ss << "<path fill-rule=\"evenodd\" stroke=\"";
+    ss << "none" << "\" fill=\"";
+    ss << color << "\" d=\"";
+    ss << svg_path_commands(poly, scale);
+    ss << "\" />";
+    return ss.str();
 }
 
 std::string ch::to_svg_color(uchar gray)

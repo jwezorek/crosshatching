@@ -49,6 +49,8 @@ protected:
     QRectF handleRect(int aValue) const;
 
 signals:
+    void upperHandleReleased();
+    void lowerHandleReleased();
     void lowerValueChanged(int aLowerValue);
     void upperValueChanged(int aUpperValue);
     void rangeChanged(int aMin, int aMax);

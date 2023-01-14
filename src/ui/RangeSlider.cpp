@@ -200,8 +200,14 @@ void RangeSlider::mouseMoveEvent(QMouseEvent* aEvent)
 void RangeSlider::mouseReleaseEvent(QMouseEvent* aEvent)
 {
     Q_UNUSED(aEvent);
-
+    if (mFirstHandlePressed) {
+        lowerHandleReleased();
+    }
     mFirstHandlePressed = false;
+
+    if (mSecondHandlePressed) {
+        upperHandleReleased();
+    }
     mSecondHandlePressed = false;
 }
 
