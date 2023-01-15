@@ -75,6 +75,9 @@ namespace {
 }
 
 bool ch::brush::is_uinitiailized() const {
+    if (is_solid_brush()) {
+        return false;
+    }
     return gray_to_param_.empty();
 }
 
@@ -139,9 +142,13 @@ ch::brush::brush(ch::brush_expr_ptr expr, double epsilon, int num_samples,
 }
 
 void ch::brush::build_n(int n) {
+    if (is_solid_brush()) {
+        return;
+    }
     if (!is_uinitiailized()) {
         throw std::runtime_error("brush is already built");
     }
+
     double delta = 1.0 / (static_cast<double>(n) - 1.0);
     for (int i = 0; i < n; ++i) {
         get_or_sample_param(delta * i);
@@ -159,6 +166,15 @@ ch::drawing_comps_ptr ch::brush::draw_strokes(const polygon& poly, double gray_l
     
     if (is_uinitiailized()) {
         throw std::runtime_error("brush is not built");
+    }
+
+    if (is_solid_brush()) {
+        return single_stroke_group(
+            shaded_polygon(
+                poly,
+                gray_level
+            )
+        );
     }
     
     if (gray_level < min_gray_level()) {
@@ -216,4 +232,8 @@ int ch::brush::num_samples() const {
 
 int ch::brush::swatch_dim() const {
     return static_cast<int>(swatch_sz_.wd);
+}
+
+bool ch::brush::is_solid_brush() const {
+    return brush_expr_ == nullptr;
 }

@@ -427,6 +427,16 @@ namespace {
                 return clusters;
             }
 
+            std::vector<cluster> clusters_by_color() const {
+                auto clusters = contents() | r::to_vector;
+                r::sort(clusters,
+                    [](const auto& lhs, const auto& rhs) {
+                        return lhs.color() > rhs.color();
+                    }
+                );
+                return clusters;
+            }
+
             auto adjacent_cluster_ids(int c_id) {
                 return graph_->adjacent_verts(c_id) |
                     rv::remove_if(
@@ -509,7 +519,7 @@ namespace {
 
                 do {
                     bool merged_one = false;
-                    for (auto ex_clust : src.clusters_by_area()) {
+                    for (auto ex_clust : src.clusters_by_color()) {
 
                         auto neighbors = adjacent_clusters(ex_clust.id()) |  r::to_vector;
                         if (! neighbors.empty()) {

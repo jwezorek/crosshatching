@@ -51,6 +51,7 @@ namespace ch {
         double max_gray_level() const;
         int num_samples() const;
         int swatch_dim() const;
+        bool is_solid_brush() const;
     };
 
 

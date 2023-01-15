@@ -732,7 +732,8 @@ ui::brush_panel::brush_panel(layer_panel& layers) :
         )
         );
     insert_toplevel_item(tree(), "main", brush1);
-    insert_toplevel_item(tree(), "horz", brush2); 
+    insert_toplevel_item(tree(), "horz", brush2);
+    insert_toplevel_item(tree(), "solid", nullptr);
     sync_layer_panel();
 }
 
@@ -786,10 +787,11 @@ void ui::brush_panel::insert_toplevel_item(QTreeWidget* tree,
 		const std::string& name, ch::brush_expr_ptr expr) {
 	auto toplevel_item = new brush_item(name, expr);
 	tree->addTopLevelItem(toplevel_item);
-
-	for (auto child : expr->children()) {
-		insert_brush_item(toplevel_item, new brush_item(child));
-	}
+    if (expr) {
+        for (auto child : expr->children()) {
+            insert_brush_item(toplevel_item, new brush_item(child));
+        }
+    }
 }
 
 void ui::brush_panel::add_brush_node() {
