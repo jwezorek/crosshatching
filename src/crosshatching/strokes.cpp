@@ -1,74 +1,100 @@
 #include "strokes.hpp"
 #include "util.hpp"
 #include "qdebug.h"
+#include <variant>
 
 namespace r = ranges;
 namespace rv = ranges::views;
 
 /*------------------------------------------------------------------------------------------------*/
 
-void paint_strokes(QPainter& g, const ch::drawing_component& sg) {
-    if (!sg.is_stippling) {
-        g.setPen(ch::create_pen(0, sg.thickness));
-        g.setBrush(Qt::BrushStyle::NoBrush);
-        for (auto strk : sg.strokes) {
-            QList<QPointF> points = strk |
-                rv::transform(
-                    [](const ch::point& pt)->QPointF {
-                        return {
-                            static_cast<float>(pt.x),
-                            static_cast<float>(pt.y)
-                        };
+namespace {
+    void paint_strokes(QPainter& g, const ch::drawing_component& dc) {
+        std::visit(
+            overload{
+                [&](const ch::stroke_group& sg) {
+                    g.setPen(ch::create_pen(0, sg.thickness));
+                    g.setBrush(Qt::BrushStyle::NoBrush);
+                    for (auto strk : sg.strokes) {
+                        QList<QPointF> points = strk |
+                        rv::transform(
+                            [](const ch::point& pt)->QPointF {
+                                return {
+                                    static_cast<float>(pt.x),
+                                    static_cast<float>(pt.y)
+                                };
+                            }
+                        ) | r::to<QList>();
+                        g.drawLines(points);
                     }
-            ) | r::to<QList>();
-            g.drawLines(points);
-        }
-    } else {
-        g.setPen(Qt::PenStyle::NoPen);
-        g.setBrush(QBrush(QColor(0, 0, 0)));
-        for (auto pt : sg.strokes.front()) {
-            auto r = sg.thickness / 2.0;
-            g.drawEllipse(
-                pt.x - r, pt.y - r,
-                sg.thickness, sg.thickness
-            );
-        }
+                },
+                [&](const ch::stippling_group& sg) {
+                   g.setPen(Qt::PenStyle::NoPen);
+                   g.setBrush(QBrush(QColor(0, 0, 0)));
+                   for (auto pt : sg.points) {
+                       auto r = sg.thickness / 2.0;
+                       g.drawEllipse(
+                           pt.x - r, pt.y - r,
+                           sg.thickness, sg.thickness
+                       );
+                   }
+                }
+            },
+            dc
+        );
+    }
+
+    ch::drawing_component transform(const ch::drawing_component& dc, const ch::matrix& mat) {
+        return std::visit(
+            overload{
+                [&mat](const ch::stroke_group& sg)->ch::drawing_component {
+                    return ch::stroke_group {
+                        sg.strokes | rv::transform(
+                            [&mat](const auto& poly)->ch::polyline {
+                                return ch::transform(poly, mat);
+                            }
+                        ) | to_polylines,
+                        sg.thickness
+                    };
+                },
+                [&mat](const ch::stippling_group& sg)->ch::drawing_component {
+                    return ch::stippling_group {
+                        ch::transform(sg.points, mat),
+                        sg.thickness
+                    };
+                }
+            },
+            dc
+        );
     }
 }
 
-ch::drawing_component::drawing_component() : 
-    thickness(0), 
-    is_stippling(false)
-{
+bool ch::is_empty(const ch::drawing_component& dc) {
+    return std::visit(
+        overload{
+            [](const stroke_group& sg)->bool {
+                return sg.strokes.empty();
+            },
+            [](const stippling_group& sg)->bool {
+                return sg.points.empty();
+            }
+        },
+        dc
+    );
 }
 
-ch::drawing_component::drawing_component(ch::polylines&& strks, double thk, bool isstip) :
-    strokes(strks),
-    thickness(thk),
-    is_stippling(isstip)
-{}
-
-
-ch::drawing_comps ch::transform(const drawing_comps& s, const ch::matrix& mat) {
-    return s |
+ch::drawing_comps ch::transform(const drawing_comps& dcs, const ch::matrix& mat) {
+    return dcs |
         rv::transform(
-            [&mat](const auto& sg)->drawing_component {
-                return {
-                    sg.strokes | rv::transform(
-                        [&mat](const auto& poly)->ch::polyline {
-                            return ch::transform(poly, mat);
-                        }
-                    ) | to_polylines,
-                    sg.thickness,
-                    sg.is_stippling
-                };
+            [&mat](const auto& dc)->drawing_component {
+                return ::transform(dc, mat);
             }
         ) | r::to_vector;
 }
 
 void ch::paint_strokes(QPainter& g, const ch::drawing_comps& strks) {
     for (const auto& strk_group : strks) {
-        paint_strokes(g, strk_group);
+        ::paint_strokes(g, strk_group);
     }
 }
 
@@ -92,16 +118,21 @@ ch::drawing_comps_ptr ch::clip_strokes(const polygon& poly, drawing_comps_ptr st
     return
         *strokes |
         rv::transform(
-            [&poly](const drawing_component& sg)->drawing_component {
-                if (!sg.is_stippling) {
-                    return {
-                        clip_polylines_to_poly(sg.strokes, poly),
-                        sg.thickness,
-                        false
-                    };
-                } else {
-                    return sg;
-                }
+            [&poly](const drawing_component& dc)->drawing_component {
+                return std::visit(
+                    overload{
+                        [&](const stroke_group& sg)->drawing_component {
+                            return stroke_group {
+                                clip_polylines_to_poly(sg.strokes, poly),
+                                sg.thickness
+                            };
+                        },
+                        [](const stippling_group& sg)->drawing_component {
+                            return sg;
+                        }
+                    },
+                    dc
+                );
             }
         ) | to_strokes;
 }

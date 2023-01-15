@@ -257,17 +257,24 @@ ch::drawing ch::generate_crosshatched_drawing(const ch::crosshatching_job& job, 
     return result;
 }
 
-
 size_t ch::drawing::stroke_count() const {
     return r::accumulate(
-        content |
-            rv::transform(
-                [](const auto& group)->size_t {
-                    return group.strokes.size();
+        content | rv::transform(
+                [](const drawing_component& dc)->size_t {
+                    return std::visit(
+                        overload{
+                            [](const stroke_group& sg)->size_t {
+                                return sg.strokes.size();
+                            },
+                            [](const stippling_group& sg)->size_t {
+                                return 1;
+                            }
+                        },
+                        dc
+                    );
                 }
-            )
-        ,
-       size_t{ 0 }
+            ),
+        size_t{ 0 }
     );
 }
 
@@ -278,15 +285,28 @@ void ch::write_to_svg(const std::string& filename, const drawing& d,
     outfile << svg_header(static_cast<int>(d.sz.wd), static_cast<int>(d.sz.hgt));
 
     auto n = static_cast<double>(d.stroke_count());
-    for (const auto& [index, poly_info] :rv::enumerate(d.strokes())) {
-        const auto& [poly, thickness, is_stippling] = poly_info;
-        auto stroke_svg = (!is_stippling) ? 
-            polyline_to_svg(poly, thickness) :
-            stippling_to_svg(poly, thickness);
-        outfile << stroke_svg << std::endl;
-        if (update_progress) {
-            update_progress(index / n);
-        }
+    for (const auto& [index, dc] : rv::enumerate(d.content)) {
+        std::visit(
+            overload{
+                [&](const stroke_group& sg) {
+                    for (const auto& poly : sg.strokes) {
+                        auto stroke_svg = polyline_to_svg(poly, sg.thickness);
+                        outfile << stroke_svg << std::endl;
+                        if (update_progress) {
+                            update_progress(index / n);
+                        }
+                    }
+                },
+                [&](const stippling_group& sg) {
+                    auto stroke_svg = stippling_to_svg(sg.points, sg.thickness);
+                    outfile << stroke_svg << std::endl;
+                    if (update_progress) {
+                        update_progress(index / n);
+                    }
+                }
+            },
+            dc
+        );
     }
     for (auto&& black_poly : d.black_regions_) {
         outfile << polygon_to_svg(black_poly, to_svg_color(static_cast<uchar>(0)), 1.0) << std::endl;

@@ -491,14 +491,16 @@ namespace {
             auto pen_thickness = variable_value(ctxt.variables, k_pen_thickness_var, 1.0);
             auto rotation = variable_value(ctxt.variables, k_rotation_var, 0.0);
             return ch::single_stroke_group(
-                linear_strokes(
-                    ch::degrees_to_radians(rotation),
-                    ctxt.poly.outer(),
-                    run_length,
-                    space_length,
-                    vert_space
-                ) | to_polylines,
-                pen_thickness
+                ch::stroke_group{
+                    linear_strokes(
+                            ch::degrees_to_radians(rotation),
+                            ctxt.poly.outer(),
+                            run_length,
+                            space_length,
+                            vert_space
+                        ) | to_polylines,
+                    pen_thickness
+                }
             );
         }
     };
@@ -570,16 +572,16 @@ namespace {
             auto pen_thickness = variable_value(ctxt.variables, k_pen_thickness_var, 1.0);
 
             return ch::single_stroke_group(
-                rv::single(
-                    rv::iota(0, num_dots) |
-                    rv::transform(
-                        [&rnd](auto i) {
-                            return rnd.random_point(i);
-                        }
-                    ) | r::to<ch::polyline>()
-                ),
-                pen_thickness,
-                true
+                ch::stippling_group{
+                        rv::iota(0, num_dots) |
+                        rv::transform(
+                            [&rnd](auto i) {
+                                return rnd.random_point(i);
+                            }
+                        ) | r::to<ch::polyline>()
+                    ,
+                    pen_thickness
+                }
             );
         }
     };
@@ -649,17 +651,22 @@ namespace {
             return  rv::enumerate(*input) |
                 rv::transform(
                     [probability, seed](auto index_sc)->ch::drawing_component {
-                        auto [i, sg] = index_sc;
-                        if (!sg.is_stippling) {
-                            return {
-                                prune_random_strokes(sg.strokes, i, seed, probability),
-                                sg.thickness,
-                                false
-                            };
-                        } else {
-                            //TODO
-                            return sg;
-                        }
+                        auto [i, dc] = index_sc;
+                        return std::visit(
+                            overload{
+                                [&](const ch::stroke_group& sg)->ch::drawing_component {
+                                    return ch::stroke_group{
+                                        prune_random_strokes(sg.strokes, i, seed, probability),
+                                        sg.thickness
+                                    };
+                                },
+                                [&](const ch::stippling_group& sg)->ch::drawing_component {
+                                    //TODO
+                                    return sg;
+                                }
+                            },
+                            dc
+                        );
                     }
             ) | to_strokes;
         }
@@ -690,27 +697,29 @@ namespace {
             return  rv::enumerate(*input) |
                 rv::transform(
                     [seed, rand = std::get<ch::random_func>(result)](auto tup) {
-                auto [i, group] = tup;
-                if (!group.is_stippling) {
-                    return ch::drawing_component{
-                        rv::enumerate(group.strokes) |
-                            rv::transform(
-                                [i, seed, rand](auto tup) {
-                                    auto [j, strk] = tup;
-                                    auto theta = ch::degrees_to_radians(
-                                        rand(ch::cbrng_state(seed, i, j))
-                                    );
-                                    return jiggle_stroke(strk, theta);
+                        auto [i, group] = tup;
+                        if (std::holds_alternative<ch::stroke_group>(group)) {
+                            const auto& sg = std::get<ch::stroke_group>(group);
+                            return ch::drawing_component{
+                                ch::stroke_group{
+                                    rv::enumerate(sg.strokes) |
+                                        rv::transform(
+                                            [i, seed, rand](auto tup) {
+                                                auto [j, strk] = tup;
+                                                auto theta = ch::degrees_to_radians(
+                                                    rand(ch::cbrng_state(seed, i, j))
+                                                );
+                                                return jiggle_stroke(strk, theta);
+                                            }
+                                        ) | to_polylines,
+                                    sg.thickness
                                 }
-                            ) | to_polylines,
-                        group.thickness,
-                        false
-                    };
-                } else {
-                    return group;
-                }
-            }
-            ) | to_strokes;
+                            };
+                        } else {
+                            return group;
+                        }
+                    }
+                ) | to_strokes;
         }
     };
 

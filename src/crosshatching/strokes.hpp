@@ -8,16 +8,21 @@
 
 namespace ch {
 
-    struct drawing_component {
+    struct stroke_group {
         ch::polylines strokes;
         double thickness;
-        bool is_stippling;
-        drawing_component();
-        drawing_component(ch::polylines&& strokes, double th, bool s);
     };
+
+    struct stippling_group {
+        std::vector<ch::point> points;
+        double thickness;
+    };
+
+    using drawing_component = std::variant<stroke_group, stippling_group>;
     using drawing_comps = std::vector<drawing_component>;
     using drawing_comps_ptr = std::shared_ptr<drawing_comps>;
 
+    bool is_empty(const drawing_component& dc);
     drawing_comps transform(const drawing_comps& sg, const ch::matrix& mat);
     void paint_strokes(QPainter& g, const drawing_comps& str);
     void paint_strokes(QPainter& g, drawing_comps_ptr str);
@@ -47,21 +52,21 @@ ch::polylines operator|(Range&& lines, ch::detail::to_polyline_tag) {
 
 constexpr ch::detail::to_strokes_tag to_strokes = {};
 template<typename Range>
-ch::drawing_comps_ptr operator|(Range&& sgs, ch::detail::to_strokes_tag) {
+ch::drawing_comps_ptr operator|(Range&& dcs, ch::detail::to_strokes_tag) {
     return std::make_shared<ch::drawing_comps>(
-        sgs | ranges::views::remove_if(
-            [](const auto& sg) {
-                return sg.strokes.empty();
+        dcs | ranges::views::remove_if(
+            [](const auto& dc) {
+                return ch::is_empty(dc);
             }
         ) | ranges::to_vector
    );
 }
 
 namespace ch {
-    template<typename Rng>
-    drawing_comps_ptr single_stroke_group(Rng r, double thickness, bool stippling = false) {
-        auto strokes = std::make_shared<drawing_comps>();
-        strokes->emplace_back(r | to_polylines, thickness, stippling);
-        return strokes;
+    template<typename T>
+    drawing_comps_ptr single_stroke_group(T&& sg) {
+        auto dcs_ptr = std::make_shared<drawing_comps>();
+        dcs_ptr->emplace_back(std::move(sg));
+        return dcs_ptr;
     }
 }

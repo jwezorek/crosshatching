@@ -19,24 +19,6 @@ namespace ch {
         drawing_comps content;
         dimensions<double> sz;
         size_t stroke_count() const;
-
-        inline auto strokes() const {
-            namespace r = ranges;
-            namespace rv = ranges::views;
-            return content |
-                rv::transform(
-                    [](const drawing_component& sg) {
-                        return sg.strokes |
-                            rv::transform(
-                                [thickness = sg.thickness, stip = sg.is_stippling]
-                                (const polyline& poly)->std::tuple<polyline, double, bool> {
-                                    return { poly, thickness, stip };
-                                }
-                        );
-                    }
-                ) | rv::join;
-        }
-
     };
 
     struct parameters {
