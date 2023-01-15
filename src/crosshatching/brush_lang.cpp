@@ -327,7 +327,7 @@ namespace {
                 ctxt_.variables[k_brush_param_var] = value;
             }
 
-            void operator()(ch::strokes_ptr strokes) {
+            void operator()(ch::drawing_comps_ptr strokes) {
                 if (ctxt_.strokes != nullptr) {
                     append(ctxt_.strokes, strokes);
                 } else {
@@ -648,7 +648,7 @@ namespace {
 
             return  rv::enumerate(*input) |
                 rv::transform(
-                    [probability, seed](auto index_sc)->ch::stroke_group {
+                    [probability, seed](auto index_sc)->ch::drawing_component {
                         auto [i, sg] = index_sc;
                         if (!sg.is_stippling) {
                             return {
@@ -692,7 +692,7 @@ namespace {
                     [seed, rand = std::get<ch::random_func>(result)](auto tup) {
                 auto [i, group] = tup;
                 if (!group.is_stippling) {
-                    return ch::stroke_group{
+                    return ch::drawing_component{
                         rv::enumerate(group.strokes) |
                             rv::transform(
                                 [i, seed, rand](auto tup) {
@@ -1104,9 +1104,9 @@ std::variant<ch::brush_expr_ptr, std::runtime_error> ch::parse(const std::string
     return expr;
 }
 
-ch::strokes_ptr ch::brush_expr_to_strokes(const brush_expr_ptr& expr, const polygon& poly, double t) {
+ch::drawing_comps_ptr ch::brush_expr_to_strokes(const brush_expr_ptr& expr, const polygon& poly, double t) {
     brush_context ctxt(poly, t);
-    return std::get<ch::strokes_ptr>(expr->eval(ctxt));
+    return std::get<ch::drawing_comps_ptr>(expr->eval(ctxt));
 }
 
 std::string ch::pretty_print(const ch::brush_expr_ptr& expr) {

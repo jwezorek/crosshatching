@@ -7,7 +7,7 @@ namespace rv = ranges::views;
 
 /*------------------------------------------------------------------------------------------------*/
 
-void paint_strokes(QPainter& g, const ch::stroke_group& sg) {
+void paint_strokes(QPainter& g, const ch::drawing_component& sg) {
     if (!sg.is_stippling) {
         g.setPen(ch::create_pen(0, sg.thickness));
         g.setBrush(Qt::BrushStyle::NoBrush);
@@ -36,23 +36,23 @@ void paint_strokes(QPainter& g, const ch::stroke_group& sg) {
     }
 }
 
-ch::stroke_group::stroke_group() : 
+ch::drawing_component::drawing_component() : 
     thickness(0), 
     is_stippling(false)
 {
 }
 
-ch::stroke_group::stroke_group(ch::polylines&& strks, double thk, bool isstip) :
+ch::drawing_component::drawing_component(ch::polylines&& strks, double thk, bool isstip) :
     strokes(strks),
     thickness(thk),
     is_stippling(isstip)
 {}
 
 
-ch::stroke_groups ch::transform(const stroke_groups& s, const ch::matrix& mat) {
+ch::drawing_comps ch::transform(const drawing_comps& s, const ch::matrix& mat) {
     return s |
         rv::transform(
-            [&mat](const auto& sg)->stroke_group {
+            [&mat](const auto& sg)->drawing_component {
                 return {
                     sg.strokes | rv::transform(
                         [&mat](const auto& poly)->ch::polyline {
@@ -66,17 +66,17 @@ ch::stroke_groups ch::transform(const stroke_groups& s, const ch::matrix& mat) {
         ) | r::to_vector;
 }
 
-void ch::paint_strokes(QPainter& g, const ch::stroke_groups& strks) {
+void ch::paint_strokes(QPainter& g, const ch::drawing_comps& strks) {
     for (const auto& strk_group : strks) {
         paint_strokes(g, strk_group);
     }
 }
 
-void ch::paint_strokes(QPainter& g, strokes_ptr str_ptr) {
+void ch::paint_strokes(QPainter& g, drawing_comps_ptr str_ptr) {
     return paint_strokes(g, *str_ptr);
 }
 
-void ch::append(strokes_ptr dst, strokes_ptr src) {
+void ch::append(drawing_comps_ptr dst, drawing_comps_ptr src) {
     dst->insert(
         dst->end(),
         std::make_move_iterator(src->begin()),
@@ -84,15 +84,15 @@ void ch::append(strokes_ptr dst, strokes_ptr src) {
     );
 }
 
-std::string ch::to_svg(const ch::stroke_groups& s) {
+std::string ch::to_svg(const ch::drawing_comps& s) {
     return {}; //TODO
 }
 
-ch::strokes_ptr ch::clip_strokes(const polygon& poly, strokes_ptr strokes) {
+ch::drawing_comps_ptr ch::clip_strokes(const polygon& poly, drawing_comps_ptr strokes) {
     return
         *strokes |
         rv::transform(
-            [&poly](const stroke_group& sg)->stroke_group {
+            [&poly](const drawing_component& sg)->drawing_component {
                 if (!sg.is_stippling) {
                     return {
                         clip_polylines_to_poly(sg.strokes, poly),
@@ -106,13 +106,13 @@ ch::strokes_ptr ch::clip_strokes(const polygon& poly, strokes_ptr strokes) {
         ) | to_strokes;
 }
 
-ch::strokes_ptr ch::transform(ch::strokes_ptr strokes, const ch::matrix& mat) {
-    return std::make_shared<stroke_groups>(
+ch::drawing_comps_ptr ch::transform(ch::drawing_comps_ptr strokes, const ch::matrix& mat) {
+    return std::make_shared<drawing_comps>(
         transform(*strokes, mat)
     );
 }
 
-cv::Mat ch::strokes_to_mat(const stroke_groups& strokes, cv::Mat mat) {
+cv::Mat ch::strokes_to_mat(const drawing_comps& strokes, cv::Mat mat) {
     auto qimg = ch::mat_to_qimage(mat, false);
     QPainter g(&qimg);
     g.setRenderHint(QPainter::Antialiasing, true);
@@ -120,7 +120,7 @@ cv::Mat ch::strokes_to_mat(const stroke_groups& strokes, cv::Mat mat) {
     return mat;
 }
 
-cv::Mat ch::strokes_to_mat(strokes_ptr strokes, cv::Mat mat) {
+cv::Mat ch::strokes_to_mat(drawing_comps_ptr strokes, cv::Mat mat) {
     return strokes_to_mat(*strokes, mat);
 }
 

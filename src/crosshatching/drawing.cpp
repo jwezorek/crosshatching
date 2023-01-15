@@ -130,13 +130,13 @@ namespace {
         return tbl;
     }
 
-    std::tuple<std::vector<ch::stroke_group>, swatch_table> draw_ink_layer(
+    std::tuple<std::vector<ch::drawing_component>, swatch_table> draw_ink_layer(
             const ch::ink_layer& layer, swatch_table& tbl,
             const ch::parameters& params, progress& prog) {
 
         size_t n = layer.content.size();
         prog.start_new_layer(n);
-        std::vector<ch::stroke_group> output;
+        std::vector<ch::drawing_component> output;
         std::unordered_map<ch::brush_token, ch::brush_ptr> brush_table;
         swatch_table output_table = create_swatch_table(
             params.num_samples,
@@ -219,7 +219,7 @@ namespace {
         prog.set_polygon_count(poly_count);
         auto layers = scale(inp_layers, params.scale);
         
-        std::vector<std::vector<ch::stroke_group>> layer_strokes(layers.content.size());
+        std::vector<std::vector<ch::drawing_component>> layer_strokes(layers.content.size());
         swatch_table tok_to_bkgd = create_swatch_table(
             params.num_samples,
             params.swatch_sz

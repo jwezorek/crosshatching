@@ -28,7 +28,7 @@ namespace {
         );
     }
 
-    ch::strokes_ptr stroke_rectangle(ch::brush_expr_ptr expr, const ch::dimensions<int>& sz, double t) {
+    ch::drawing_comps_ptr stroke_rectangle(ch::brush_expr_ptr expr, const ch::dimensions<int>& sz, double t) {
         auto rect = make_rectangle(sz);
         return ch::brush_expr_to_strokes(expr, rect, t);
     }
@@ -155,7 +155,7 @@ double ch::brush::gray_value_to_param(double gray_val) {
     return build_to_gray_level(gray_val);
 }
 
-ch::strokes_ptr ch::brush::draw_strokes(const polygon& poly, double gray_level, bool clip_to_poly) {
+ch::drawing_comps_ptr ch::brush::draw_strokes(const polygon& poly, double gray_level, bool clip_to_poly) {
     
     if (is_uinitiailized()) {
         throw std::runtime_error("brush is not built");

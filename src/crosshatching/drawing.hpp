@@ -16,7 +16,7 @@ namespace ch {
 
     struct drawing {
         std::vector<polygon> black_regions_;
-        stroke_groups content;
+        drawing_comps content;
         dimensions<double> sz;
         size_t stroke_count() const;
 
@@ -25,7 +25,7 @@ namespace ch {
             namespace rv = ranges::views;
             return content |
                 rv::transform(
-                    [](const stroke_group& sg) {
+                    [](const drawing_component& sg) {
                         return sg.strokes |
                             rv::transform(
                                 [thickness = sg.thickness, stip = sg.is_stippling]
