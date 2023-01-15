@@ -38,6 +38,9 @@ namespace {
                            sg.thickness, sg.thickness
                        );
                    }
+                },
+                [&](const ch::shaded_polygon& sp) {
+                   ch::paint_polygon(g, sp.poly, ch::ink_shade_to_color(sp.shade));
                 }
             },
             dc
@@ -62,6 +65,12 @@ namespace {
                         ch::transform(sg.points, mat),
                         sg.thickness
                     };
+                },
+                [&mat](const ch::shaded_polygon& sp)->ch::drawing_component {
+                    return ch::shaded_polygon {
+                        ch::transform(sp.poly, mat),
+                        sp.shade
+                    };
                 }
             },
             dc
@@ -77,6 +86,9 @@ bool ch::is_empty(const ch::drawing_component& dc) {
             },
             [](const stippling_group& sg)->bool {
                 return sg.points.empty();
+            },
+            [](const shaded_polygon& sp)->bool {
+                return sp.poly.outer().empty();
             }
         },
         dc
@@ -129,6 +141,9 @@ ch::drawing_comps_ptr ch::clip_strokes(const polygon& poly, drawing_comps_ptr st
                         },
                         [](const stippling_group& sg)->drawing_component {
                             return sg;
+                        },
+                        [](const shaded_polygon& sp)->drawing_component {
+                            return sp;
                         }
                     },
                     dc

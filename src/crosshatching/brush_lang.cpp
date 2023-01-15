@@ -663,6 +663,9 @@ namespace {
                                 [&](const ch::stippling_group& sg)->ch::drawing_component {
                                     //TODO
                                     return sg;
+                                },
+                                [&](const ch::shaded_polygon& sd)->ch::drawing_component {
+                                    return sd;
                                 }
                             },
                             dc

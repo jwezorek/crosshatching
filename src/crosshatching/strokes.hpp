@@ -18,7 +18,12 @@ namespace ch {
         double thickness;
     };
 
-    using drawing_component = std::variant<stroke_group, stippling_group>;
+    struct shaded_polygon {
+        ch::polygon poly;
+        double shade;
+    };
+
+    using drawing_component = std::variant<stroke_group, stippling_group, shaded_polygon>;
     using drawing_comps = std::vector<drawing_component>;
     using drawing_comps_ptr = std::shared_ptr<drawing_comps>;
 

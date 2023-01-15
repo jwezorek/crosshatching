@@ -605,6 +605,12 @@ void ch::debug_polygons(const std::string& output_file, dimensions<int> sz,
 	cv::imwrite(output_file, img);
 }
 
+ch::color ch::ink_shade_to_color(double ink_shade) {
+    ink_shade = (1.0 - ink_shade) * 255.0;
+    uchar ch = static_cast<uchar>(std::round(ink_shade));
+    return rgb(ch, ch, ch);
+}
+
 ch::color ch::rgb(uchar r, uchar g, uchar b) {
 	return { b,g,r };
 }

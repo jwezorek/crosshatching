@@ -145,6 +145,12 @@ namespace {
 
         for (const auto& blob: layer.content) {
             if (blob.value == 255 && params.use_true_black) {
+                output.push_back(
+                    ch::shaded_polygon(
+                        blob.poly,
+                        1.0
+                    )
+                );
                 prog.tick();
                 continue;
             }
@@ -224,10 +230,6 @@ namespace {
             params.num_samples,
             params.swatch_sz
         );
-        std::vector<ch::polygon> black;
-        if (params.use_true_black) {
-            black = black_regions(layers.content);
-        }
         for (auto [index, layer] : rv::enumerate(layers.content | rv::reverse)) {
             prog.log(std::string("  - layer ") + std::to_string(index));
             std::tie(layer_strokes[index], tok_to_bkgd) = draw_ink_layer(
@@ -235,7 +237,6 @@ namespace {
         }
 
         return ch::drawing{
-            black,
             layer_strokes | rv::join | r::to_vector,
             layers.sz
         };
@@ -266,7 +267,10 @@ size_t ch::drawing::stroke_count() const {
                             [](const stroke_group& sg)->size_t {
                                 return sg.strokes.size();
                             },
-                            [](const stippling_group& sg)->size_t {
+                            [](const stippling_group&)->size_t {
+                                return 1;
+                            },
+                            [](const shaded_polygon&)->size_t {
                                 return 1;
                             }
                         },
@@ -303,13 +307,14 @@ void ch::write_to_svg(const std::string& filename, const drawing& d,
                     if (update_progress) {
                         update_progress(index / n);
                     }
+                },
+                [&](const shaded_polygon& sp) {
+                    auto col = to_svg_color(ink_shade_to_color(sp.shade));
+                    outfile << polygon_to_svg(sp.poly, col, 1.0) << std::endl;
                 }
             },
             dc
         );
-    }
-    for (auto&& black_poly : d.black_regions_) {
-        outfile << polygon_to_svg(black_poly, to_svg_color(static_cast<uchar>(0)), 1.0) << std::endl;
     }
     outfile << "</svg>" << std::endl;
     outfile.close();

@@ -15,7 +15,6 @@
 namespace ch {
 
     struct drawing {
-        std::vector<polygon> black_regions_;
         drawing_comps content;
         dimensions<double> sz;
         size_t stroke_count() const;
