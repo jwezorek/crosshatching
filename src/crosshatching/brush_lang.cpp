@@ -577,10 +577,10 @@ namespace {
                             return rnd.random_point(i);
                         }
                     ) | r::to<ch::polyline>()
-                            ),
+                ),
                 pen_thickness,
-                            true
-                            );
+                true
+            );
         }
     };
 
