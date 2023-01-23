@@ -16,6 +16,8 @@
 #include "drawing.hpp"
 #include "CDT/include/CDT.h"
 
+/*------------------------------------------------------------------------------------------------*/
+
 namespace r = ranges;
 namespace rv = ranges::views;
 namespace bg = boost::geometry;
@@ -568,6 +570,48 @@ ch::point ch::unit_vector(float theta) {
     return { std::cos(theta), std::sin(theta) };
 }
 
+
+ch::point ch::normalize(const ch::point& pt) {
+    return pt / euclidean_distance({ 0,0 }, pt);
+}
+
+ch::point ch::representative_point(const ch::polygon& poly) {
+    auto triangles = triangulate(poly);
+    if (!triangles.empty()) {
+        auto iter = r::max_element(
+            triangles,
+            [](const auto& lhs, const auto& rhs)->bool {
+                return lhs.area() < rhs.area();
+            }
+        );
+        return iter->centroid();
+    }
+
+    // This happens because raster-to-vector can generate self-intersecting polygons
+    // boost::geometry::correct fails to correct.
+    // TODO: fix raster-to-vector such that it does not generate self-intersecting
+    // polygons to begin with
+
+    const auto eps = 1e-4;
+    for (const auto& [u, v] : all_edges(poly)) {
+        auto pt = (u + v) / 2.0;
+        auto edge_dir = normalize(u - v);
+
+        auto dir_1 = point{ -edge_dir.y, edge_dir.x };
+        auto pt_1 = pt + eps * dir_1;
+        if (bg::within(pt_1, poly)) {
+            return pt_1;
+        }
+
+        auto dir_2 = -1.0 * dir_1;
+        auto pt_2 = pt + eps * dir_2;
+        if (bg::within(pt_2, poly)) {
+            return pt_2;
+        }
+    }
+    throw std::runtime_error("representative point failed");
+}
+
 double ch::triangle::area() const {
     double x1 = a.x;
     double y1 = a.y;
@@ -577,6 +621,10 @@ double ch::triangle::area() const {
     double y3 = c.y;
 
     return 0.5 * std::abs((x1 - x3) * (y2 - y1) - (x1 - x2) * (y3 - y1));
+}
+
+ch::point ch::triangle::centroid() const {
+    return (a + b + c) / 3.0;
 }
 
 std::vector<ch::triangle> ch::triangulate(const polygon& poly) {

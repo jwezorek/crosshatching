@@ -118,4 +118,6 @@ namespace ch {
 
     color rgb(uchar r, uchar g, uchar b);
     color ink_shade_to_color(double ink_shade);
+
+    void debug_polys(const std::vector<polygon>& polys);
 }

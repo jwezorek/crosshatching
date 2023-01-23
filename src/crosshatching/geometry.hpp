@@ -31,7 +31,7 @@ namespace ch {
     using ring = boost::geometry::model::ring<point, true, false>;
     using polyline = boost::geometry::model::linestring<point>;
     using polylines = boost::geometry::model::multi_linestring<polyline>;
-    using line_segment = std::tuple<point, point>;
+    using line_segment = boost::geometry::model::segment<point>;
     using rectangle = std::tuple<float, float, float, float>;
     using matrix = Eigen::Matrix<float, 3, 3>;
     using int_point = cv::Point;
@@ -116,6 +116,8 @@ namespace ch {
     bool is_point_in_rect(const point& pt, const rectangle& rect);
     bool is_point_in_polygon(const point& pt, const polygon& poly);
     point unit_vector(float theta);
+    point normalize(const point& pt);
+    point representative_point(const polygon& poly);
 
     struct triangle {
         ch::point a;
@@ -123,6 +125,7 @@ namespace ch {
         ch::point c;
 
         double area() const;
+        point centroid() const;
     };
 
     std::vector<triangle> triangulate(const polygon& poly);

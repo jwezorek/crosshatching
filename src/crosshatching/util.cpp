@@ -757,4 +757,23 @@ float ch::bilinear_interpolation(float q11, float q12, float q21, float q22,
         );
 }
 
+void ch::debug_polys(const std::vector<ch::polygon>& polys) {
+    auto [x1, y1, wd, hgt] = ch::bounding_rectangle(polys);
+
+    std::ofstream outfile("C:\\test\\poly_points.svg");
+    outfile << ch::svg_header(static_cast<int>( wd), static_cast<int>( hgt));
+    for (const auto& poly : polys) {
+        auto pt = representative_point(poly);
+
+        outfile << "<path fill-rule=\"evenodd\" stroke=\"";
+        outfile << "black" << "\" fill=\"";
+        outfile << "none" << "\" d=\"";
+        outfile << svg_path_commands(poly, 1.0);
+        outfile << "\" />";
+        outfile << "<circle fill=\"red\" cx=\"" << pt.x << "\" cy=\"" << pt.y << "\" r=\"" << 0.5 << "\" />";
+    }
+    outfile << "</svg>" << std::endl;
+    outfile.close();
+}
+
 

@@ -456,6 +456,24 @@ namespace {
             }
 
             std::vector<cluster> select_merge_targets(const std::vector<cluster>& candidates) {
+                uchar selected_color = r::max(
+                    candidates | 
+                        rv::transform(
+                            [](auto&& c)->uchar {
+                                return c.color();
+                            }
+                        )
+                );
+                return candidates |
+                    rv::remove_if(
+                        [selected_color](const auto& c) {
+                            return c.color() != selected_color;
+                        }
+                ) | r::to_vector;
+            }
+
+            /*
+            std::vector<cluster> select_merge_targets(const std::vector<cluster>& candidates) {
                 std::unordered_map<uchar, double> areas;
                 for (const auto& c : candidates) {
                     areas[c.color()] += c.area();
@@ -473,6 +491,7 @@ namespace {
                         }
                 ) | r::to_vector;
             }
+            */
 
             bool contains(const cluster& c) {
                 return set_.find(c.id()) != set_.end();
@@ -519,7 +538,7 @@ namespace {
 
                 do {
                     bool merged_one = false;
-                    for (auto ex_clust : src.clusters_by_color()) {
+                    for (auto ex_clust : src.clusters_by_area()) {
 
                         auto neighbors = adjacent_clusters(ex_clust.id()) |  r::to_vector;
                         if (! neighbors.empty()) {

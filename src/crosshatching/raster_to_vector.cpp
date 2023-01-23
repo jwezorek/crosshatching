@@ -542,9 +542,9 @@ namespace {
 			rv::transform(second<T, ch::polygon>) |
 			r::to_vector;
 
-		// fix self-intersections, spikes, etc.
-
+		
 		polys = simplify_polygons(polys, param);
+
 		std::vector<std::tuple<T, ch::polygon>> output;
 		output.reserve(polys.size() + 100);
 
@@ -557,6 +557,7 @@ namespace {
 				output.emplace_back(col, std::move(poly));
 			}
 
+            // fix self-intersections, spikes, etc.
 			double remove_spike_threshold = 1E-7;
 			ch::polygons result;
 			geometry::correct<ch::point, ch::polygon, ch::ring, ch::polygons>(
@@ -567,7 +568,7 @@ namespace {
 				output.emplace_back(col, std::move(p));
 			}
 		}
-
+        output.shrink_to_fit();
 		return output;
 	}
 
