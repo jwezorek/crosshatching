@@ -757,10 +757,10 @@ float ch::bilinear_interpolation(float q11, float q12, float q21, float q22,
         );
 }
 
-void ch::debug_polys(const std::vector<ch::polygon>& polys) {
+void ch::debug_polys(std::string name, const std::vector<ch::polygon>& polys) {
     auto [x1, y1, wd, hgt] = ch::bounding_rectangle(polys);
 
-    std::ofstream outfile("C:\\test\\poly_points.svg");
+    std::ofstream outfile(name);
     outfile << ch::svg_header(static_cast<int>( wd), static_cast<int>( hgt));
     for (const auto& poly : polys) {
         auto pt = representative_point(poly);

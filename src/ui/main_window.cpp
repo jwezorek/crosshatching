@@ -437,7 +437,7 @@ ch::ink_layers ui::main_window::layers() const {
 				}
 			) | r::to_vector;
 
-	return crosshatching_.layers_ = ch::split_into_layers(
+	return crosshatching_.layers_ = ch::split_into_layers_simple(
         vo.sz, gray_value_polygons, brushes, gray_value_ranges
     );
 }

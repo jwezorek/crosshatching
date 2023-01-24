@@ -219,7 +219,7 @@ namespace {
     }
     */
 
-    auto gray_ranges(std::span<const uchar> gray_levels) {
+    auto gray_ranges(std::span<const uchar> gray_levels, bool reverse) {
         std::vector<uchar> end_of_ranges = gray_levels | r::to_vector;
         if (end_of_ranges.back() != 255) {
             end_of_ranges.push_back(255);
@@ -235,12 +235,16 @@ namespace {
         );
         auto value_ranges = rv::zip(start_of_ranges, end_of_ranges) |
                 rv::transform(
-                    [](const auto& pair)->std::tuple<double, double> {
+                    [](const auto& pair)->std::tuple<uchar, uchar> {
                         auto [from, to] = pair;
                         return { from,to };
                     }
             ) | r::to_vector;
-        return value_ranges | rv::reverse | r::to_vector;
+
+        if (reverse)
+            return value_ranges | rv::reverse | r::to_vector;
+        else
+            return value_ranges | r::to_vector;
     }
 
     struct edge_record {
@@ -783,7 +787,7 @@ ch::ink_layers ch::scale(const ink_layers& il, double scale_factor) {
     return clone;
 }
 
-ch::ink_layers ch::split_into_layers(
+ch::ink_layers ch::split_into_layers_adaptive(
         const dimensions<double>& sz,
         const std::vector<gray_polygon>& cpolys,
         std::span<const ch::brush_expr_ptr> brush_expr_ptrs,
@@ -795,7 +799,7 @@ ch::ink_layers ch::split_into_layers(
     
     int item_id = 0;
     int layer_id = 0;
-    auto ranges = gray_ranges(gray_levels);
+    auto ranges = gray_ranges(gray_levels, true);
     auto n = ranges.size();
     std::vector<ch::brush_expr_ptr> brushes = (!brush_expr_ptrs.empty()) ?
         brush_expr_ptrs | rv::reverse | r::to_vector :
@@ -841,6 +845,139 @@ ch::ink_layers ch::split_into_layers(
     return layers;
 }
 
+std::vector<ch::gray_polygon> merge_gray_polygons(const std::vector<ch::gray_polygon>& polys) {
+    auto adj_graph = polygons_to_adjacency_graph(polys);
+    std::vector<ch::gray_polygon> output;
+    output.reserve(2 * polys.size());
+    std::unordered_set<int> visited;
+
+    auto n = static_cast<int>(polys.size());
+    for (int i = 0; i < n; ++i) {
+        auto color = std::get<0>(polys[i]);
+        std::stack<int> stack;
+        stack.push(i);
+        ch::polygon cluster_poly;
+        while (!stack.empty()) {
+            auto poly_id = stack.top();
+            stack.pop();
+
+            if (visited.contains(poly_id)) {
+                continue;
+            }
+            visited.insert(poly_id);
+
+            const auto& curr_poly = std::get<1>(polys[poly_id]);
+            if (cluster_poly.outer().empty()) {
+                cluster_poly = curr_poly;
+            } else {
+                cluster_poly = join_polygons(cluster_poly, curr_poly);
+            }
+
+            for (auto neighbor : adj_graph.adjacent_verts(poly_id)) {
+                if (std::get<0>(polys[neighbor]) != color) {
+                    continue;
+                }
+                stack.push(neighbor);
+            }
+        }
+        if (cluster_poly.outer().empty()) {
+            continue;
+        }
+        output.push_back({ color, cluster_poly });
+    }
+
+    return polys;
+}
+
+ch::ink_layer_item to_ink_layer_item(const ch::gray_polygon& gp, int index, int layer_index) {
+    const auto& [value, poly] = gp;
+    return {
+        index,
+        layer_index,
+        value,
+        poly,
+        nullptr
+    };
+}
+
+ch::ink_layer to_simple_ink_layer(const std::vector<ch::gray_polygon>& polys, int layer_index,
+        const std::tuple<uchar, uchar>& rng, ch::brush_expr_ptr br_expr) {
+
+    auto [low, high] = rng;
+    auto layer_polys = polys |
+        rv::remove_if(
+            [low](const auto& gray_poly) {
+                auto val = std::get<0>(gray_poly);
+                return val < low;
+            }
+        ) | rv::transform(
+            [high](const auto& gray_poly)->ch::gray_polygon {
+                const auto [val, p] = gray_poly;
+                if (val <= high) {
+                    return gray_poly;
+                }
+                return { high, p };
+            }
+        ) | r::to_vector;
+    layer_polys = merge_gray_polygons(layer_polys);
+    return ch::ink_layer{
+        br_expr,
+        rv::enumerate(layer_polys) |
+            rv::transform(
+                [layer_index](const auto& index_gp)->ch::ink_layer_item {
+                    const auto& [index, gp] = index_gp;
+                    return to_ink_layer_item(gp, index, layer_index);
+                }
+            ) | r::to_vector
+    };
+}
+
+void populate_parents(std::vector<ch::ink_layer>& layers) {
+    if (layers.size() <= 1) {
+        return;
+    }
+    ch::polygon_tree<ch::ink_layer_item*> rtree;
+    for (int i = 1; i < layers.size(); ++i) {
+        auto& curr = layers[i];
+        auto& prev = layers[i - 1];
+        ch::polygon_tree<ch::ink_layer_item*> rtree;
+        for (auto& ili : prev.content) {
+            rtree.insert(ili.poly, &ili);
+        }
+        for (auto& ili : curr.content) {
+            auto polys = rtree.query(ch::representative_point(ili.poly));
+            if (polys.size() < 1) {
+                // TODO: this should not happen but apparently does...
+                continue;
+            }
+            ili.parent = polys.front();
+        }
+    }
+
+}
+
+ch::ink_layers ch::split_into_layers_simple(
+        const ch::dimensions<double>& sz,
+        const std::vector<ch::gray_polygon>& polys,
+        std::span<const ch::brush_expr_ptr> brushes,
+        std::span<const uchar> gray_levels) {
+
+    auto layers = ink_layers{ sz, {} };
+    auto ranges = gray_ranges( gray_levels, false );
+    layers.content = rv::enumerate(rv::zip(ranges, brushes)) |
+        rv::transform(
+            [&](auto&& tup)->ink_layer {
+                const auto& [index, range_and_brush] = tup;
+                const auto& [rng, brush] = range_and_brush;
+                return to_simple_ink_layer(polys, index, rng, brush);
+            }
+    ) | r::to_vector;
+    populate_parents(layers.content);
+    r::reverse(layers.content);
+    return layers;
+
+}
+
 std::vector<ch::gray_polygon> ch::to_polygons(const ink_layer& il) {
     return il.content |
         rv::transform(
@@ -855,7 +992,7 @@ void ch::debug_layers(cv::Mat img) {
     auto vec = ch::raster_to_vector(mat, 0.05);
     auto bw = ch::to_monochrome(vec, true);
     auto start = std::chrono::high_resolution_clock::now();
-    auto layers = ch::split_into_layers(mat_dimensions(mat), bw, {{nullptr,nullptr,nullptr}}, 
+    auto layers = ch::split_into_layers_adaptive(mat_dimensions(mat), bw, {{nullptr,nullptr,nullptr}}, 
         {{ 130, 242, 255}} );
 
     int n = 0;

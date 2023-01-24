@@ -11,6 +11,7 @@
 #include <range/v3/all.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/geometry.hpp>
+#include <boost/geometry/algorithms/envelope.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/geometries/linestring.hpp>
 #include <boost/geometry/multi/geometries/multi_linestring.hpp>
@@ -35,6 +36,39 @@ namespace ch {
     using rectangle = std::tuple<float, float, float, float>;
     using matrix = Eigen::Matrix<float, 3, 3>;
     using int_point = cv::Point;
+
+    template<typename T>
+    class polygon_tree {
+
+    private:
+        using box = boost::geometry::model::box<point>;
+        using value_type = std::pair<box, T>;
+        using poly_rtree = boost::geometry::index::rtree<value_type, boost::geometry::index::rstar<16>>;
+
+        poly_rtree impl_;
+    public:
+        void insert(const polygon& p, T val) {
+            box b;
+            boost::geometry::envelope(p, b);
+            impl_.insert( value_type{ b, val } );
+        }
+        std::vector<T> query(const point& pt) {
+            namespace r = ranges;
+            namespace rv = ranges::views;
+            namespace bg = boost::geometry;
+            namespace bgi = boost::geometry::index;
+            std::vector<value_type> result;
+            impl_.query(bgi::intersects(pt), std::back_inserter(result));
+            return result | 
+                rv::remove_if(
+                    [pt](const auto& p) {
+                        return !bg::within(pt, p.second->poly);
+                    }
+                ) | rv::transform(
+                    [](const auto& p) {return p.second; }
+                ) | r::to_vector;
+        }
+    };
 
     template <typename T>
     struct dimensions {

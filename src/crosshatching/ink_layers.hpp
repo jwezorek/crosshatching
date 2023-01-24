@@ -42,7 +42,13 @@ namespace ch {
 
     ink_layers scale(const ink_layers& il, double scale_factor);
 
-    ink_layers split_into_layers(
+    ink_layers split_into_layers_adaptive(
+        const dimensions<double>& sz,
+        const std::vector<gray_polygon>& polys,
+        std::span<const ch::brush_expr_ptr> brushes,
+        std::span<const uchar> gray_levels);
+
+    ink_layers split_into_layers_simple(
         const dimensions<double>& sz,
         const std::vector<gray_polygon>& polys,
         std::span<const ch::brush_expr_ptr> brushes,
