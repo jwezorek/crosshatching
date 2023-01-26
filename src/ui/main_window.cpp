@@ -132,6 +132,7 @@ ui::main_window::main_window(QWidget *parent)
 	tab_ctrl->setTabPosition(QTabWidget::TabPosition::East);
 	tab_ctrl->addTab( create_image_processing_pipeline_tools(), "image");
 	tab_ctrl->addTab( create_drawing_tools(), "crosshatch");
+    tab_ctrl->addTab( create_region_map_tools(), "region map");
 
     setCentralWidget(tab_ctrl);
 	handle_source_image_change( img_proc_ctrls_.src );
@@ -316,6 +317,25 @@ QWidget* ui::main_window::create_drawing_tools() {
 		this, &main_window::set_layer_view);
 
 	return splitter;
+}
+
+
+QWidget* ui::main_window::create_region_map_tools() {
+    QSplitter* vert_splitter = new QSplitter();
+    vert_splitter->setOrientation(Qt::Orientation::Horizontal);
+
+    rgn_map_.rgn_props_ = new rgn_properties_panel();
+    vert_splitter->addWidget(rgn_map_.rgn_props_);
+
+
+    QScrollArea* scroller = new QScrollArea();
+    scroller->setWidget(rgn_map_.rgn_map_ = new rgn_map_ctrl());
+    scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+
+    vert_splitter->addWidget(scroller);
+    vert_splitter->setSizes({100, 800});
+
+    return vert_splitter;
 }
 
 QWidget* ui::main_window::create_image_processing_pipeline_tools()
@@ -541,6 +561,7 @@ void ui::main_window::display(pipeline_output work_in_prog) {
 			ch::scale(ptr_to_vg->polygons, view_scale) :
 			ptr_to_vg->polygons;
 		mat = ch::paint_polygons(polys, view_scale * ptr_to_vg->sz);
+        rgn_map_.rgn_map_->set_regions(ptr_to_vg);
 	}
 	int wd = mat.cols;
 	int hgt = mat.rows;
@@ -555,6 +576,7 @@ std::tuple<int, int> ui::main_window::source_image_sz() const {
 
 void ui::main_window::handle_view_scale_change(double scale) {
 	img_proc_ctrls_.view_state.scale = scale;
+    rgn_map_.rgn_map_->set_scale(scale);
 	display();
 	if (crosshatching_.layer_viewer_->has_images()) {
 		set_layer_view();

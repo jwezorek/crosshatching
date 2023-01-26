@@ -3,6 +3,7 @@
 #include "../crosshatching/drawing.hpp"
 #include "../crosshatching/brush_lang.hpp"
 #include "../crosshatching/ink_layers.hpp"
+#include "rgn_map_ctrls.hpp"
 #include "settingctrls.hpp"
 #include "treepanel.h"
 #include "image_box.h"
@@ -114,6 +115,11 @@ namespace ui {
         void set_view(view v);
     };
 
+    struct rgn_map_tools {
+        rgn_map_ctrl* rgn_map_;
+        rgn_properties_panel* rgn_props_;
+    };
+
     using layer_tuple = std::tuple<ch::brush_expr_ptr, std::vector<ch::gray_polygon>>;
 
     class main_window : public QMainWindow
@@ -147,6 +153,7 @@ namespace ui {
         void create_main_menu();
         QWidget* create_image_processing_pipeline_tools();
         QWidget* create_drawing_tools();
+        QWidget* create_region_map_tools();
 
         void display(pipeline_output work_in_prog = {});
         void handle_pipeline_change(int index);
@@ -166,6 +173,7 @@ namespace ui {
 
         image_processing_tools img_proc_ctrls_;
         drawing_tools crosshatching_;
+        rgn_map_tools rgn_map_;
     };
 
 };
