@@ -54,18 +54,19 @@ namespace ch {
             boost::geometry::envelope(get_poly(val), b);
             impl_.insert( value_type{ b, val } );
         }
-        std::vector<T> query(const point& pt) const {
+        template<typename U>
+        std::vector<T> query(const U& inp) const {
             namespace r = ranges;
             namespace rv = ranges::views;
             namespace bg = boost::geometry;
             namespace bgi = boost::geometry::index;
             std::vector<value_type> result;
-            impl_.query(bgi::intersects(pt), std::back_inserter(result));
+            impl_.query(bgi::intersects(inp), std::back_inserter(result));
             return result | 
                 rv::remove_if(
-                    [pt](const auto& p) {
+                    [&inp](const auto& p) {
                         F get_poly;
-                        return !bg::within(pt, get_poly(p.second));
+                        return !bg::intersects(inp, get_poly(p.second));
                     }
                 ) | rv::transform(
                     [](const auto& p) {return p.second; }

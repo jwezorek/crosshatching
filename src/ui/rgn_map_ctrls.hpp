@@ -50,10 +50,9 @@ namespace ui {
         bool selecting_;
         int cursor_radius_;
 
-        static ch::polygon cursor_poly(float r);
-
         void display();
-        int poly_at_point(const ch::point& pt) const;
+        std::vector<int> polys_at_point(const ch::point& pt) const;
+        ch::polygon cursor_poly(const ch::point& pt, int sz_index) const;
 
     protected:
         void keyPressEvent(QKeyEvent* event) override;
