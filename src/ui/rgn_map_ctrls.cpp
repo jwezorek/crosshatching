@@ -23,6 +23,18 @@ namespace {
         return output;
     }
 
+    ch::box qrect_to_box(const QRect& rect) {
+        ch::point bottomLeft(rect.left(), rect.top());
+        ch::point topRight(rect.right(), rect.bottom());
+        return ch::box(bottomLeft, topRight);
+    }
+
+    ch::point qpoint_to_pt(const QPoint& pt) {
+        return {
+            static_cast<float>(pt.x()),
+            static_cast<float>(pt.y())
+        };
+    }
 }
 
 ui::flow_direction_panel::flow_direction_panel() {
@@ -70,18 +82,13 @@ void ui::rgn_map_ctrl::set_regions(vector_graphics_ptr gfx) {
     base_sz_ = gfx->sz;
     auto sz = scale_ * base_sz_;
     setFixedSize({ sz.wd, sz.hgt });
-    display();
+    update();
 }
 
 std::vector<int> ui::rgn_map_ctrl::polys_at_point(const ch::point& pt) const {
-    std::vector<poly_tree_val> results = (cursor_radius_ == 1) ?
-        tree_.query(pt) : tree_.query(cursor_poly(pt, cursor_radius_));
-    return results |
-        rv::transform(
-            [](auto&& index_poly) {
-                return index_poly.first;
-            }
-        ) | r::to_vector;
+    return (cursor_radius_ == 1) ?
+        find_intersecting_polys(pt) :
+        find_intersecting_polys(cursor_poly(pt, cursor_radius_));
 }
 
 ch::polygon ui::rgn_map_ctrl::cursor_poly(const ch::point& pt, int sz_index) const {
@@ -103,43 +110,50 @@ ch::polygon ui::rgn_map_ctrl::cursor_poly(const ch::point& pt, int sz_index) con
     );
 }
 
-void ui::rgn_map_ctrl::display() {
+void ui::rgn_map_ctrl::set_scale(double sc) {
+    scale_ = sc;
+    update();
+}
+
+void ui::rgn_map_ctrl::paintEvent(QPaintEvent* event) {
+    auto dirty_rect = event->rect();
+
+    QPainter painter(this);
+    painter.fillRect(dirty_rect, Qt::white);
+    painter.setRenderHint(QPainter::Antialiasing, true);
     if (scaled_regions_.empty()) {
         return;
     }
-    auto sz = scale_ * base_sz_;
-    cv::Mat mat(sz.hgt, sz.wd, CV_8UC3);
-    mat.setTo(cv::Scalar(255, 255, 255));
-    QImage img = ch::mat_to_qimage(mat, false);
-    QPainter g(&img);
-    g.setRenderHint(QPainter::Antialiasing, true);
 
-    for (const auto& [index, poly] : rv::enumerate(scaled_regions_)) {
-        uchar gray = colors_[index];
-        ch::paint_polygon(g, poly, ch::rgb(gray, gray, gray));
-        if (selected_.contains(index)) {
-            g.setOpacity(0.5);
-            ch::paint_polygon(g, poly, ch::color(255, 0, 0));
-            g.setOpacity(1.0);
-        }
-        if (curr_loc_ && cursor_radius_ > 1) {
-            ch::paint_polygon(g, cursor_poly( *curr_loc_, cursor_radius_), 
-                ch::color(0, 0, 0), false, 1);
+    auto visible_polys = find_intersecting_polys(qrect_to_box(dirty_rect));
+    for (auto poly_index : visible_polys) {
+        uchar gray = colors_[poly_index];
+        const auto& poly = scaled_regions_[poly_index];
+        ch::paint_polygon(painter, poly, ch::rgb(gray, gray, gray));
+        if (selected_.contains(poly_index)) {
+            painter.setOpacity(0.5);
+            ch::paint_polygon(painter, poly, ch::color(255, 0, 0));
+            painter.setOpacity(1.0);
         }
     }
-    set_image(mat);
-}
 
-void ui::rgn_map_ctrl::set_scale(double sc) {
-    scale_ = sc;
-    display();
+    if (cursor_radius_ > 1 && rect().contains(mapFromGlobal(QCursor::pos()))) {
+        auto pt = qpoint_to_pt(mapFromGlobal(QCursor::pos()));
+        ch::paint_polygon(
+            painter,
+            cursor_poly(pt, cursor_radius_),
+            ch::color(0, 0, 0),
+            false
+        );
+    }
+
 }
 
 void ui::rgn_map_ctrl::keyPressEvent(QKeyEvent* event) {
     auto key = event->key();
     if (key >= Qt::Key_0 && key <= Qt::Key_9) {
         cursor_radius_ = (key != Qt::Key_0) ? static_cast<int>(key - Qt::Key_0) : 10;
-        display();
+        update();
     }
 }
 
@@ -166,7 +180,7 @@ void ui::rgn_map_ctrl::mouseMoveEvent(QMouseEvent* event) {
         }
     }
     if (repaint) {
-        display();
+        update();
     }
 }
 

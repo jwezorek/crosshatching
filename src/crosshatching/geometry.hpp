@@ -33,6 +33,7 @@ namespace ch {
     using polyline = boost::geometry::model::linestring<point>;
     using polylines = boost::geometry::model::multi_linestring<polyline>;
     using line_segment = boost::geometry::model::segment<point>;
+    using box = boost::geometry::model::box<point>;
     using rectangle = std::tuple<float, float, float, float>;
     using matrix = Eigen::Matrix<float, 3, 3>;
     using int_point = cv::Point;
@@ -42,7 +43,7 @@ namespace ch {
 
     private:
 
-        using box = boost::geometry::model::box<point>;
+        
         using value_type = std::pair<box, T>;
         using poly_rtree = boost::geometry::index::rtree<value_type, boost::geometry::index::rstar<16>>;
 

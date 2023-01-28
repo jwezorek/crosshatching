@@ -26,7 +26,7 @@ namespace ui {
     };
 
 
-    class rgn_map_ctrl : public image_box {
+    class rgn_map_ctrl : public QWidget {
 
         Q_OBJECT
 
@@ -40,6 +40,7 @@ namespace ui {
         };
         using poly_tree = ch::polygon_tree<poly_tree_val, poly_getter>;
 
+        //QPixmap bitmap_;
         poly_tree tree_;
         std::optional<ch::point> curr_loc_;
         ch::dimensions<int> base_sz_;
@@ -50,11 +51,25 @@ namespace ui {
         bool selecting_;
         int cursor_radius_;
 
-        void display();
+        template<typename T>
+        std::vector<int> find_intersecting_polys(const T& some_shape) const {
+            namespace r = ranges;
+            namespace rv = ranges::views;
+            std::vector<poly_tree_val> results = tree_.query(some_shape);
+            return results |
+                rv::transform(
+                    [](auto&& index_poly) {
+                        return index_poly.first;
+                    }
+            ) | r::to_vector;
+        }
+ 
         std::vector<int> polys_at_point(const ch::point& pt) const;
         ch::polygon cursor_poly(const ch::point& pt, int sz_index) const;
 
     protected:
+
+        void paintEvent(QPaintEvent* event) override;
         void keyPressEvent(QKeyEvent* event) override;
         void mousePressEvent(QMouseEvent* event) override;
         void mouseMoveEvent(QMouseEvent* event) override;
