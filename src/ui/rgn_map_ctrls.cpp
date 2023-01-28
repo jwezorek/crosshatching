@@ -160,6 +160,7 @@ void ui::rgn_map_ctrl::keyPressEvent(QKeyEvent* event) {
 void ui::rgn_map_ctrl::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::MouseButton::LeftButton) {
         selecting_ = true;
+        mouseMoveEvent(event);
     }
 }
 
@@ -175,7 +176,14 @@ void ui::rgn_map_ctrl::mouseMoveEvent(QMouseEvent* event) {
     if ((event->buttons() & Qt::LeftButton) && selecting_ && curr_loc_) {
         auto poly_indices = polys_at_point( *curr_loc_ );
         if (! poly_indices.empty()) {
-            selected_.insert(poly_indices.begin(), poly_indices.end());
+            bool adding_to_selection = !(QApplication::keyboardModifiers() & Qt::AltModifier);
+            if (adding_to_selection) {
+                selected_.insert(poly_indices.begin(), poly_indices.end());
+            } else {
+                for (auto removee : poly_indices) {
+                    selected_.erase(removee);
+                }
+            }
             repaint = true;
         }
     }
@@ -187,5 +195,6 @@ void ui::rgn_map_ctrl::mouseMoveEvent(QMouseEvent* event) {
 void ui::rgn_map_ctrl::mouseReleaseEvent(QMouseEvent* event) {
     if (event->button() == Qt::MouseButton::LeftButton) {
         selecting_ = false;
+        mouseMoveEvent(event);
     }
 }
