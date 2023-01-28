@@ -105,7 +105,7 @@ namespace {
 	}
 
 	QPolygonF ring_to_qpolygon(const ch::ring& r) {
-		return QPolygonF(
+		auto qpoly = QPolygonF(
 			r |
 			rv::transform(
 				[](const ch::point pt)->QPointF {
@@ -116,6 +116,10 @@ namespace {
 				}
 			) | r::to_<QVector>
 		);
+        if (!qpoly.isClosed()) {
+            qpoly << qpoly.first();
+        }
+        return qpoly;
 	}
 
 	QColor cv_color_to_qcolor(ch::color c) {
@@ -506,15 +510,15 @@ QPen ch::create_pen(uchar color, double thickness) {
 	);
 }
 
-void ch::paint_polygon(QPainter& g, const polygon& poly, color col) {
+void ch::paint_polygon(QPainter& g, const polygon& poly, color col, bool filled, int thickness) {
 	QPainterPath path;
 	path.addPolygon(ring_to_qpolygon(poly.outer()));
 	for (const auto& hole : poly.inners()) {
 		path.addPolygon(ring_to_qpolygon(hole));
 	}
 	auto qcolor = cv_color_to_qcolor(col);
-	g.setPen(QPen(qcolor));
-	g.setBrush(QBrush(qcolor));
+    g.setPen((thickness == 0) ? QPen(qcolor) : QPen(QBrush(qcolor), thickness));
+	g.setBrush((filled) ? QBrush(qcolor) : QBrush(Qt::NoBrush));
 	g.drawPath(path);
 }
 

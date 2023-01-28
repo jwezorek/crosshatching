@@ -4,7 +4,6 @@
 #include <functional>
 #include <tuple>
 #include <optional>
-#include <optional>
 #include <span>
 #include <array>
 #include "qpainter.h"
@@ -101,7 +100,8 @@ namespace ch {
     cv::Mat qimage_to_mat(QImage img, bool copy = true);
     QImage mat_to_qimage(cv::Mat mat, bool copy = true);
     QPen create_pen(uchar color, double thickness);
-    void paint_polygon(QPainter& g, const polygon& poly, color col);
+    void paint_polygon(QPainter& g, const polygon& poly, color col, 
+        bool filled = true, int thickness = 0);
     cv::Mat paint_polygons(const std::vector<std::tuple<color, polygon>>& polys,
         dimensions<int> sz);
     cv::Mat paint_polygons(const std::vector<std::tuple<uchar, polygon>>& polys,

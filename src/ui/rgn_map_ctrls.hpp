@@ -1,10 +1,13 @@
 #pragma once
 
+#include "../crosshatching/geometry.hpp"
 #include "image_box.h"
 #include "settingctrls.hpp"
 #include <QWidget>
+#include <unordered_set>
 
 namespace ui {
+
 
     class flow_direction_panel : public image_box {
 
@@ -28,11 +31,35 @@ namespace ui {
         Q_OBJECT
 
     private:
+
+        using poly_tree_val = std::pair<int, const ch::polygon*>;
+        struct poly_getter {
+            const ch::polygon& operator()(const poly_tree_val& v) const {
+                return *v.second;
+            }
+        };
+        using poly_tree = ch::polygon_tree<poly_tree_val, poly_getter>;
+
+        poly_tree tree_;
+        std::optional<ch::point> curr_loc_;
         ch::dimensions<int> base_sz_;
         double scale_;
-        std::vector<ch::colored_polygon> scaled_regions_;
+        std::unordered_set<int> selected_;
+        std::vector<uchar> colors_;
+        std::vector<ch::polygon> scaled_regions_;
+        bool selecting_;
+        int cursor_radius_;
+
+        static ch::polygon cursor_poly(float r);
 
         void display();
+        int poly_at_point(const ch::point& pt) const;
+
+    protected:
+        void keyPressEvent(QKeyEvent* event) override;
+        void mousePressEvent(QMouseEvent* event) override;
+        void mouseMoveEvent(QMouseEvent* event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
 
     public:
         rgn_map_ctrl();

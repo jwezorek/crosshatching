@@ -932,17 +932,24 @@ ch::ink_layer to_simple_ink_layer(const std::vector<ch::gray_polygon>& polys, in
     };
 }
 
+struct ili_to_poly {
+    const ch::polygon& operator()(ch::ink_layer_item* p) const {
+        return p->poly;
+    }
+};
+
+using ink_layer_item_tree = ch::polygon_tree<ch::ink_layer_item*, ili_to_poly>;
+
 void populate_parents(std::vector<ch::ink_layer>& layers) {
     if (layers.size() <= 1) {
         return;
     }
-    ch::polygon_tree<ch::ink_layer_item*> rtree;
     for (int i = 1; i < layers.size(); ++i) {
         auto& curr = layers[i];
         auto& prev = layers[i - 1];
-        ch::polygon_tree<ch::ink_layer_item*> rtree;
+        ink_layer_item_tree rtree;
         for (auto& ili : prev.content) {
-            rtree.insert(ili.poly, &ili);
+            rtree.insert(&ili);
         }
         for (auto& ili : curr.content) {
             auto polys = rtree.query(ch::representative_point(ili.poly));

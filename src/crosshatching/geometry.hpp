@@ -37,22 +37,24 @@ namespace ch {
     using matrix = Eigen::Matrix<float, 3, 3>;
     using int_point = cv::Point;
 
-    template<typename T>
+    template<typename T, typename F>
     class polygon_tree {
 
     private:
+
         using box = boost::geometry::model::box<point>;
         using value_type = std::pair<box, T>;
         using poly_rtree = boost::geometry::index::rtree<value_type, boost::geometry::index::rstar<16>>;
 
         poly_rtree impl_;
     public:
-        void insert(const polygon& p, T val) {
+        void insert(T val) {
             box b;
-            boost::geometry::envelope(p, b);
+            F get_poly;
+            boost::geometry::envelope(get_poly(val), b);
             impl_.insert( value_type{ b, val } );
         }
-        std::vector<T> query(const point& pt) {
+        std::vector<T> query(const point& pt) const {
             namespace r = ranges;
             namespace rv = ranges::views;
             namespace bg = boost::geometry;
@@ -62,11 +64,27 @@ namespace ch {
             return result | 
                 rv::remove_if(
                     [pt](const auto& p) {
-                        return !bg::within(pt, p.second->poly);
+                        F get_poly;
+                        return !bg::within(pt, get_poly(p.second));
                     }
                 ) | rv::transform(
                     [](const auto& p) {return p.second; }
                 ) | r::to_vector;
+        }
+        std::optional<T> find(const point& pt) const {
+            namespace r = ranges;
+            namespace rv = ranges::views;
+            namespace bg = boost::geometry;
+            namespace bgi = boost::geometry::index;
+            F get_poly;
+            std::vector<value_type> result;
+            impl_.query(bgi::intersects(pt), std::back_inserter(result));
+            for (const auto& [k, v] : result) {
+                if (bg::within(pt, get_poly(v))) {
+                    return v;
+                }
+            }
+            return {};
         }
     };
 
