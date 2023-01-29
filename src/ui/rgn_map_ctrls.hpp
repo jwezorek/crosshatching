@@ -65,7 +65,7 @@ namespace ui {
         }
  
         std::vector<int> polys_at_point(const ch::point& pt) const;
-        ch::polygon cursor_poly(const ch::point& pt, int sz_index) const;
+        ch::polygon cursor_poly(double scale, const ch::point& pt, int sz_index) const;
 
     protected:
 

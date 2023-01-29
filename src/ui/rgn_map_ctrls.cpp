@@ -88,25 +88,26 @@ void ui::rgn_map_ctrl::set_regions(vector_graphics_ptr gfx) {
 std::vector<int> ui::rgn_map_ctrl::polys_at_point(const ch::point& pt) const {
     return (cursor_radius_ == 1) ?
         find_intersecting_polys(pt) :
-        find_intersecting_polys(cursor_poly(pt, cursor_radius_));
+        find_intersecting_polys(cursor_poly(scale_,pt, cursor_radius_));
 }
 
-ch::polygon ui::rgn_map_ctrl::cursor_poly(const ch::point& pt, int sz_index) const {
-    static std::vector<ch::polygon> cursor_polys;
-    if (cursor_polys.empty()) {
-        cursor_polys = rv::iota(0, 11) |
+ch::polygon ui::rgn_map_ctrl::cursor_poly(double scale, const ch::point& pt, int sz_index) const {
+    static std::unordered_map<int,std::vector<ch::polygon>> cursor_polys;
+    auto scale_key = static_cast<int>(scale * 100.0);
+    if (cursor_polys[scale_key].empty()) {
+        cursor_polys[scale_key] = rv::iota(0, 11) |
             rv::transform(
-                [](int index)->ch::polygon {
+                [scale](int index)->ch::polygon {
                     if (index == 0) {
                         index = 10;
                     }
                     double radius = (5.0 * index * index) / 10.0 + 5.0;
-                    return cursor_poly_aux(radius);
+                    return cursor_poly_aux(scale * radius);
                 }
         ) | r::to_vector;
     }
     return ch::transform(
-        cursor_polys[cursor_radius_], ch::translation_matrix(*curr_loc_)
+        cursor_polys[scale_key][cursor_radius_], ch::translation_matrix(*curr_loc_)
     );
 }
 
@@ -141,7 +142,7 @@ void ui::rgn_map_ctrl::paintEvent(QPaintEvent* event) {
         auto pt = qpoint_to_pt(mapFromGlobal(QCursor::pos()));
         ch::paint_polygon(
             painter,
-            cursor_poly(pt, cursor_radius_),
+            cursor_poly(scale_, pt, cursor_radius_),
             ch::color(0, 0, 0),
             false
         );
