@@ -41,12 +41,13 @@ namespace ch {
         virtual brush_expr_value eval(brush_context& ctxt) = 0;
         virtual std::string short_string() const = 0;
         const std::vector<brush_expr_ptr>& children() const;
+        size_t id() const;
     protected:
         std::vector<brush_expr_ptr> children_;
     };
 
     std::variant<brush_expr_ptr, std::runtime_error> parse(const std::string& str);
     drawing_comps_ptr brush_expr_to_strokes(const brush_expr_ptr& expr, const polygon& poly, double t);
-    std::string pretty_print(const brush_expr_ptr& expr);
+    std::string pretty_print(const brush_expr& expr);
     void debug_brushes();
 }

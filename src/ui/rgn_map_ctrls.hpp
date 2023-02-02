@@ -8,7 +8,6 @@
 
 namespace ui {
 
-
     class flow_direction_panel : public image_box {
 
         Q_OBJECT
@@ -25,7 +24,6 @@ namespace ui {
         rgn_properties_panel();
     };
 
-
     class rgn_map_ctrl : public QWidget {
 
         Q_OBJECT
@@ -40,7 +38,6 @@ namespace ui {
         };
         using poly_tree = ch::polygon_tree<poly_tree_val, poly_getter>;
 
-        //QPixmap bitmap_;
         poly_tree tree_;
         std::optional<ch::point> curr_loc_;
         ch::dimensions<int> base_sz_;

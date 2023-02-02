@@ -144,7 +144,7 @@ void ui::brush_dialog::parse_brush_code() {
         mb.exec();
     } else {
         auto new_brush_expr = std::get<ch::brush_expr_ptr>(result);
-        code_box_->setText(ch::pretty_print(new_brush_expr).c_str());
+        code_box_->setText(ch::pretty_print(*new_brush_expr).c_str());
         brush_ = new_brush_expr;
     }
     update_btn_enabled_state();

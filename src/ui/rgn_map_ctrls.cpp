@@ -104,7 +104,7 @@ ch::polygon ui::rgn_map_ctrl::cursor_poly(double scale, const ch::point& pt, int
                     double radius = (5.0 * index * index) / 10.0 + 5.0;
                     return cursor_poly_aux(scale * radius);
                 }
-        ) | r::to_vector;
+            ) | r::to_vector;
     }
     return ch::transform(
         cursor_polys[scale_key][cursor_radius_], ch::translation_matrix(*curr_loc_)

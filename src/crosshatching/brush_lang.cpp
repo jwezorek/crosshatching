@@ -886,60 +886,59 @@ namespace {
         return parser;
     }
 
-    bool is_leaf(const ch::brush_expr_ptr& expr) {
-        return expr->children().empty();
+    bool is_leaf(const ch::brush_expr& expr) {
+        return expr.children().empty();
     }
 
-    int expr_height(ch::brush_expr_ptr expr) {
+    int expr_height(const ch::brush_expr& expr) {
         if (is_leaf(expr)) {
             return 0;
         }
         int highest_child_hgt = r::max(
-            expr->children() |
+            expr.children() |
             rv::transform(
                 [](ch::brush_expr_ptr child)->int {
-                    return expr_height(child);
+                    return expr_height(*child);
                 }
             )
         );
         return highest_child_hgt + 1;
     }
 
-    std::string single_line_pretty_print(const ch::brush_expr_ptr& expr) {
-        auto str = expr->short_string();
+    std::string single_line_pretty_print(const ch::brush_expr& expr) {
+        auto str = expr.short_string();
         if (is_leaf(expr)) {
             return str;
         }
         std::stringstream ss;
         ss << "(" << str;
-        for (auto child : expr->children()) {
-            ss << " " << single_line_pretty_print(child);
+        for (auto child : expr.children()) {
+            ss << " " << single_line_pretty_print(*child);
         }
         ss << ")";
         return ss.str();
     }
 
-    r::any_view<std::string> pretty_print(const ch::brush_expr_ptr& expr) {
+    r::any_view<std::string> pretty_print(const ch::brush_expr& expr) {
         if (expr_height(expr) <= 2) {
             return rv::single(single_line_pretty_print(expr));
         }
-        auto pretty_printed_children = expr->children() |
+        auto pretty_printed_children = expr.children() |
             rv::transform(
                 [](const auto& child)->r::any_view<std::string> {
-                    return ::pretty_print(child) |
+                    return ::pretty_print(*child) |
                         rv::transform(
                             [](const std::string& str)->std::string {
                                 return "    " + str;
                             }
                     );
                 }
-            ) |
-            rv::join;
-                return rv::concat(
-                    rv::single("(" + expr->short_string()),
-                    pretty_printed_children,
-                    rv::single(")")
-                );
+            ) | rv::join;
+         return rv::concat(
+             rv::single("(" + expr.short_string()),
+             pretty_printed_children,
+             rv::single(")")
+         );
     };
 
     ch::polylines flow_lines(float scale, const cv::Mat& flow, uint32_t seed, int n, float step_sz,
@@ -1097,6 +1096,11 @@ const std::vector<ch::brush_expr_ptr>& ch::brush_expr::children() const {
     return children_;
 }
 
+size_t ch::brush_expr::id() const {
+    static auto hasher = std::hash<std::string>();
+    return hasher( ch::pretty_print(*this));
+}
+
 std::variant<ch::brush_expr_ptr, std::runtime_error> ch::parse(const std::string& input) {
     static peg::parser parser;
     if (!parser) {
@@ -1121,7 +1125,7 @@ ch::drawing_comps_ptr ch::brush_expr_to_strokes(const brush_expr_ptr& expr, cons
     return std::get<ch::drawing_comps_ptr>(expr->eval(ctxt));
 }
 
-std::string ch::pretty_print(const ch::brush_expr_ptr& expr) {
+std::string ch::pretty_print(const ch::brush_expr& expr) {
     auto lines = ::pretty_print(expr) | r::to_vector;
     return lines | rv::join('\n') | r::to_<std::string>();
 }
