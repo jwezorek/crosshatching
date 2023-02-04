@@ -136,8 +136,16 @@ ui::main_window::main_window(QWidget *parent)
 	tab_ctrl->addTab( create_drawing_tools(), "crosshatch");
     tab_ctrl->addTab( create_region_map_tools(), "region map");
 
+    connect(tab_ctrl, &QTabWidget::currentChanged, this, &main_window::tab_changed);
+
     setCentralWidget(tab_ctrl);
 	handle_source_image_change( img_proc_ctrls_.src );
+}
+
+void ui::main_window::tab_changed(int index) {
+    if (index == 2) {
+        rgn_map_.rgn_props_->repopulate_ctrls();
+    }
 }
 
 void ui::main_window::open()
@@ -462,6 +470,14 @@ ch::ink_layers* ui::main_window::layers() {
         );
     }
     return &crosshatching_.layers_;
+}
+
+bool ui::main_window::has_layers() const {
+    return !crosshatching_.layers_.empty();
+}
+
+std::vector<std::string> ui::main_window::brush_names() const {
+    return crosshatching_.brushes_->brush_names();
 }
 
 const ch::ink_layers* ui::main_window::layers() const {

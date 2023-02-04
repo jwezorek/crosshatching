@@ -124,6 +124,8 @@ namespace ui {
 
     class main_window : public QMainWindow
     {
+        friend class rgn_map_panel;
+
         Q_OBJECT
 
     public:
@@ -140,6 +142,7 @@ namespace ui {
         void set_swatch_view(cv::Mat swatch, bool left);
         void set_layer_view();
         void set_drawing_view(cv::Mat drawing);
+        std::vector<std::string> brush_names() const;
 
     signals:
         void change_source_image(cv::Mat& img);
@@ -164,6 +167,7 @@ namespace ui {
             brush_per_intervals() const;
         const ch::ink_layers* layers() const;
         ch::ink_layers* layers();
+        bool has_layers() const;
         std::vector<cv::Mat> layer_images() const;
         ch::parameters drawing_params() const;
         std::string image_src_filename() const;
@@ -171,6 +175,7 @@ namespace ui {
         ch::dimensions<int> dimensions() const;
         std::tuple<int, int> source_image_sz() const;
         ui::view_state view_state() const;
+        void tab_changed(int index);
 
         image_processing_tools img_proc_ctrls_;
         drawing_tools crosshatching_;

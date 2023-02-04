@@ -784,6 +784,10 @@ ch::ink_layers ch::ink_layers::clone() const {
     return cloned_ink_layers;
 }
 
+int ch::ink_layers::count() const {
+    return static_cast<int>(content.size());
+}
+
 bool ch::ink_layers::empty() const {
     return content.empty();
 }

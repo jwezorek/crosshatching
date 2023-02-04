@@ -76,8 +76,6 @@ namespace ui {
 
         Q_OBJECT
 
-        void populate_ctrls();
-
     private:
         main_window* parent_;
         QComboBox* layer_cbo_;
@@ -88,6 +86,7 @@ namespace ui {
     
     public:
         rgn_map_panel(main_window* parent);
+        void repopulate_ctrls();
     };
 
 }

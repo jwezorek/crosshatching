@@ -42,6 +42,7 @@ namespace ch {
 
         ink_layers clone() const;
         bool empty() const;
+        int count() const;
         void clear();
     };
 

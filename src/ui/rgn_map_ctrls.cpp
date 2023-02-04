@@ -64,7 +64,22 @@ ui::rgn_map_panel::rgn_map_panel(main_window* parent) :
     layout->addStretch();
 }
 
-void ui::rgn_map_panel::populate_ctrls() {
+void ui::rgn_map_panel::repopulate_ctrls() {
+    if (!parent_->has_layers()) {
+        return;
+    }
+    int num_layers = static_cast<int>(parent_->layers()->count());
+    layer_cbo_->clear();
+    for (int i = 0; i < num_layers; ++i) {
+        std::string lbl = "layer " + std::to_string(i);
+        layer_cbo_->insertItem(i, lbl.c_str());
+    }
+
+    curr_brush_cbo_->clear();
+    auto brushes = parent_->brush_names();
+    for (const auto& [i,brush] : rv::enumerate(brushes)) {
+        curr_brush_cbo_->insertItem(i, brush.c_str());
+    }
 
 }
 
