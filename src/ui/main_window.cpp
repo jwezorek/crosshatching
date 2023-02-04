@@ -484,7 +484,7 @@ std::vector<cv::Mat> ui::main_window::layer_images() const {
 	auto all_polygons = layers |
 		rv::transform(
 			[view_scale](const auto& il) {
-				return il.content |
+				return il |
 					rv::transform(
 						[view_scale](const ch::ink_layer_item& ili)->ch::gray_polygon {
 							return { 

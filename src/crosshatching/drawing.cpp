@@ -104,14 +104,14 @@ namespace {
 
     std::tuple<size_t, size_t> drawing_job_stats(const ch::ink_layers& layers) {
         size_t poly_count = r::accumulate(
-            layers.content | rv::transform([](auto&& l) {return l.content.size(); }),
+            layers.content | rv::transform([](auto&& l) {return l.size(); }),
             size_t{ 0 }
         );
         size_t vert_count = r::accumulate(
             layers.content | rv::transform(
                 [](auto&& l) {
                     return r::accumulate(
-                        l.content | rv::transform(
+                        l | rv::transform(
                             [](auto&& ili) {return ch::vert_count(ili.poly); }
                         ),
                         size_t{ 0 }
@@ -134,7 +134,7 @@ namespace {
             const ch::ink_layer& layer, swatch_table& tbl,
             const ch::parameters& params, progress& prog) {
 
-        size_t n = layer.content.size();
+        size_t n = layer.size();
         prog.start_new_layer(n);
         std::vector<ch::drawing_component> output;
         std::unordered_map<ch::brush_token, ch::brush_ptr> brush_table;
@@ -143,7 +143,7 @@ namespace {
             params.swatch_sz
         );
 
-        for (const auto& blob: layer.content) {
+        for (const auto& blob: layer) {
             if (blob.value == 255 && params.use_true_black) {
                 output.push_back(
                     ch::shaded_polygon(
@@ -154,22 +154,23 @@ namespace {
                 prog.tick();
                 continue;
             }
-            auto parent_tok = blob.parent_token();
-            auto iter = brush_table.find(parent_tok);
+
+            auto curr_token = blob.brush_token();
+            auto iter = brush_table.find(curr_token);
             ch::brush_ptr current_brush;
             if (iter != brush_table.end()) {
                 current_brush = iter->second;
             } else {
-                auto bkgds = tbl.at(parent_tok);
+                auto bkgds = tbl.at(blob.parent_token());
                 current_brush = std::make_shared<ch::brush>(
-                    layer.brush,
+                    blob.brush,
                     params.epsilon,
                     params.num_samples,
                     ch::dimensions(static_cast<double>(params.swatch_sz)),
                     bkgds
                 );
                 current_brush->build_n(20);
-                brush_table[parent_tok] = current_brush;
+                brush_table[curr_token] = current_brush;
             }
 
             auto value = static_cast<double>(blob.value) / 255.0;
@@ -200,7 +201,7 @@ namespace {
         return layers |
             rv::transform(
                 [](auto&& layer) {
-                    return layer.content |
+                    return layer |
                         rv::remove_if(
                             [](auto&& lyi) {
                                 return lyi.value != 255;
@@ -232,8 +233,10 @@ namespace {
         );
         for (auto [index, layer] : rv::enumerate(layers.content | rv::reverse)) {
             prog.log(std::string("  - layer ") + std::to_string(index));
-            std::tie(layer_strokes[index], tok_to_bkgd) = draw_ink_layer(
+            swatch_table new_swatch_tbl;
+            std::tie(layer_strokes[index], new_swatch_tbl) = draw_ink_layer(
                 layer, tok_to_bkgd, params, prog);
+            tok_to_bkgd.insert(new_swatch_tbl.begin(), new_swatch_tbl.end());
         }
 
         return ch::drawing{

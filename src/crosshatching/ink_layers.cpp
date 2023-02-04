@@ -13,6 +13,7 @@
 #include <boost/geometry.hpp>
 #include <chrono>
 #include <array>
+#include <boost/functional/hash.hpp>
 
 /*------------------------------------------------------------------------------------------------*/
 
@@ -695,7 +696,7 @@ namespace {
             ch::ink_layers& layers) {
         std::unordered_map<int, ch::ink_layer_item*> component_id_to_layer_item;
         for (auto& layer : layers.content) {
-            for (auto& item : layer.content) {
+            for (auto& item : layer) {
                 const auto& components = layer_item_to_components.at(item.id);
                 for (int comp_id : components) {
                     auto iter = component_id_to_layer_item.find(comp_id);
@@ -730,6 +731,16 @@ ch::brush_token ch::ink_layer_item::token() const {
         tok |= values[i] << 8 * i;
     }
 
+    ili_ptr = this;
+    while (ili_ptr) {
+        if (ili_ptr->brush) {
+            boost::hash_combine(tok, ili_ptr->brush->id());
+        } else {
+            boost::hash_combine(tok, 0xffff);
+        }
+        ili_ptr = ili_ptr->parent;
+    }
+
     return tok;
 }
 
@@ -741,22 +752,29 @@ ch::brush_token ch::ink_layer_item::parent_token() const {
     }
 }
 
+ch::brush_token ch::ink_layer_item::brush_token() const {
+    ch::brush_token seed = parent_token();
+    ch::brush_token br_tok = (brush) ? brush->id() : 0xffff;
+    boost::hash_combine(seed, br_tok);
+    return seed;
+}
+
 /*------------------------------------------------------------------------------------------------*/
 
-int ch::ink_layer::index() const {
-    return content.front().layer_id;
+int ch::ink_layer_index(const ink_layer& il) {
+    return il.front().layer_id;
 }
 
 ch::ink_layers ch::ink_layers::clone() const {
     std::unordered_map<int, ink_layer_item*> id_to_item;
     auto cloned_ink_layers = *this;
     for (auto& layer : cloned_ink_layers.content) {
-        for (auto& item : layer.content) {
+        for (auto& item : layer) {
             id_to_item[item.id] = &item;
         }
     }
     for (auto& layer : cloned_ink_layers.content) {
-        for (auto& item : layer.content) {
+        for (auto& item : layer) {
             if (item.parent) {
                 auto parent_id = item.parent->id;
                 item.parent = id_to_item[parent_id];
@@ -780,7 +798,7 @@ ch::ink_layers ch::scale(const ink_layers& il, double scale_factor) {
     auto clone = il.clone();
     clone.sz = scale_factor * clone.sz;
     for (auto& layer : clone.content) { 
-        for (auto& item : layer.content) {
+        for (auto& item : layer) {
             item.poly = scale(item.poly, scale_factor);
         }
     }
@@ -835,7 +853,7 @@ ch::ink_layers ch::split_into_layers_adaptive(
             rv::transform(
                 [](auto&& pair)->ink_layer {
                     auto&& [brush, content] = pair;
-                    return { brush, content };
+                    return { content };
                 }
             ) | r::to_vector
     };
@@ -889,18 +907,19 @@ std::vector<ch::gray_polygon> merge_gray_polygons(const std::vector<ch::gray_pol
     return polys;
 }
 
-ch::ink_layer_item to_ink_layer_item(const ch::gray_polygon& gp, int index, int layer_index) {
+ch::ink_layer_item to_ink_layer_item(const ch::gray_polygon& gp, const ch::brush_expr_ptr& brush_ptr) {
     const auto& [value, poly] = gp;
     return {
-        index,
-        layer_index,
+        -1,
+        -1,
         value,
         poly,
+        brush_ptr,
         nullptr
     };
 }
 
-ch::ink_layer to_simple_ink_layer(const std::vector<ch::gray_polygon>& polys, int layer_index,
+ch::ink_layer to_simple_ink_layer(const std::vector<ch::gray_polygon>& polys,
         const std::tuple<uchar, uchar>& rng, ch::brush_expr_ptr br_expr) {
 
     auto [low, high] = rng;
@@ -921,12 +940,10 @@ ch::ink_layer to_simple_ink_layer(const std::vector<ch::gray_polygon>& polys, in
         ) | r::to_vector;
     layer_polys = merge_gray_polygons(layer_polys);
     return ch::ink_layer{
-        br_expr,
-        rv::enumerate(layer_polys) |
+        layer_polys |
             rv::transform(
-                [layer_index](const auto& index_gp)->ch::ink_layer_item {
-                    const auto& [index, gp] = index_gp;
-                    return to_ink_layer_item(gp, index, layer_index);
+                [br_expr](auto& gp)->ch::ink_layer_item {
+                    return to_ink_layer_item(gp, br_expr);
                 }
             ) | r::to_vector
     };
@@ -940,6 +957,16 @@ struct ili_to_poly {
 
 using ink_layer_item_tree = ch::polygon_tree<ch::ink_layer_item*, ili_to_poly>;
 
+void populate_ids(std::vector<ch::ink_layer>& layers) {
+    int blob_id = 0;
+    for (int layer_id = 0; layer_id < static_cast<int>(layers.size()); ++layer_id) {
+        for (auto& ili : layers[layer_id]) {
+            ili.id = blob_id++;
+            ili.layer_id = layer_id;
+        }
+    }
+}
+
 void populate_parents(std::vector<ch::ink_layer>& layers) {
     if (layers.size() <= 1) {
         return;
@@ -948,10 +975,10 @@ void populate_parents(std::vector<ch::ink_layer>& layers) {
         auto& curr = layers[i];
         auto& prev = layers[i - 1];
         ink_layer_item_tree rtree;
-        for (auto& ili : prev.content) {
+        for (auto& ili : prev) {
             rtree.insert(&ili);
         }
-        for (auto& ili : curr.content) {
+        for (auto& ili : curr) {
             auto polys = rtree.query(ch::representative_point(ili.poly));
             if (polys.size() < 1) {
                 // TODO: this should not happen but apparently does...
@@ -960,7 +987,6 @@ void populate_parents(std::vector<ch::ink_layer>& layers) {
             ili.parent = polys.front();
         }
     }
-
 }
 
 ch::ink_layers ch::split_into_layers_simple(
@@ -971,14 +997,14 @@ ch::ink_layers ch::split_into_layers_simple(
 
     auto layers = ink_layers{ sz, {} };
     auto ranges = gray_ranges( gray_levels, false );
-    layers.content = rv::enumerate(rv::zip(ranges, brushes)) |
+    layers.content = rv::zip(ranges, brushes) |
         rv::transform(
             [&](auto&& tup)->ink_layer {
-                const auto& [index, range_and_brush] = tup;
-                const auto& [rng, brush] = range_and_brush;
-                return to_simple_ink_layer(polys, index, rng, brush);
+                const auto& [rng, brush] = tup;
+                return to_simple_ink_layer(polys, rng, brush);
             }
     ) | r::to_vector;
+    populate_ids(layers.content);
     populate_parents(layers.content);
     r::reverse(layers.content);
     return layers;
@@ -986,7 +1012,7 @@ ch::ink_layers ch::split_into_layers_simple(
 }
 
 std::vector<ch::gray_polygon> ch::to_polygons(const ink_layer& il) {
-    return il.content |
+    return il |
         rv::transform(
             [](const ink_layer_item& ili)->ch::gray_polygon {
                 return { ili.value, ili.poly };
@@ -1005,7 +1031,7 @@ void ch::debug_layers(cv::Mat img) {
     int n = 0;
     for (const auto& layer : layers.content) {
         qDebug() << "layer: " << n++;
-        for (const auto& item : layer.content) {
+        for (const auto& item : layer) {
             std::string parent = (item.parent) ? 
                 std::to_string(item.parent->id) : 
                 std::string("nil");

@@ -17,19 +17,24 @@ namespace ch {
         int layer_id;
         uchar value;
         ch::polygon poly;
+        ch::brush_expr_ptr brush;
         ink_layer_item* parent;
 
+        // hashable ID for this item's value, brush, and the
+        // full chain of parent tokens
         brush_token token() const;
+
+        // the above of this item's parent
         brush_token parent_token() const;
 
+        // hashable id of this item's full chain of parent tokens and 
+        // brush but not its value;
+        brush_token brush_token() const;
     };
 
-    struct ink_layer {
-        ch::brush_expr_ptr brush;
-        std::vector<ink_layer_item> content;
+    using ink_layer = std::vector<ink_layer_item>;
 
-        int index() const;
-    };
+    int ink_layer_index(const ink_layer& il);
 
     struct ink_layers {
         dimensions<double> sz;
