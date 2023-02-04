@@ -1096,6 +1096,14 @@ const std::vector<ch::brush_expr_ptr>& ch::brush_expr::children() const {
     return children_;
 }
 
+void ch::brush_expr::replace_child(const brush_expr_ptr& old_child, const brush_expr_ptr& new_child) {
+    auto iter = r::find(children_, old_child);
+    if (iter == children_.end()) {
+        return;
+    }
+    *iter = new_child;
+}
+
 size_t ch::brush_expr::id() const {
     static auto hasher = std::hash<std::string>();
     return hasher( ch::pretty_print(*this));

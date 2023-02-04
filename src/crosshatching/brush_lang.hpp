@@ -41,6 +41,7 @@ namespace ch {
         virtual brush_expr_value eval(brush_context& ctxt) = 0;
         virtual std::string short_string() const = 0;
         const std::vector<brush_expr_ptr>& children() const;
+        void replace_child(const brush_expr_ptr& old_child, const brush_expr_ptr& new_child);
         size_t id() const;
     protected:
         std::vector<brush_expr_ptr> children_;
