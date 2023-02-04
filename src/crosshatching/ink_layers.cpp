@@ -1006,7 +1006,6 @@ ch::ink_layers ch::split_into_layers_simple(
     ) | r::to_vector;
     populate_ids(layers.content);
     populate_parents(layers.content);
-    r::reverse(layers.content);
     return layers;
 
 }

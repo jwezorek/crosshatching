@@ -231,7 +231,7 @@ namespace {
             params.num_samples,
             params.swatch_sz
         );
-        for (auto [index, layer] : rv::enumerate(layers.content | rv::reverse)) {
+        for (auto [index, layer] : rv::enumerate(layers.content)) {
             prog.log(std::string("  - layer ") + std::to_string(index));
             swatch_table new_swatch_tbl;
             std::tie(layer_strokes[index], new_swatch_tbl) = draw_ink_layer(

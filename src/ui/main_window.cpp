@@ -479,7 +479,6 @@ std::vector<cv::Mat> ui::main_window::layer_images() const {
 	double view_scale = img_proc_ctrls_.view_state.scale;
 	auto sz = view_scale * dimensions();
 	auto layers = this->layers().content;
-	r::reverse(layers);
 
 	auto all_polygons = layers |
 		rv::transform(
