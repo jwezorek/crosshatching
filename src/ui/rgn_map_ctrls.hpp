@@ -16,14 +16,6 @@ namespace ui {
         flow_direction_panel();
     };
 
-    class rgn_properties_panel : public QWidget {
-
-        Q_OBJECT
-
-    public:
-        rgn_properties_panel();
-    };
-
     class rgn_map_ctrl : public QWidget {
 
         Q_OBJECT
@@ -76,6 +68,26 @@ namespace ui {
         rgn_map_ctrl();
         void set_regions(vector_graphics_ptr gfx);
         void set_scale(double sc);
+    };
+
+    class main_window;
+
+    class rgn_map_panel : public QWidget {
+
+        Q_OBJECT
+
+        void populate_ctrls();
+
+    private:
+        main_window* parent_;
+        QComboBox* layer_cbo_;
+        QCheckBox* brush_cbx_;
+        QCheckBox* flow_cbx_;
+        QComboBox* curr_brush_cbo_;
+        flow_direction_panel* flow_ctrl_;
+    
+    public:
+        rgn_map_panel(main_window* parent);
     };
 
 }

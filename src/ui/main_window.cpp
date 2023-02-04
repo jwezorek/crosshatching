@@ -326,7 +326,7 @@ QWidget* ui::main_window::create_region_map_tools() {
     QSplitter* vert_splitter = new QSplitter();
     vert_splitter->setOrientation(Qt::Orientation::Horizontal);
 
-    rgn_map_.rgn_props_ = new rgn_properties_panel();
+    rgn_map_.rgn_props_ = new rgn_map_panel(this);
     vert_splitter->addWidget(rgn_map_.rgn_props_);
 
 
@@ -407,7 +407,7 @@ cv::Mat ui::main_window::segmentation() const {
 ch::crosshatching_job ui::main_window::drawing_job() const {
 	return {
 		image_src_filename(),
-		layers(),
+		*layers(),
 		drawing_params()
 	};
 }
@@ -441,29 +441,33 @@ std::tuple<std::vector<ch::brush_expr_ptr>, std::vector<double>>
 	}; 
 }
 
-ch::ink_layers ui::main_window::layers() const {
-	if (!vector_output()) {
-		return {};
-	}
-    if (!crosshatching_.layers_.empty()) {
-        return crosshatching_.layers_;
+ch::ink_layers* ui::main_window::layers() {
+    if (crosshatching_.layers_.empty()) {
+        if (!vector_output()) {
+            return nullptr;
+        }
+        auto vo = *vector_output();
+            auto [brushes, intervals] = brush_per_intervals();
+            auto gray_value_polygons = ch::to_monochrome(vo.polygons, true);
+
+            auto gray_value_ranges = intervals |
+            rv::transform(
+                [](double val) {
+                    return static_cast<uchar>(val * 255.0);
+                }
+        ) | r::to_vector;
+
+        crosshatching_.layers_ = ch::split_into_layers_simple(
+            vo.sz, gray_value_polygons, brushes, gray_value_ranges
+        );
     }
-	auto vo = *vector_output();
-	auto [brushes, intervals] = brush_per_intervals();
-	auto gray_value_polygons = ch::to_monochrome(vo.polygons, true);
-
-	auto gray_value_ranges = intervals |
-			rv::transform(
-				[](double val) {
-					return static_cast<uchar>(val * 255.0);
-				}
-			) | r::to_vector;
-
-	return crosshatching_.layers_ = ch::split_into_layers_simple(
-        vo.sz, gray_value_polygons, brushes, gray_value_ranges
-    );
+    return &crosshatching_.layers_;
 }
 
+const ch::ink_layers* ui::main_window::layers() const {
+    auto unconst = const_cast<main_window*>(this);
+    return unconst->layers();
+}
 
 ch::dimensions<int> ui::main_window::dimensions() const {
 	auto curr_pipeline_output = img_proc_ctrls_.current;
@@ -480,7 +484,7 @@ std::vector<cv::Mat> ui::main_window::layer_images() const {
 	
 	double view_scale = img_proc_ctrls_.view_state.scale;
 	auto sz = view_scale * dimensions();
-	auto layers = this->layers().content;
+	auto layers = this->layers()->content;
 
 	auto all_polygons = layers |
 		rv::transform(

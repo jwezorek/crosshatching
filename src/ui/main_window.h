@@ -117,7 +117,7 @@ namespace ui {
 
     struct rgn_map_tools {
         rgn_map_ctrl* rgn_map_;
-        rgn_properties_panel* rgn_props_;
+        rgn_map_panel* rgn_props_;
     };
 
     using layer_tuple = std::tuple<ch::brush_expr_ptr, std::vector<ch::gray_polygon>>;
@@ -162,7 +162,8 @@ namespace ui {
         ch::crosshatching_job drawing_job() const;
         std::tuple<std::vector<ch::brush_expr_ptr>, std::vector<double>> 
             brush_per_intervals() const;
-        ch::ink_layers layers() const;
+        const ch::ink_layers* layers() const;
+        ch::ink_layers* layers();
         std::vector<cv::Mat> layer_images() const;
         ch::parameters drawing_params() const;
         std::string image_src_filename() const;

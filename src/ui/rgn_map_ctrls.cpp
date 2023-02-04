@@ -1,4 +1,5 @@
 #include "rgn_map_ctrls.hpp"
+#include "main_window.h"
 #include <QtWidgets>
 #include <range/v3/all.hpp>
 #include "../crosshatching/util.hpp"
@@ -41,13 +42,30 @@ ui::flow_direction_panel::flow_direction_panel() {
     set_image(ch::blank_monochrome_bitmap(100));
 }
 
-ui::rgn_properties_panel::rgn_properties_panel() {
-    QVBoxLayout* layout = new QVBoxLayout(this);
-    layout->addWidget(new QLabel("brush"));
-    layout->addWidget(new QComboBox());
-    layout->addWidget(new QLabel("flow"));
-    layout->addWidget(new flow_direction_panel());
+ui::rgn_map_panel::rgn_map_panel(main_window* parent) :
+        parent_(parent) {
+
+    auto layout = new QVBoxLayout(this);
+    layout->addWidget(new QLabel("layer"));
+    layout->addWidget(layer_cbo_ = new QComboBox());
+    layout->addSpacerItem(new QSpacerItem(0, 30));
+    layout->addWidget(brush_cbx_ = new QCheckBox("show set brushes"));
+    layout->addWidget(flow_cbx_ = new QCheckBox("show set flow"));
+    layout->addSpacerItem(new QSpacerItem(0, 30));
+
+    auto box = new QGroupBox("properties");
+    auto box_layout = new QVBoxLayout(box);
+    box_layout->addWidget(new QLabel("brush"));
+    box_layout->addWidget(curr_brush_cbo_ = new QComboBox());
+    box_layout->addWidget(new QLabel("flow"));
+    box_layout->addWidget(flow_ctrl_ = new flow_direction_panel());
+
+    layout->addWidget(box);
     layout->addStretch();
+}
+
+void ui::rgn_map_panel::populate_ctrls() {
+
 }
 
 ui::rgn_map_ctrl::rgn_map_ctrl() :
