@@ -148,6 +148,10 @@ void ui::main_window::tab_changed(int index) {
     }
 }
 
+const ui::brush_panel& ui::main_window::brush_panel() const {
+    return *crosshatching_.brushes_;
+}
+
 void ui::main_window::open()
 {
 	auto image_filename = QFileDialog::getOpenFileName(this,
@@ -285,7 +289,7 @@ QWidget* ui::main_window::create_drawing_tools() {
 	vert_splitter->setOrientation(Qt::Orientation::Vertical);
 	crosshatching_.layers_panel_ = new layer_panel();
 	vert_splitter->addWidget(
-		crosshatching_.brushes_ = new brush_panel(
+		crosshatching_.brushes_ = new ui::brush_panel(
 			*static_cast<layer_panel*>( crosshatching_.layers_panel_)
 		)
 	);
@@ -334,14 +338,12 @@ QWidget* ui::main_window::create_region_map_tools() {
     QSplitter* vert_splitter = new QSplitter();
     vert_splitter->setOrientation(Qt::Orientation::Horizontal);
 
-    rgn_map_.rgn_props_ = new rgn_map_panel(this);
-    vert_splitter->addWidget(rgn_map_.rgn_props_);
-
-
     QScrollArea* scroller = new QScrollArea();
     scroller->setWidget(rgn_map_.rgn_map_ = new rgn_map_ctrl());
     scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
+    rgn_map_.rgn_props_ = new rgn_map_panel(this);
+    vert_splitter->addWidget(rgn_map_.rgn_props_);
     vert_splitter->addWidget(scroller);
     vert_splitter->setSizes({100, 800});
 
@@ -433,7 +435,7 @@ ui::vector_graphics_ptr ui::main_window::vector_output() const {
 
 std::tuple<std::vector<ch::brush_expr_ptr>, std::vector<double>> 
 			ui::main_window::brush_per_intervals() const {
-	auto brush_dict = static_cast<brush_panel*>(crosshatching_.brushes_)->brush_dictionary();
+	auto brush_dict = static_cast<ui::brush_panel*>(crosshatching_.brushes_)->brush_dictionary();
 	auto layer_name_vals = static_cast<layer_panel*>(crosshatching_.layers_panel_)->layers();
 	return {
 		layer_name_vals | rv::transform(
@@ -478,6 +480,10 @@ bool ui::main_window::has_layers() const {
 
 std::vector<std::string> ui::main_window::brush_names() const {
     return crosshatching_.brushes_->brush_names();
+}
+
+ui::rgn_map_ctrl* ui::main_window::regions_ctrl() const {
+    return rgn_map_.rgn_map_;
 }
 
 const ch::ink_layers* ui::main_window::layers() const {

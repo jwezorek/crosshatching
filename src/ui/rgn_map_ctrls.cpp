@@ -4,6 +4,7 @@
 #include <range/v3/all.hpp>
 #include "../crosshatching/util.hpp"
 #include <numbers>
+#include <qdebug.h>
 
 /*------------------------------------------------------------------------------------------------*/
 
@@ -42,6 +43,10 @@ ui::flow_direction_panel::flow_direction_panel() {
     set_image(ch::blank_monochrome_bitmap(100));
 }
 
+std::vector<ch::brush_expr_ptr> ui::rgn_map_panel::get_brush_defaults() const {
+    return std::get<0>(parent_->brush_per_intervals());
+}
+
 ui::rgn_map_panel::rgn_map_panel(main_window* parent) :
         parent_(parent) {
 
@@ -62,6 +67,12 @@ ui::rgn_map_panel::rgn_map_panel(main_window* parent) :
 
     layout->addWidget(box);
     layout->addStretch();
+
+    curr_brush_cbo_->setEditable(true);
+    curr_brush_cbo_->lineEdit()->setReadOnly(true);
+    regions_ctrl_ = parent_->regions_ctrl();
+
+    connect(regions_ctrl_, &rgn_map_ctrl::selection_changed, this, &rgn_map_panel::handle_selection_change);
 }
 
 void ui::rgn_map_panel::repopulate_ctrls() {
@@ -80,6 +91,22 @@ void ui::rgn_map_panel::repopulate_ctrls() {
     for (const auto& [i,brush] : rv::enumerate(brushes)) {
         curr_brush_cbo_->insertItem(i, brush.c_str());
     }
+
+    default_brushes_ = get_brush_defaults();
+    brush_to_name_ = parent_->brush_panel().brush_dictionary();
+    name_to_brush_ = brush_to_name_ |
+        rv::transform(
+            [](auto&& v)->std::unordered_map<ch::brush_expr*, std::string>::value_type {
+                auto [name, br] = v;
+                return { br.get(), name };
+            }
+        ) | r::to<std::unordered_map<ch::brush_expr*, std::string>>();
+
+    curr_brush_cbo_->lineEdit()->setText("<no selection>");
+}
+
+void ui::rgn_map_panel::handle_selection_change() {
+    const auto& selection = regions_ctrl_->selected();
 
 }
 
@@ -149,6 +176,10 @@ void ui::rgn_map_ctrl::set_scale(double sc) {
     update();
 }
 
+const std::unordered_set<int>& ui::rgn_map_ctrl::selected() const {
+    return selected_;
+}
+
 void ui::rgn_map_ctrl::paintEvent(QPaintEvent* event) {
     auto dirty_rect = event->rect();
 
@@ -200,6 +231,7 @@ void ui::rgn_map_ctrl::mousePressEvent(QMouseEvent* event) {
 
 void ui::rgn_map_ctrl::mouseMoveEvent(QMouseEvent* event) {
     setFocus();
+    bool selection_state_changed = false;
     bool repaint = false;
     auto qpt = event->position();
     auto new_loc = ch::point{ static_cast<float>(qpt.x()), static_cast<float>(qpt.y()) };
@@ -213,14 +245,20 @@ void ui::rgn_map_ctrl::mouseMoveEvent(QMouseEvent* event) {
             bool adding_to_selection = !(QApplication::keyboardModifiers() & Qt::AltModifier);
             if (adding_to_selection) {
                 selected_.insert(poly_indices.begin(), poly_indices.end());
+                selection_state_changed = true;
             } else {
                 for (auto removee : poly_indices) {
                     selected_.erase(removee);
+                    selection_state_changed = true;
                 }
             }
             repaint = true;
         }
     }
+    if (selection_state_changed) {
+        emit selection_changed();
+    }
+
     if (repaint) {
         update();
     }

@@ -1,10 +1,12 @@
 #pragma once
 
 #include "../crosshatching/geometry.hpp"
+#include "../crosshatching/brush_lang.hpp"
 #include "image_box.h"
 #include "settingctrls.hpp"
 #include <QWidget>
 #include <unordered_set>
+#include <unordered_map>
 
 namespace ui {
 
@@ -68,6 +70,10 @@ namespace ui {
         rgn_map_ctrl();
         void set_regions(vector_graphics_ptr gfx);
         void set_scale(double sc);
+        const std::unordered_set<int>& selected() const;
+
+    signals:
+        void selection_changed();
     };
 
     class main_window;
@@ -83,7 +89,15 @@ namespace ui {
         QCheckBox* flow_cbx_;
         QComboBox* curr_brush_cbo_;
         flow_direction_panel* flow_ctrl_;
-    
+        rgn_map_ctrl* regions_ctrl_;
+ 
+        std::unordered_map<std::string, ch::brush_expr_ptr> brush_to_name_;
+        std::unordered_map<ch::brush_expr*, std::string> name_to_brush_;
+        std::vector<ch::brush_expr_ptr> default_brushes_;
+
+        std::vector<ch::brush_expr_ptr> get_brush_defaults() const;
+        void handle_selection_change();
+
     public:
         rgn_map_panel(main_window* parent);
         void repopulate_ctrls();

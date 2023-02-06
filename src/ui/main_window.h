@@ -143,6 +143,7 @@ namespace ui {
         void set_layer_view();
         void set_drawing_view(cv::Mat drawing);
         std::vector<std::string> brush_names() const;
+        rgn_map_ctrl* regions_ctrl() const;
 
     signals:
         void change_source_image(cv::Mat& img);
@@ -176,6 +177,7 @@ namespace ui {
         std::tuple<int, int> source_image_sz() const;
         ui::view_state view_state() const;
         void tab_changed(int index);
+        const brush_panel& brush_panel() const;
 
         image_processing_tools img_proc_ctrls_;
         drawing_tools crosshatching_;
