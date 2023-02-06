@@ -90,7 +90,7 @@ namespace ui {
         QCheckBox* flow_cbx_;
         QComboBox* curr_brush_cbo_;
         flow_direction_panel* flow_ctrl_;
-        rgn_map_ctrl* regions_ctrl_;
+        QStackedWidget* stack_;
  
         std::unordered_map<std::string, ch::brush_expr_ptr> brush_to_name_;
         std::unordered_map<ch::brush_expr*, std::string> name_to_brush_;
@@ -100,8 +100,15 @@ namespace ui {
         void handle_selection_change();
 
     public:
-        rgn_map_panel(main_window* parent);
+        rgn_map_panel(main_window* parent, QStackedWidget* stack);
         void repopulate_ctrls();
+        void set_layers(ch::ink_layers* layers);
     };
 
+    struct rgn_map_tools {
+        QStackedWidget* rgn_map_stack;
+        rgn_map_panel* rgn_props;
+
+        void set_rgn_map_scale(double scale);
+    };
 }

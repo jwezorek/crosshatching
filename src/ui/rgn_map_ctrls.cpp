@@ -37,6 +37,18 @@ namespace {
             static_cast<float>(pt.y())
         };
     }
+
+    auto get_region_maps(QStackedWidget* stack) {
+        int n = stack->count();
+        return rv::iota(0,n) |
+            rv::transform(
+                [stack](auto i)->ui::rgn_map_ctrl* {
+                    return static_cast<ui::rgn_map_ctrl*>(
+                        stack->widget(i)
+                    );
+                }
+            );
+    }
 }
 
 ui::flow_direction_panel::flow_direction_panel() {
@@ -47,7 +59,7 @@ std::vector<ch::brush_expr_ptr> ui::rgn_map_panel::get_brush_defaults() const {
     return std::get<0>(parent_->brush_per_intervals());
 }
 
-ui::rgn_map_panel::rgn_map_panel(main_window* parent) :
+ui::rgn_map_panel::rgn_map_panel(main_window* parent, QStackedWidget* stack) :
         parent_(parent) {
 
     auto layout = new QVBoxLayout(this);
@@ -70,9 +82,10 @@ ui::rgn_map_panel::rgn_map_panel(main_window* parent) :
 
     curr_brush_cbo_->setEditable(true);
     curr_brush_cbo_->lineEdit()->setReadOnly(true);
-    regions_ctrl_ = parent_->regions_ctrl();
+    stack_ = stack;
 
-    connect(regions_ctrl_, &rgn_map_ctrl::selection_changed, this, &rgn_map_panel::handle_selection_change);
+    connect(layer_cbo_, &QComboBox::currentIndexChanged, stack_, &QStackedWidget::setCurrentIndex);
+
 }
 
 void ui::rgn_map_panel::repopulate_ctrls() {
@@ -105,8 +118,43 @@ void ui::rgn_map_panel::repopulate_ctrls() {
     curr_brush_cbo_->lineEdit()->setText("<no selection>");
 }
 
+void ui::rgn_map_panel::set_layers(ch::ink_layers* ink_layers) {
+    int old_num_layers = stack_->count();
+    if (old_num_layers > 0) {
+        for (int i = old_num_layers - 1; i >= 0; --i) {
+            auto rgn_map = stack_->widget(i);
+            stack_->removeWidget(rgn_map);
+            delete rgn_map;
+        }
+    }
+    layer_cbo_->clear();
+
+    if (!ink_layers || ink_layers->empty()) {
+        return;
+    }
+
+    int n = static_cast<int>(ink_layers->content.size());
+    for (int i = 0; i < n; ++i) {
+        std::string lbl = "layer " + std::to_string(i);
+        layer_cbo_->insertItem(i, lbl.c_str());
+    }
+
+    for (int i = 0; i < n; ++i) {
+        auto rgn_map = new rgn_map_ctrl();
+        rgn_map->set_regions(ink_layers->sz, &(ink_layers->content[i]));
+        stack_->addWidget(rgn_map);
+        connect(
+            rgn_map, &rgn_map_ctrl::selection_changed,
+            this, &rgn_map_panel::handle_selection_change
+        );
+        rgn_map->setVisible(true);
+    }
+    int test = stack_->count();
+    stack_->setCurrentIndex(0);
+    stack_->setVisible(true);
+}
+
 void ui::rgn_map_panel::handle_selection_change() {
-    const auto& selection = regions_ctrl_->selected();
 
 }
 
@@ -267,5 +315,12 @@ void ui::rgn_map_ctrl::mouseReleaseEvent(QMouseEvent* event) {
     if (event->button() == Qt::MouseButton::LeftButton) {
         selecting_ = false;
         mouseMoveEvent(event);
+    }
+}
+
+void ui::rgn_map_tools::set_rgn_map_scale(double scale)
+{
+    for (auto ctrl : get_region_maps(rgn_map_stack)) {
+        ctrl->set_scale(scale);
     }
 }

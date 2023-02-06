@@ -115,11 +115,6 @@ namespace ui {
         void set_view(view v);
     };
 
-    struct rgn_map_tools {
-        rgn_map_ctrl* rgn_map_;
-        rgn_map_panel* rgn_props_;
-    };
-
     using layer_tuple = std::tuple<ch::brush_expr_ptr, std::vector<ch::gray_polygon>>;
 
     class main_window : public QMainWindow
@@ -140,10 +135,10 @@ namespace ui {
         void debug();
 
         void set_swatch_view(cv::Mat swatch, bool left);
-        void set_layer_view();
+        void handle_layers_change();
         void set_drawing_view(cv::Mat drawing);
         std::vector<std::string> brush_names() const;
-        rgn_map_ctrl* regions_ctrl() const;
+        QStackedWidget* regions_stack() const;
 
     signals:
         void change_source_image(cv::Mat& img);

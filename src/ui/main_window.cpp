@@ -144,7 +144,7 @@ ui::main_window::main_window(QWidget *parent)
 
 void ui::main_window::tab_changed(int index) {
     if (index == 2) {
-        rgn_map_.rgn_props_->repopulate_ctrls();
+        rgn_map_.rgn_props->repopulate_ctrls();
     }
 }
 
@@ -208,7 +208,7 @@ void ui::main_window::set_swatch_view(cv::Mat swatch, bool left) {
 	crosshatching_.set_view(drawing_tools::view::swatch);
 }
 
-void ui::main_window::set_layer_view() { 
+void ui::main_window::handle_layers_change() { 
     crosshatching_.layers_.clear();
 	auto layers = layer_images();
 	int n = static_cast<int>(layers.size());
@@ -228,7 +228,7 @@ void ui::main_window::set_layer_view() {
 	crosshatching_.set_view(drawing_tools::view::layers);
 
     auto ink_layers = this->layers();
-    rgn_map_.rgn_map_->set_regions(ink_layers->sz, &(ink_layers->content[0]));
+    rgn_map_.rgn_props->set_layers(ink_layers);
 }
 
 void ui::main_window::set_drawing_view(cv::Mat drawing) {
@@ -331,23 +331,23 @@ QWidget* ui::main_window::create_drawing_tools() {
 	splitter->setSizes(QList<int>({ 180,500 }));
 
 	connect(crosshatching_.layers_panel_, &layer_panel::layers_changed,
-		this, &main_window::set_layer_view);
+		this, &main_window::handle_layers_change);
 
 	return splitter;
 }
 
-
 QWidget* ui::main_window::create_region_map_tools() {
     QSplitter* vert_splitter = new QSplitter();
     vert_splitter->setOrientation(Qt::Orientation::Horizontal);
+  
+    //QScrollArea* scroller = new QScrollArea();
+    //scroller->setWidget(rgn_map_.rgn_map_stack = new QStackedWidget());
+    //scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
-    QScrollArea* scroller = new QScrollArea();
-    scroller->setWidget(rgn_map_.rgn_map_ = new rgn_map_ctrl());
-    scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
-
-    rgn_map_.rgn_props_ = new rgn_map_panel(this);
-    vert_splitter->addWidget(rgn_map_.rgn_props_);
-    vert_splitter->addWidget(scroller);
+    rgn_map_.rgn_map_stack = new QStackedWidget();
+    rgn_map_.rgn_props = new rgn_map_panel(this, rgn_map_.rgn_map_stack);
+    vert_splitter->addWidget(rgn_map_.rgn_props);
+    vert_splitter->addWidget(rgn_map_.rgn_map_stack);
     vert_splitter->setSizes({100, 800});
 
     return vert_splitter;
@@ -485,8 +485,8 @@ std::vector<std::string> ui::main_window::brush_names() const {
     return crosshatching_.brushes_->brush_names();
 }
 
-ui::rgn_map_ctrl* ui::main_window::regions_ctrl() const {
-    return rgn_map_.rgn_map_;
+QStackedWidget* ui::main_window::regions_stack() const {
+    return rgn_map_.rgn_map_stack;
 }
 
 const ch::ink_layers* ui::main_window::layers() const {
@@ -605,10 +605,10 @@ std::tuple<int, int> ui::main_window::source_image_sz() const {
 
 void ui::main_window::handle_view_scale_change(double scale) {
 	img_proc_ctrls_.view_state.scale = scale;
-    rgn_map_.rgn_map_->set_scale(scale);
+    rgn_map_.set_rgn_map_scale(scale);
 	display();
 	if (crosshatching_.layer_viewer_->has_images()) {
-		set_layer_view();
+		handle_layers_change();
 	}
 }
 
