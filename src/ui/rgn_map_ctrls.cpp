@@ -120,18 +120,18 @@ ui::rgn_map_ctrl::rgn_map_ctrl() :
     setMouseTracking(true);
 }
 
-void ui::rgn_map_ctrl::set_regions(vector_graphics_ptr gfx) {
-    auto n = gfx->polygons.size();
+void ui::rgn_map_ctrl::set_regions(const ch::dimensions<int>& sz, ch::ink_layer* layer) {
+    auto n = layer->size();
     scaled_regions_.clear();
     colors_.clear();
     scaled_regions_.reserve(n);
     colors_.reserve(n);
 
-    for (const auto& [color, poly] : gfx->polygons) {
+    for ( auto& ili : *layer ) {
         scaled_regions_.push_back(
-            (scale_ != 1.0) ? ch::scale(poly, scale_) : poly
+            (scale_ != 1.0) ? ch::scale(ili.poly, scale_) : ili.poly
         );
-        colors_.push_back(ch::color_to_monochrome(color));
+        colors_.push_back(ch::ink_shade_to_color(ili.value));
     }
 
     tree_ = {};
@@ -139,9 +139,9 @@ void ui::rgn_map_ctrl::set_regions(vector_graphics_ptr gfx) {
         int index = static_cast<int>(i);
         tree_.insert({ index, &poly });
     }
-    base_sz_ = gfx->sz;
-    auto sz = scale_ * base_sz_;
-    setFixedSize({ sz.wd, sz.hgt });
+    base_sz_ = sz;
+    auto scaled_sz = scale_ * base_sz_;
+    setFixedSize({ scaled_sz.wd, scaled_sz.hgt });
     update();
 }
 
@@ -192,9 +192,8 @@ void ui::rgn_map_ctrl::paintEvent(QPaintEvent* event) {
 
     auto visible_polys = find_intersecting_polys(qrect_to_box(dirty_rect));
     for (auto poly_index : visible_polys) {
-        uchar gray = colors_[poly_index];
         const auto& poly = scaled_regions_[poly_index];
-        ch::paint_polygon(painter, poly, ch::rgb(gray, gray, gray));
+        ch::paint_polygon(painter, poly, colors_[poly_index]);
         if (selected_.contains(poly_index)) {
             painter.setOpacity(0.5);
             ch::paint_polygon(painter, poly, ch::color(255, 0, 0));

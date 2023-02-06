@@ -615,6 +615,11 @@ ch::color ch::ink_shade_to_color(double ink_shade) {
     return rgb(ch, ch, ch);
 }
 
+ch::color ch::ink_shade_to_color(uchar ink_shade) {
+    uchar channel = 255 - ink_shade;
+    return rgb(channel, channel, channel);
+}
+
 ch::color ch::rgb(uchar r, uchar g, uchar b) {
 	return { b,g,r };
 }

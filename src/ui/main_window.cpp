@@ -226,6 +226,9 @@ void ui::main_window::set_layer_view() {
 		r::to<std::vector<std::tuple<std::string, cv::Mat>>>();
 	crosshatching_.layer_viewer_->set_content(tab_content);
 	crosshatching_.set_view(drawing_tools::view::layers);
+
+    auto ink_layers = this->layers();
+    rgn_map_.rgn_map_->set_regions(ink_layers->sz, &(ink_layers->content[0]));
 }
 
 void ui::main_window::set_drawing_view(cv::Mat drawing) {
@@ -588,7 +591,6 @@ void ui::main_window::display(pipeline_output work_in_prog) {
 			ch::scale(ptr_to_vg->polygons, view_scale) :
 			ptr_to_vg->polygons;
 		mat = ch::paint_polygons(polys, view_scale * ptr_to_vg->sz);
-        rgn_map_.rgn_map_->set_regions(ptr_to_vg);
 	}
 	int wd = mat.cols;
 	int hgt = mat.rows;
@@ -704,6 +706,7 @@ void ui::layer_panel::delete_layer() {
 void ui::layer_panel::insert_layer(const std::string& brush, double end_of_range) {
 	layers_[end_of_range] = brush;
 	sync_layers_to_ui();
+	emit layers_changed();
 }
 
 void ui::layer_panel::setRowText(int row, const std::string& brush, 

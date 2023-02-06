@@ -908,7 +908,7 @@ std::vector<ch::gray_polygon> merge_gray_polygons(const std::vector<ch::gray_pol
         output.push_back({ color, cluster_poly });
     }
 
-    return polys;
+    return output;
 }
 
 ch::ink_layer_item to_ink_layer_item(const ch::gray_polygon& gp, const ch::brush_expr_ptr& brush_ptr) {

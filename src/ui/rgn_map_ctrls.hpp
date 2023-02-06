@@ -2,6 +2,7 @@
 
 #include "../crosshatching/geometry.hpp"
 #include "../crosshatching/brush_lang.hpp"
+#include "../crosshatching/ink_layers.hpp"
 #include "image_box.h"
 #include "settingctrls.hpp"
 #include <QWidget>
@@ -37,7 +38,7 @@ namespace ui {
         ch::dimensions<int> base_sz_;
         double scale_;
         std::unordered_set<int> selected_;
-        std::vector<uchar> colors_;
+        std::vector<ch::color> colors_;
         std::vector<ch::polygon> scaled_regions_;
         bool selecting_;
         int cursor_radius_;
@@ -68,7 +69,7 @@ namespace ui {
 
     public:
         rgn_map_ctrl();
-        void set_regions(vector_graphics_ptr gfx);
+        void set_regions(const ch::dimensions<int>& sz, ch::ink_layer* layer);
         void set_scale(double sc);
         const std::unordered_set<int>& selected() const;
 
