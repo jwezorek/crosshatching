@@ -118,7 +118,7 @@ void ui::rgn_map_panel::repopulate_ctrls() {
     curr_brush_cbo_->lineEdit()->setText("<no selection>");
 }
 
-void ui::rgn_map_panel::set_layers(ch::ink_layers* ink_layers) {
+void ui::rgn_map_panel::set_layers(double scale, ch::ink_layers* ink_layers) {
     int old_num_layers = stack_->count();
     if (old_num_layers > 0) {
         for (int i = old_num_layers - 1; i >= 0; --i) {
@@ -141,6 +141,7 @@ void ui::rgn_map_panel::set_layers(ch::ink_layers* ink_layers) {
 
     for (int i = 0; i < n; ++i) {
         auto rgn_map = new rgn_map_ctrl();
+        rgn_map->set_scale(scale);
         rgn_map->set_regions(ink_layers->sz, &(ink_layers->content[i]));
         stack_->addWidget(rgn_map);
         connect(
@@ -169,6 +170,7 @@ ui::rgn_map_ctrl::rgn_map_ctrl() :
 }
 
 void ui::rgn_map_ctrl::set_regions(const ch::dimensions<int>& sz, ch::ink_layer* layer) {
+    layer_ = layer;
     auto n = layer->size();
     scaled_regions_.clear();
     colors_.clear();
@@ -221,7 +223,6 @@ ch::polygon ui::rgn_map_ctrl::cursor_poly(double scale, const ch::point& pt, int
 
 void ui::rgn_map_ctrl::set_scale(double sc) {
     scale_ = sc;
-    update();
 }
 
 const std::unordered_set<int>& ui::rgn_map_ctrl::selected() const {
@@ -318,9 +319,11 @@ void ui::rgn_map_ctrl::mouseReleaseEvent(QMouseEvent* event) {
     }
 }
 
+/*
 void ui::rgn_map_tools::set_rgn_map_scale(double scale)
 {
     for (auto ctrl : get_region_maps(rgn_map_stack)) {
         ctrl->set_scale(scale);
     }
 }
+*/

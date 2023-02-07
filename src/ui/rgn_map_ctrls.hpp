@@ -33,6 +33,7 @@ namespace ui {
         };
         using poly_tree = ch::polygon_tree<poly_tree_val, poly_getter>;
 
+        ch::ink_layer* layer_;
         poly_tree tree_;
         std::optional<ch::point> curr_loc_;
         ch::dimensions<int> base_sz_;
@@ -102,13 +103,11 @@ namespace ui {
     public:
         rgn_map_panel(main_window* parent, QStackedWidget* stack);
         void repopulate_ctrls();
-        void set_layers(ch::ink_layers* layers);
+        void set_layers(double scale, ch::ink_layers* layers);
     };
 
     struct rgn_map_tools {
         QStackedWidget* rgn_map_stack;
         rgn_map_panel* rgn_props;
-
-        void set_rgn_map_scale(double scale);
     };
 }

@@ -228,7 +228,10 @@ void ui::main_window::handle_layers_change() {
 	crosshatching_.set_view(drawing_tools::view::layers);
 
     auto ink_layers = this->layers();
-    rgn_map_.rgn_props->set_layers(ink_layers);
+    rgn_map_.rgn_props->set_layers(
+        img_proc_ctrls_.view_state.scale,
+        ink_layers
+    );
 }
 
 void ui::main_window::set_drawing_view(cv::Mat drawing) {
@@ -605,7 +608,6 @@ std::tuple<int, int> ui::main_window::source_image_sz() const {
 
 void ui::main_window::handle_view_scale_change(double scale) {
 	img_proc_ctrls_.view_state.scale = scale;
-    rgn_map_.set_rgn_map_scale(scale);
 	display();
 	if (crosshatching_.layer_viewer_->has_images()) {
 		handle_layers_change();
