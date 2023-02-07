@@ -13,6 +13,9 @@ namespace rv = ranges::views;
 
 namespace {
 
+    constexpr auto k_no_selection = "<no selection>";
+    constexpr auto k_heterogeneous = "<heterogeneous selection>";
+
     ch::polygon cursor_poly_aux(float r) {
         int n = 20;
         ch::polygon output;
@@ -43,9 +46,8 @@ namespace {
         return rv::iota(0,n) |
             rv::transform(
                 [stack](auto i)->ui::rgn_map_ctrl* {
-                    return static_cast<ui::rgn_map_ctrl*>(
-                        stack->widget(i)
-                    );
+                    auto scroller = static_cast<QScrollArea*>(stack->widget(i));
+                    return static_cast<ui::rgn_map_ctrl*>( scroller->widget());
                 }
             );
     }
@@ -84,8 +86,20 @@ ui::rgn_map_panel::rgn_map_panel(main_window* parent, QStackedWidget* stack) :
     curr_brush_cbo_->lineEdit()->setReadOnly(true);
     stack_ = stack;
 
-    connect(layer_cbo_, &QComboBox::currentIndexChanged, stack_, &QStackedWidget::setCurrentIndex);
-
+    connect(layer_cbo_, &QComboBox::currentIndexChanged, 
+        stack_, &QStackedWidget::setCurrentIndex);
+    connect(curr_brush_cbo_, &QComboBox::currentIndexChanged,
+        this, &rgn_map_panel::handle_brush_change);
+    connect(curr_brush_cbo_->lineEdit(), &QLineEdit::textChanged,
+        [this](const QString& txt) {
+            if (txt != k_no_selection && txt != k_heterogeneous) {
+                int index = curr_brush_cbo_->findText(txt);
+                if (index >= 0) {
+                    handle_brush_change(index);
+                }
+            }
+        }
+    );
 }
 
 void ui::rgn_map_panel::repopulate_ctrls() {
@@ -106,8 +120,8 @@ void ui::rgn_map_panel::repopulate_ctrls() {
     }
 
     default_brushes_ = get_brush_defaults();
-    brush_to_name_ = parent_->brush_panel().brush_dictionary();
-    name_to_brush_ = brush_to_name_ |
+    name_to_brush_ = parent_->brush_panel().brush_dictionary();
+    brush_to_name_ = name_to_brush_ |
         rv::transform(
             [](auto&& v)->std::unordered_map<ch::brush_expr*, std::string>::value_type {
                 auto [name, br] = v;
@@ -115,10 +129,11 @@ void ui::rgn_map_panel::repopulate_ctrls() {
             }
         ) | r::to<std::unordered_map<ch::brush_expr*, std::string>>();
 
-    curr_brush_cbo_->lineEdit()->setText("<no selection>");
+    curr_brush_cbo_->lineEdit()->setText(k_no_selection);
 }
 
 void ui::rgn_map_panel::set_layers(double scale, ch::ink_layers* ink_layers) {
+    auto def_brushes = get_brush_defaults();
     int old_num_layers = stack_->count();
     if (old_num_layers > 0) {
         for (int i = old_num_layers - 1; i >= 0; --i) {
@@ -141,9 +156,10 @@ void ui::rgn_map_panel::set_layers(double scale, ch::ink_layers* ink_layers) {
 
     for (int i = 0; i < n; ++i) {
         auto rgn_map = new rgn_map_ctrl();
-        rgn_map->set_scale(scale);
-        rgn_map->set_regions(ink_layers->sz, &(ink_layers->content[i]));
-        stack_->addWidget(rgn_map);
+        rgn_map->set(def_brushes[i], scale, ink_layers->sz, &(ink_layers->content[i]));
+        auto scroller = new QScrollArea();
+        scroller->setWidget(rgn_map);
+        stack_->addWidget(scroller);
         connect(
             rgn_map, &rgn_map_ctrl::selection_changed,
             this, &rgn_map_panel::handle_selection_change
@@ -155,8 +171,51 @@ void ui::rgn_map_panel::set_layers(double scale, ch::ink_layers* ink_layers) {
     stack_->setVisible(true);
 }
 
-void ui::rgn_map_panel::handle_selection_change() {
+ui::rgn_map_ctrl* ui::rgn_map_panel::current_rgn_map() const {
+    return static_cast<rgn_map_ctrl*>(
+        static_cast<QScrollArea*>(stack_->currentWidget())->widget()
+    );
+}
 
+void ui::rgn_map_panel::handle_brush_change(int brush_index) {
+    if (name_to_brush_.empty()) {
+        return;
+    }
+    auto brush_name = curr_brush_cbo_->itemText(brush_index).toStdString();
+    if (!name_to_brush_.contains(brush_name)) {
+        qDebug() << "bad rgn_map_panel::handle_brush_change: " << brush_name.c_str();
+        return;
+    }
+    auto brush = name_to_brush_[brush_name];
+    for (auto ili_ptr : current_rgn_map()->selected_layer_items()) {
+        ili_ptr->brush = brush;
+    }
+}
+
+void ui::rgn_map_panel::handle_selection_change() {
+    std::optional<ch::brush_expr_ptr> selected_brush = {};
+    auto rgn_map = current_rgn_map();
+    if (!rgn_map->has_selection()) {
+        curr_brush_cbo_->lineEdit()->setText(k_no_selection);
+        return;
+    }
+    auto selected = rgn_map->selected_layer_items() | r::to_vector;
+    for ( auto sel : selected) {
+        if (!selected_brush) {
+            selected_brush = sel->brush;
+        } else {
+            if (selected_brush != sel->brush) {
+                selected_brush = {};
+                break;
+            }
+        }
+    }
+    if (!selected_brush) {
+        curr_brush_cbo_->lineEdit()->setText(k_heterogeneous);
+        return;
+    }
+    auto brush_name = brush_to_name_[selected_brush->get()];
+    curr_brush_cbo_->setCurrentText(brush_name.c_str());
 }
 
 ui::rgn_map_ctrl::rgn_map_ctrl() :
@@ -169,7 +228,10 @@ ui::rgn_map_ctrl::rgn_map_ctrl() :
     setMouseTracking(true);
 }
 
-void ui::rgn_map_ctrl::set_regions(const ch::dimensions<int>& sz, ch::ink_layer* layer) {
+void ui::rgn_map_ctrl::set(ch::brush_expr_ptr default_brush, double scale, 
+        const ch::dimensions<int>& sz, ch::ink_layer* layer) {
+    def_brush_ = default_brush;
+    scale_ = scale;
     layer_ = layer;
     auto n = layer->size();
     scaled_regions_.clear();
@@ -201,7 +263,8 @@ std::vector<int> ui::rgn_map_ctrl::polys_at_point(const ch::point& pt) const {
         find_intersecting_polys(cursor_poly(scale_,pt, cursor_radius_));
 }
 
-ch::polygon ui::rgn_map_ctrl::cursor_poly(double scale, const ch::point& pt, int sz_index) const {
+ch::polygon ui::rgn_map_ctrl::cursor_poly(
+        double scale, const ch::point& pt, int sz_index) const {
     static std::unordered_map<int,std::vector<ch::polygon>> cursor_polys;
     auto scale_key = static_cast<int>(scale * 100.0);
     if (cursor_polys[scale_key].empty()) {
@@ -221,12 +284,12 @@ ch::polygon ui::rgn_map_ctrl::cursor_poly(double scale, const ch::point& pt, int
     );
 }
 
-void ui::rgn_map_ctrl::set_scale(double sc) {
-    scale_ = sc;
-}
-
 const std::unordered_set<int>& ui::rgn_map_ctrl::selected() const {
     return selected_;
+}
+
+bool ui::rgn_map_ctrl::has_selection() const {
+    return !selected_.empty();
 }
 
 void ui::rgn_map_ctrl::paintEvent(QPaintEvent* event) {
@@ -259,7 +322,6 @@ void ui::rgn_map_ctrl::paintEvent(QPaintEvent* event) {
             false
         );
     }
-
 }
 
 void ui::rgn_map_ctrl::keyPressEvent(QKeyEvent* event) {
@@ -319,11 +381,3 @@ void ui::rgn_map_ctrl::mouseReleaseEvent(QMouseEvent* event) {
     }
 }
 
-/*
-void ui::rgn_map_tools::set_rgn_map_scale(double scale)
-{
-    for (auto ctrl : get_region_maps(rgn_map_stack)) {
-        ctrl->set_scale(scale);
-    }
-}
-*/

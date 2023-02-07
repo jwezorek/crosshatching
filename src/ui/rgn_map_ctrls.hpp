@@ -38,6 +38,7 @@ namespace ui {
         std::optional<ch::point> curr_loc_;
         ch::dimensions<int> base_sz_;
         double scale_;
+        ch::brush_expr_ptr def_brush_;
         std::unordered_set<int> selected_;
         std::vector<ch::color> colors_;
         std::vector<ch::polygon> scaled_regions_;
@@ -56,7 +57,7 @@ namespace ui {
                     }
             ) | r::to_vector;
         }
- 
+
         std::vector<int> polys_at_point(const ch::point& pt) const;
         ch::polygon cursor_poly(double scale, const ch::point& pt, int sz_index) const;
 
@@ -70,9 +71,19 @@ namespace ui {
 
     public:
         rgn_map_ctrl();
-        void set_regions(const ch::dimensions<int>& sz, ch::ink_layer* layer);
-        void set_scale(double sc);
+        void set(ch::brush_expr_ptr default_brush, double scale, const ch::dimensions<int>& sz, ch::ink_layer* layer);
         const std::unordered_set<int>& selected() const;
+        bool has_selection() const;
+        auto selected_layer_items() const {
+            namespace r = ranges;
+            namespace rv = ranges::views;
+            return selected_ |
+                rv::transform(
+                    [this](auto index)->ch::ink_layer_item* {
+                        return &(layer_->at(index));
+                    }
+                );
+        }
 
     signals:
         void selection_changed();
@@ -93,12 +104,14 @@ namespace ui {
         flow_direction_panel* flow_ctrl_;
         QStackedWidget* stack_;
  
-        std::unordered_map<std::string, ch::brush_expr_ptr> brush_to_name_;
-        std::unordered_map<ch::brush_expr*, std::string> name_to_brush_;
+        std::unordered_map<std::string, ch::brush_expr_ptr> name_to_brush_;
+        std::unordered_map<ch::brush_expr*, std::string> brush_to_name_;
         std::vector<ch::brush_expr_ptr> default_brushes_;
 
         std::vector<ch::brush_expr_ptr> get_brush_defaults() const;
         void handle_selection_change();
+        rgn_map_ctrl* current_rgn_map() const;
+        void handle_brush_change(int i);
 
     public:
         rgn_map_panel(main_window* parent, QStackedWidget* stack);
