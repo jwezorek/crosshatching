@@ -800,6 +800,16 @@ std::vector<std::string> ui::brush_panel::brush_names() const {
 	return brushes;
 }
 
+
+std::vector<ch::brush_expr_ptr> ui::brush_panel::brushes() const {
+    std::vector<ch::brush_expr_ptr> brushes(tree()->topLevelItemCount());
+    for (int i = 0; i < tree()->topLevelItemCount(); ++i) {
+        brush_item* bi = static_cast<brush_item*>(tree()->topLevelItem(i));
+        brushes[i] = bi->brush_expression;
+    }
+    return brushes;
+}
+
 std::unordered_map<std::string, ch::brush_expr_ptr> ui::brush_panel::brush_dictionary() const {
 	std::unordered_map<std::string, ch::brush_expr_ptr> dictionary;
 	for (int i = 0; i < tree()->topLevelItemCount(); ++i) {

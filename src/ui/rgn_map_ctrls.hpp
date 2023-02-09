@@ -11,6 +11,56 @@
 
 namespace ui {
 
+    class SelectButton : public QPushButton
+    {
+        Q_OBJECT
+
+    public:
+        SelectButton(const std::string& txt) 
+        {
+            setText(txt.c_str());
+            connect(this, &QPushButton::clicked, this, &SelectButton::showPopup);
+
+            m_listWidget = new QListWidget;
+            connect(m_listWidget, &QListWidget::itemClicked, this, &SelectButton::itemSelected);
+
+            m_popup = new QWidget;
+            m_popup->setWindowFlags(Qt::Popup);
+            m_popup->setWindowOpacity(0.95);
+
+            QVBoxLayout* layout = new QVBoxLayout;
+            layout->addWidget(m_listWidget);
+            m_popup->setLayout(layout);
+        }
+
+        void setItems(std::span<const std::string> items) {
+            m_listWidget->clear();
+            for (const auto& item_txt : items) {
+                m_listWidget->addItem(item_txt.c_str());
+            }
+        }
+
+        void showPopup()
+        {
+            QPoint buttonPos = mapToGlobal(QPoint(0, height()));
+            m_popup->move(buttonPos);
+            m_popup->show();
+        }
+
+        void itemSelected(QListWidgetItem* item)
+        {
+            m_popup->hide();
+            emit item_clicked(item->text());
+        }
+
+    signals:
+        void item_clicked(QString str);
+
+    private:
+        QListWidget* m_listWidget;
+        QWidget* m_popup;
+    };
+
     class flow_direction_panel : public image_box {
 
         Q_OBJECT
@@ -40,10 +90,19 @@ namespace ui {
         double scale_;
         ch::brush_expr_ptr def_brush_;
         std::unordered_set<int> selected_;
+        std::vector<std::unordered_set<int>> set_brushes_;
         std::vector<ch::color> colors_;
         std::vector<ch::polygon> scaled_regions_;
         bool selecting_;
         int cursor_radius_;
+        const std::vector<ch::brush_expr_ptr>* brushes_;
+        struct brush_info {
+            ch::color color;
+            std::unordered_set<int> items;
+        };
+        std::unordered_map<const ch::brush_expr*, brush_info> brush_info_;
+        bool is_showing_brushes_;
+        bool is_showing_flow_;
 
         template<typename T>
         std::vector<int> find_intersecting_polys(const T& some_shape) const {
@@ -70,10 +129,12 @@ namespace ui {
         void mouseReleaseEvent(QMouseEvent* event) override;
 
     public:
-        rgn_map_ctrl();
+        rgn_map_ctrl(const std::vector<ch::brush_expr_ptr>* brushes);
         void set(ch::brush_expr_ptr default_brush, double scale, const ch::dimensions<int>& sz, ch::ink_layer* layer);
         const std::unordered_set<int>& selected() const;
         bool has_selection() const;
+        void set_brush_of_selection(ch::brush_expr_ptr br);
+        
         auto selected_layer_items() const {
             namespace r = ranges;
             namespace rv = ranges::views;
@@ -84,6 +145,11 @@ namespace ui {
                     }
                 );
         }
+
+        void show_brushes(bool v);
+        void show_flow(bool v);
+        bool is_showing_brushes() const;
+        bool is_showing_flow() const;
 
     signals:
         void selection_changed();
@@ -100,18 +166,20 @@ namespace ui {
         QComboBox* layer_cbo_;
         QCheckBox* brush_cbx_;
         QCheckBox* flow_cbx_;
-        QComboBox* curr_brush_cbo_;
+        QLabel* brush_lbl_;
+        SelectButton* select_brush_btn_;
         flow_direction_panel* flow_ctrl_;
         QStackedWidget* stack_;
- 
+
         std::unordered_map<std::string, ch::brush_expr_ptr> name_to_brush_;
         std::unordered_map<ch::brush_expr*, std::string> brush_to_name_;
         std::vector<ch::brush_expr_ptr> default_brushes_;
+        std::vector<ch::brush_expr_ptr> brushes_;
 
         std::vector<ch::brush_expr_ptr> get_brush_defaults() const;
         void handle_selection_change();
         rgn_map_ctrl* current_rgn_map() const;
-        void handle_brush_change(int i);
+        void handle_brush_change(QString str);
 
     public:
         rgn_map_panel(main_window* parent, QStackedWidget* stack);

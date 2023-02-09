@@ -16,6 +16,27 @@ namespace {
     constexpr auto k_no_selection = "<no selection>";
     constexpr auto k_heterogeneous = "<heterogeneous selection>";
 
+    ch::color get_nth_color(int n) {
+        static std::vector<ch::color> colors = {
+            ch::rgb(180,0,0),
+            ch::rgb(255,97,3),
+            ch::rgb(255,255,0),
+            ch::rgb(0,255,0),
+            ch::rgb(0,0,255),
+            ch::rgb(138,43,226),
+            ch::rgb(255, 192, 203),
+            ch::rgb(255, 160, 122),
+            ch::rgb(255, 250, 205),
+            ch::rgb(152, 251, 152),
+            ch::rgb(173, 216, 230),
+            ch::rgb(230, 230, 250)
+        };
+        if (n >= 0 && n < colors.size()) {
+            return colors[n];
+        }
+        return ch::rgb(255, 255, 255);
+    }
+
     ch::polygon cursor_poly_aux(float r) {
         int n = 20;
         ch::polygon output;
@@ -74,30 +95,32 @@ ui::rgn_map_panel::rgn_map_panel(main_window* parent, QStackedWidget* stack) :
 
     auto box = new QGroupBox("properties");
     auto box_layout = new QVBoxLayout(box);
-    box_layout->addWidget(new QLabel("brush"));
-    box_layout->addWidget(curr_brush_cbo_ = new QComboBox());
+    box_layout->addWidget(brush_lbl_ = new QLabel("brush: <>"));
+    box_layout->addWidget(select_brush_btn_ = new SelectButton("select brush"));
     box_layout->addWidget(new QLabel("flow"));
     box_layout->addWidget(flow_ctrl_ = new flow_direction_panel());
 
     layout->addWidget(box);
     layout->addStretch();
 
-    curr_brush_cbo_->setEditable(true);
-    curr_brush_cbo_->lineEdit()->setReadOnly(true);
     stack_ = stack;
 
     connect(layer_cbo_, &QComboBox::currentIndexChanged, 
         stack_, &QStackedWidget::setCurrentIndex);
-    connect(curr_brush_cbo_, &QComboBox::currentIndexChanged,
+    connect(select_brush_btn_, &SelectButton::item_clicked,
         this, &rgn_map_panel::handle_brush_change);
-    connect(curr_brush_cbo_->lineEdit(), &QLineEdit::textChanged,
-        [this](const QString& txt) {
-            if (txt != k_no_selection && txt != k_heterogeneous) {
-                int index = curr_brush_cbo_->findText(txt);
-                if (index >= 0) {
-                    handle_brush_change(index);
-                }
-            }
+    connect(brush_cbx_, &QCheckBox::stateChanged,
+        [this](bool checked) {
+            auto rm = this->current_rgn_map();
+            rm->show_brushes(checked);
+            rm->update();
+        }
+    );
+    connect(flow_cbx_, &QCheckBox::stateChanged,
+        [this](bool checked) {
+            auto rm = this->current_rgn_map();
+            rm->show_flow(checked);
+            rm->update();
         }
     );
 }
@@ -113,12 +136,6 @@ void ui::rgn_map_panel::repopulate_ctrls() {
         layer_cbo_->insertItem(i, lbl.c_str());
     }
 
-    curr_brush_cbo_->clear();
-    auto brushes = parent_->brush_names();
-    for (const auto& [i,brush] : rv::enumerate(brushes)) {
-        curr_brush_cbo_->insertItem(i, brush.c_str());
-    }
-
     default_brushes_ = get_brush_defaults();
     name_to_brush_ = parent_->brush_panel().brush_dictionary();
     brush_to_name_ = name_to_brush_ |
@@ -129,7 +146,9 @@ void ui::rgn_map_panel::repopulate_ctrls() {
             }
         ) | r::to<std::unordered_map<ch::brush_expr*, std::string>>();
 
-    curr_brush_cbo_->lineEdit()->setText(k_no_selection);
+     brush_lbl_->setText(k_no_selection);
+     select_brush_btn_->setItems(parent_->brush_names());
+   
 }
 
 void ui::rgn_map_panel::set_layers(double scale, ch::ink_layers* ink_layers) {
@@ -153,9 +172,9 @@ void ui::rgn_map_panel::set_layers(double scale, ch::ink_layers* ink_layers) {
         std::string lbl = "layer " + std::to_string(i);
         layer_cbo_->insertItem(i, lbl.c_str());
     }
-
+    brushes_ = parent_->brush_panel().brushes();
     for (int i = 0; i < n; ++i) {
-        auto rgn_map = new rgn_map_ctrl();
+        auto rgn_map = new rgn_map_ctrl(&brushes_);
         rgn_map->set(def_brushes[i], scale, ink_layers->sz, &(ink_layers->content[i]));
         auto scroller = new QScrollArea();
         scroller->setWidget(rgn_map);
@@ -177,26 +196,25 @@ ui::rgn_map_ctrl* ui::rgn_map_panel::current_rgn_map() const {
     );
 }
 
-void ui::rgn_map_panel::handle_brush_change(int brush_index) {
+void ui::rgn_map_panel::handle_brush_change(QString qbrush_name) {
     if (name_to_brush_.empty()) {
         return;
     }
-    auto brush_name = curr_brush_cbo_->itemText(brush_index).toStdString();
+    auto brush_name = qbrush_name.toStdString();
     if (!name_to_brush_.contains(brush_name)) {
         qDebug() << "bad rgn_map_panel::handle_brush_change: " << brush_name.c_str();
         return;
     }
     auto brush = name_to_brush_[brush_name];
-    for (auto ili_ptr : current_rgn_map()->selected_layer_items()) {
-        ili_ptr->brush = brush;
-    }
+    current_rgn_map()->set_brush_of_selection(brush);
+    brush_lbl_->setText(std::string("brush: " + brush_name).c_str());
 }
 
 void ui::rgn_map_panel::handle_selection_change() {
     std::optional<ch::brush_expr_ptr> selected_brush = {};
     auto rgn_map = current_rgn_map();
     if (!rgn_map->has_selection()) {
-        curr_brush_cbo_->lineEdit()->setText(k_no_selection);
+        brush_lbl_->setText(k_no_selection);
         return;
     }
     auto selected = rgn_map->selected_layer_items() | r::to_vector;
@@ -211,21 +229,37 @@ void ui::rgn_map_panel::handle_selection_change() {
         }
     }
     if (!selected_brush) {
-        curr_brush_cbo_->lineEdit()->setText(k_heterogeneous);
+        brush_lbl_->setText(k_heterogeneous);
         return;
     }
     auto brush_name = brush_to_name_[selected_brush->get()];
-    curr_brush_cbo_->setCurrentText(brush_name.c_str());
+    brush_lbl_ ->setText(("brush: " + brush_name).c_str());
 }
 
-ui::rgn_map_ctrl::rgn_map_ctrl() :
+ui::rgn_map_ctrl::rgn_map_ctrl(const std::vector<ch::brush_expr_ptr>* brushes) :
         base_sz_(-1),
         scale_(1.0),
+        is_showing_brushes_(false),
+        is_showing_flow_(false),
         selecting_(false),
-        cursor_radius_(1)
+        cursor_radius_(1),
+        brushes_(brushes),
+        set_brushes_(brushes->size()),
+        brush_info_(
+            *brushes |
+               rv::transform(
+                   [](auto br_ptr)->std::pair<const ch::brush_expr*, brush_info> {
+                       return { br_ptr.get(), {} };
+                   }
+               ) | r::to< std::unordered_map<const ch::brush_expr*, brush_info>>()
+        )   
 {
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
+
+    for (auto [i,br] : rv::enumerate(*brushes)) {
+        brush_info_[br.get()].color = get_nth_color(i);
+    }
 }
 
 void ui::rgn_map_ctrl::set(ch::brush_expr_ptr default_brush, double scale, 
@@ -284,12 +318,42 @@ ch::polygon ui::rgn_map_ctrl::cursor_poly(
     );
 }
 
+void ui::rgn_map_ctrl::show_brushes(bool v) {
+    is_showing_brushes_ = v;
+}
+
+void ui::rgn_map_ctrl::show_flow(bool v) {
+    is_showing_flow_ = v;
+}
+
+bool ui::rgn_map_ctrl::is_showing_brushes() const {
+    return is_showing_brushes_;
+}
+
+bool ui::rgn_map_ctrl::is_showing_flow() const {
+    return is_showing_flow_;
+}
+
 const std::unordered_set<int>& ui::rgn_map_ctrl::selected() const {
     return selected_;
 }
 
 bool ui::rgn_map_ctrl::has_selection() const {
     return !selected_.empty();
+}
+
+void ui::rgn_map_ctrl::set_brush_of_selection(ch::brush_expr_ptr br) {
+    if (selected_.empty()) {
+        return;
+    }
+    for (auto [index, ili] : rv::enumerate(selected_layer_items())) {
+        brush_info_[ili->brush.get()].items.erase(index);
+        ili->brush = br;
+        brush_info_[br.get()].items.insert(index);
+    }
+    selected_.clear();
+    emit selection_changed();
+    update();
 }
 
 void ui::rgn_map_ctrl::paintEvent(QPaintEvent* event) {
@@ -309,6 +373,12 @@ void ui::rgn_map_ctrl::paintEvent(QPaintEvent* event) {
         if (selected_.contains(poly_index)) {
             painter.setOpacity(0.5);
             ch::paint_polygon(painter, poly, ch::color(255, 0, 0));
+            painter.setOpacity(1.0);
+        }
+        auto brush = layer_->at(poly_index).brush;
+        if (brush != def_brush_ && is_showing_brushes_) {
+            painter.setOpacity(0.3);
+            ch::paint_polygon(painter, poly, brush_info_[brush.get()].color);
             painter.setOpacity(1.0);
         }
     }

@@ -68,6 +68,7 @@ namespace ui {
 
 		brush_panel(layer_panel& layers);
 		std::vector<std::string> brush_names() const;
+        std::vector<ch::brush_expr_ptr> brushes() const;
         std::unordered_map<std::string, ch::brush_expr_ptr> brush_dictionary() const;
 
 	private:
