@@ -427,7 +427,7 @@ void ui::rgn_map_ctrl::mouseMoveEvent(QMouseEvent* event) {
             bool adding_to_selection = (!removing_from_selection) &&
                 (QApplication::keyboardModifiers() & Qt::ShiftModifier);
 
-            if (!adding_to_selection || removing_from_selection) {
+            if (!adding_to_selection && !removing_from_selection) {
                 selected_.clear();
                 selected_.insert(poly_indices.begin(), poly_indices.end());
             } else if (adding_to_selection) {
