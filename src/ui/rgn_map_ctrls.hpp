@@ -11,54 +11,22 @@
 
 namespace ui {
 
-    class SelectButton : public QPushButton
+    class select_button : public QPushButton
     {
         Q_OBJECT
 
     public:
-        SelectButton(const std::string& txt) 
-        {
-            setText(txt.c_str());
-            connect(this, &QPushButton::clicked, this, &SelectButton::showPopup);
-
-            m_listWidget = new QListWidget;
-            connect(m_listWidget, &QListWidget::itemClicked, this, &SelectButton::itemSelected);
-
-            m_popup = new QWidget;
-            m_popup->setWindowFlags(Qt::Popup);
-            m_popup->setWindowOpacity(0.95);
-
-            QVBoxLayout* layout = new QVBoxLayout;
-            layout->addWidget(m_listWidget);
-            m_popup->setLayout(layout);
-        }
-
-        void setItems(std::span<const std::string> items) {
-            m_listWidget->clear();
-            for (const auto& item_txt : items) {
-                m_listWidget->addItem(item_txt.c_str());
-            }
-        }
-
-        void showPopup()
-        {
-            QPoint buttonPos = mapToGlobal(QPoint(0, height()));
-            m_popup->move(buttonPos);
-            m_popup->show();
-        }
-
-        void itemSelected(QListWidgetItem* item)
-        {
-            m_popup->hide();
-            emit item_clicked(item->text());
-        }
+        select_button(const std::string& txt);
+        void set_items(std::span<const std::string> items);
+        void show_popup();
+        void item_selected(QListWidgetItem* item);
 
     signals:
         void item_clicked(QString str);
 
     private:
-        QListWidget* m_listWidget;
-        QWidget* m_popup;
+        QListWidget* list_;
+        QWidget* popup_;
     };
 
     class flow_direction_panel : public image_box {
@@ -167,7 +135,7 @@ namespace ui {
         QCheckBox* brush_cbx_;
         QCheckBox* flow_cbx_;
         QLabel* brush_lbl_;
-        SelectButton* select_brush_btn_;
+        select_button* select_brush_btn_;
         flow_direction_panel* flow_ctrl_;
         QStackedWidget* stack_;
 
