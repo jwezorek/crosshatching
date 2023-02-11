@@ -19,6 +19,7 @@ namespace ch {
         ch::polygon poly;
         ch::brush_expr_ptr brush;
         ink_layer_item* parent;
+        double flow_dir;
 
         // hashable ID for this item's value, brush, and the
         // full chain of parent tokens

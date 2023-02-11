@@ -102,6 +102,8 @@ namespace ch {
     QPen create_pen(uchar color, double thickness);
     void paint_polygon(QPainter& g, const polygon& poly, color col, 
         bool filled = true, int thickness = 0);
+
+    void fill_polygon(QPainter& g, const polygon& poly, QBrush brush);
     cv::Mat paint_polygons(const std::vector<std::tuple<color, polygon>>& polys,
         dimensions<int> sz);
     cv::Mat paint_polygons(const std::vector<std::tuple<uchar, polygon>>& polys,

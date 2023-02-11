@@ -919,7 +919,8 @@ ch::ink_layer_item to_ink_layer_item(const ch::gray_polygon& gp, const ch::brush
         value,
         poly,
         brush_ptr,
-        nullptr
+        nullptr,
+        0.0
     };
 }
 

@@ -29,12 +29,21 @@ namespace ui {
         QWidget* popup_;
     };
 
-    class flow_direction_panel : public image_box {
+    class flow_direction_panel : public QWidget {
 
         Q_OBJECT
 
+        std::optional<double> direction_;
+
+        float radius() const;
+        QPointF center() const;
+
     public:
         flow_direction_panel();
+        void clear();
+        void set_direction(double theta);
+        std::optional<double> direction() const;
+        void paintEvent(QPaintEvent* event) override;
     };
 
     class rgn_map_ctrl : public QWidget {
@@ -71,6 +80,9 @@ namespace ui {
         std::unordered_map<const ch::brush_expr*, brush_info> brush_info_;
         bool is_showing_brushes_;
         bool is_showing_flow_;
+        std::optional<ch::point> flow_pt1_;
+        std::optional<ch::point> flow_pt2_;
+        std::unordered_map<int, QPixmap> patterns_;
 
         template<typename T>
         std::vector<int> find_intersecting_polys(const T& some_shape) const {
@@ -102,7 +114,8 @@ namespace ui {
         const std::unordered_set<int>& selected() const;
         bool has_selection() const;
         void set_brush_of_selection(ch::brush_expr_ptr br);
-        
+        void set_flow_of_selection(double flow);
+
         auto selected_layer_items() const {
             namespace r = ranges;
             namespace rv = ranges::views;
@@ -119,8 +132,11 @@ namespace ui {
         bool is_showing_brushes() const;
         bool is_showing_flow() const;
 
+        void handle_flow_drag(bool dragging, const ch::point& pt);
+
     signals:
         void selection_changed();
+        void flow_assigned(double theta);
     };
 
     class main_window;
@@ -148,6 +164,9 @@ namespace ui {
         void handle_selection_change();
         rgn_map_ctrl* current_rgn_map() const;
         void handle_brush_change(QString str);
+        void handle_flow_assigned(double theta);
+        void handle_selection_change_brush();
+        void handle_selection_change_flow();
 
     public:
         rgn_map_panel(main_window* parent, QStackedWidget* stack);

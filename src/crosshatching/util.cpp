@@ -522,6 +522,17 @@ void ch::paint_polygon(QPainter& g, const polygon& poly, color col, bool filled,
 	g.drawPath(path);
 }
 
+void ch::fill_polygon(QPainter& g, const polygon& poly, QBrush brush) {
+    QPainterPath path;
+    path.addPolygon(ring_to_qpolygon(poly.outer()));
+    for (const auto& hole : poly.inners()) {
+        path.addPolygon(ring_to_qpolygon(hole));
+    }
+    g.setPen(Qt::NoPen);
+    g.setBrush(brush);
+    g.drawPath(path);
+}
+
 cv::Mat ch::paint_polygons(const std::vector<std::tuple<color, polygon>>& polys,
 		dimensions<int> sz) {
 	cv::Mat mat(sz.hgt, sz.wd, CV_8UC3);

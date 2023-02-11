@@ -16,6 +16,52 @@ namespace {
     constexpr auto k_no_selection = "<no selection>";
     constexpr auto k_heterogeneous = "<heterogeneous selection>";
 
+    std::vector<std::tuple<ch::point, ch::point>> transform(
+            const std::vector<std::tuple<ch::point, ch::point>>& lines,
+            const ch::matrix& mat) {
+        return lines |
+            rv::transform(
+                [&mat](auto&& tup)->std::tuple<ch::point, ch::point> {
+                        const auto& [a, b] = tup;
+                        return {
+                            ch::transform(a, mat),
+                            ch::transform(b, mat)
+                        };
+                    }
+                ) | r::to_vector;
+    }
+
+    QPixmap createPatternedPixmap(qreal theta)
+    {
+        float dim = 256;
+        static std::vector<std::tuple<ch::point, ch::point>> lines;
+
+        if (lines.empty()) {
+            auto big_dim = 2 * dim;
+            for (auto y = -dim; y <= dim; y += 8) {
+                lines.push_back(
+                    { {-dim,y},{dim,y} }
+                );
+            }
+        }
+        auto rotated = transform(lines, ch::rotation_matrix(theta));
+        rotated = transform(rotated, ch::translation_matrix(dim / 2, dim / 2));
+
+        QPixmap pixmap(256, 256);
+
+        QPainter painter(&pixmap);
+        painter.setRenderHint(QPainter::Antialiasing, false);
+        painter.setPen(QPen(Qt::black, 1));
+        pixmap.fill(Qt::transparent);
+        for (const auto& [u, v] : rotated) {
+            painter.drawLine(u.x, u.y, v.x, v.y);
+        }
+        painter.end();
+
+        return pixmap;
+    }
+
+
     ch::color get_nth_color(int n) {
         static std::vector<ch::color> colors = {
             ch::rgb(180,0,0),
@@ -62,6 +108,13 @@ namespace {
         };
     }
 
+    QPointF pt_to_qpointf(const ch::point& pt) {
+        return QPointF(
+            pt.x,
+            pt.y
+        );
+    }
+
     auto get_region_maps(QStackedWidget* stack) {
         int n = stack->count();
         return rv::iota(0,n) |
@@ -73,6 +126,57 @@ namespace {
             );
     }
 }
+
+/*------------------------------------------------------------------------------------------------*/
+
+ui::flow_direction_panel::flow_direction_panel() : direction_(0) {
+    setFixedSize(QSize(130, 130));
+}
+
+void ui::flow_direction_panel::set_direction(double theta) {
+    direction_ = theta;
+    update();
+}
+
+std::optional<double> ui::flow_direction_panel::direction() const {
+    return direction_;
+}
+
+float ui::flow_direction_panel::radius() const {
+    return static_cast<float>(width() - 2) / 2.0f;
+}
+
+QPointF ui::flow_direction_panel::center() const {
+    auto r = static_cast<float>(width()) / 2.0f;
+    return QPointF(r, r);
+}
+
+void ui::flow_direction_panel::clear() {
+    direction_ = {};
+    update();
+}
+
+void ui::flow_direction_panel::paintEvent(QPaintEvent* event) {
+    QPainter g(this);
+    g.setRenderHint(QPainter::Antialiasing, true);
+    auto r = radius();
+    auto c = center();
+    g.setPen(Qt::white);
+    g.drawEllipse(c, r, r);
+
+    if (direction_) {
+        auto theta = *direction_;
+        g.setPen(QPen(Qt::white, 3.0f));
+        QPointF end_pt = {
+            r * std::cos(theta) + c.x(),
+            r * std::sin(theta) + c.y()
+        };
+
+        g.drawLine(c, end_pt);
+    }
+}
+
+/*------------------------------------------------------------------------------------------------*/
 
 ui::select_button::select_button(const std::string& txt)
 {
@@ -106,12 +210,6 @@ void ui::select_button::show_popup() {
 void ui::select_button::item_selected(QListWidgetItem* item) {
     popup_->hide();
     emit item_clicked(item->text());
-}
-
-/*------------------------------------------------------------------------------------------------*/
-
-ui::flow_direction_panel::flow_direction_panel() {
-    set_image(ch::blank_monochrome_bitmap(100));
 }
 
 /*------------------------------------------------------------------------------------------------*/
@@ -236,6 +334,19 @@ void ui::rgn_map_ctrl::set_brush_of_selection(ch::brush_expr_ptr br) {
     update();
 }
 
+
+void ui::rgn_map_ctrl::set_flow_of_selection(double flow) {
+    if (selected_.empty()) {
+        return;
+    }
+    for (auto [index, ili] : rv::enumerate(selected_layer_items())) {
+        ili->flow_dir = flow;
+    }
+    selected_.clear();
+    emit selection_changed();
+    update();
+}
+
 void ui::rgn_map_ctrl::paintEvent(QPaintEvent* event) {
     auto dirty_rect = event->rect();
 
@@ -261,6 +372,18 @@ void ui::rgn_map_ctrl::paintEvent(QPaintEvent* event) {
             ch::paint_polygon(painter, poly, brush_info_[brush.get()].color);
             painter.setOpacity(1.0);
         }
+        auto flow = layer_->at(poly_index).flow_dir;
+        if (flow != 0.0 && is_showing_flow_) {
+            int key = static_cast<int>(flow * 1000);
+            if (!patterns_.contains(key)) {
+                patterns_[key] = createPatternedPixmap(flow);
+            }
+            QBrush patternBrush(patterns_[key]);
+            patternBrush.setStyle(Qt::TexturePattern);
+            painter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+            ch::fill_polygon(painter, poly, patternBrush);
+            painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+        }
     }
 
     if (cursor_radius_ > 1 && rect().contains(mapFromGlobal(QCursor::pos()))) {
@@ -271,6 +394,11 @@ void ui::rgn_map_ctrl::paintEvent(QPaintEvent* event) {
             ch::color(0, 0, 0),
             false
         );
+    }
+
+    if (flow_pt1_ && flow_pt2_) {
+        painter.setPen(Qt::black);
+        painter.drawLine(pt_to_qpointf(*flow_pt1_), pt_to_qpointf(*flow_pt2_));
     }
 }
 
@@ -289,6 +417,25 @@ void ui::rgn_map_ctrl::mousePressEvent(QMouseEvent* event) {
     }
 }
 
+void ui::rgn_map_ctrl::handle_flow_drag(bool is_flow_dragging, const ch::point& pt) {
+
+    if (!is_flow_dragging) {
+        auto y_diff = pt.y - flow_pt1_->y;
+        auto x_diff = pt.x - flow_pt1_->x;
+        flow_pt1_ = flow_pt2_ = {};
+        emit flow_assigned(std::atan2(y_diff, x_diff));
+        update();
+        return;
+    }
+    if (!flow_pt1_) {
+        flow_pt1_ = pt;
+        update();
+        return;
+    }
+    flow_pt2_ = pt;
+    update();
+}
+
 void ui::rgn_map_ctrl::mouseMoveEvent(QMouseEvent* event) {
     setFocus();
     bool selection_state_changed = false;
@@ -299,13 +446,20 @@ void ui::rgn_map_ctrl::mouseMoveEvent(QMouseEvent* event) {
         curr_loc_ = new_loc;
         repaint = true;
     }
+
+    bool left_mouse_btn_down = event->buttons() & Qt::LeftButton;
+    auto mods = QApplication::keyboardModifiers();
+    bool is_flow_dragging = left_mouse_btn_down && (mods & Qt::ControlModifier);
+    if (is_flow_dragging || flow_pt1_) {
+        handle_flow_drag(is_flow_dragging, new_loc);
+        return;
+    }
     
-    if ((event->buttons() & Qt::LeftButton) && selecting_ && curr_loc_) {
+    if (left_mouse_btn_down && selecting_ && curr_loc_) {
         auto poly_indices = polys_at_point( *curr_loc_ );
         if (! poly_indices.empty()) {
-            bool removing_from_selection = QApplication::keyboardModifiers() & Qt::AltModifier;
-            bool adding_to_selection = (!removing_from_selection) &&
-                (QApplication::keyboardModifiers() & Qt::ShiftModifier);
+            bool removing_from_selection = mods & Qt::AltModifier;
+            bool adding_to_selection = (!removing_from_selection) && (mods & Qt::ShiftModifier);
 
             if (!adding_to_selection && !removing_from_selection) {
                 selected_.clear();
@@ -337,6 +491,8 @@ void ui::rgn_map_ctrl::mouseReleaseEvent(QMouseEvent* event) {
         mouseMoveEvent(event);
     }
 }
+
+/*------------------------------------------------------------------------------------------------*/
 
 std::vector<ch::brush_expr_ptr> ui::rgn_map_panel::get_brush_defaults() const {
     return std::get<0>(parent_->brush_per_intervals());
@@ -443,6 +599,10 @@ void ui::rgn_map_panel::set_layers(double scale, ch::ink_layers* ink_layers) {
             rgn_map, &rgn_map_ctrl::selection_changed,
             this, &rgn_map_panel::handle_selection_change
         );
+        connect(
+            rgn_map, &rgn_map_ctrl::flow_assigned,
+            this, &rgn_map_panel::handle_flow_assigned
+        );
         rgn_map->setVisible(true);
     }
     int test = stack_->count();
@@ -472,8 +632,15 @@ void ui::rgn_map_panel::handle_brush_change(QString qbrush_name) {
     brush_lbl_->setText(std::string("brush: " + brush_name).c_str());
 }
 
-void ui::rgn_map_panel::handle_selection_change() {
+
+void ui::rgn_map_panel::handle_flow_assigned(double theta) {
+    current_rgn_map()->set_flow_of_selection(theta);
+    //flow_ctrl_->set_direction(theta);
+}
+
+void ui::rgn_map_panel::handle_selection_change_brush() {
     std::optional<ch::brush_expr_ptr> selected_brush = {};
+
     auto rgn_map = current_rgn_map();
     if (!rgn_map->has_selection()) {
         brush_lbl_->setText(k_no_selection);
@@ -490,10 +657,45 @@ void ui::rgn_map_panel::handle_selection_change() {
             }
         }
     }
+
     if (!selected_brush) {
         brush_lbl_->setText(k_heterogeneous);
         return;
     }
     auto brush_name = brush_to_name_[selected_brush->get()];
     brush_lbl_->setText(("brush: " + brush_name).c_str());
+}
+
+
+
+void ui::rgn_map_panel::handle_selection_change_flow() {
+    std::optional<float> selected_flow = {};
+
+    auto rgn_map = current_rgn_map();
+    if (!rgn_map->has_selection()) {
+        flow_ctrl_->clear();
+        return;
+    }
+    auto selected = rgn_map->selected_layer_items() | r::to_vector;
+    for (auto sel : selected) {
+        if (!selected_flow) {
+            selected_flow = sel->flow_dir;
+        } else {
+            if (selected_flow != sel->flow_dir) {
+                selected_flow = {};
+                break;
+            }
+        }
+    }
+
+    if (!selected_flow) {
+        flow_ctrl_->clear();
+        return;
+    }
+    flow_ctrl_->set_direction(*selected_flow);
+}
+
+void ui::rgn_map_panel::handle_selection_change() {
+    handle_selection_change_brush();
+    handle_selection_change_flow();
 }
