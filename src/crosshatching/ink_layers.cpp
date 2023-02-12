@@ -112,7 +112,7 @@ namespace {
         boost::geometry::union_(poly1, poly2, output);
         if (output.empty()) {
             qDebug() << "boost::geometry::union_ failure";
-            return {};
+            return poly1.outer().size() > poly2.outer().size() ? poly1 : poly2;
         }
         return output[0];
     }
@@ -949,15 +949,9 @@ ch::ink_layer to_simple_ink_layer(const std::vector<ch::gray_polygon>& polys,
                 return { high, p };
             }
         ) | r::to_vector;
-    //auto sz_before = layer_polys.size();
+
     layer_polys = merge_gray_polygons(layer_polys);
-    /*
-    if (layer_polys.size() != sz_before) {
-        qDebug() << "sizes do not match";
-    } else {
-        qDebug() << "good";
-    }
-    */
+
     return ch::ink_layer{
         layer_polys |
             rv::transform(

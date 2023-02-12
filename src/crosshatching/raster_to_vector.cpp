@@ -485,10 +485,6 @@ namespace {
 			r::to_<ch::ring>;
 	}
 
-	bool is_degenerate_ring(const ch::ring& r) {
-		return r.size() <= 2;
-	}
-
 	template<typename T>
 	bool is_degenerate_poly_tuple(const std::tuple<T, ch::polygon>& tup) {
 		return is_degenerate_ring(std::get<1>(tup).outer());
@@ -503,9 +499,9 @@ namespace {
 					[&](const auto& hole) {
 						return simplify_ring(hole, crit_pts, paths, param);
 					}
-				) | rv::remove_if(
-					is_degenerate_ring
-				) | r::to_vector
+				) | 
+                rv::remove_if( ch::is_degenerate_ring ) | 
+                r::to_vector
 		);
 	}
 
@@ -532,6 +528,39 @@ namespace {
 		return std::get<1>(tup);
 	}
 
+    template<typename T>
+    std::vector<std::tuple<T, ch::polygon>> correct_polygons(
+            const std::vector<std::tuple<T, ch::polygon>>& inp) {
+        
+        std::vector<std::tuple<T, ch::polygon>> output;
+        output.reserve(inp.size() + 100); 
+        for (auto&& [col, poly] : inp) {
+            if (ch::is_degenerate_ring(poly.outer())) {
+                continue;
+            }
+
+            if (boost::geometry::is_valid(poly)) {
+                output.emplace_back(col, std::move(poly));
+            }
+
+            // fix self-intersections, spikes, etc.
+            double remove_spike_threshold = 1E-7;
+            ch::polygons result;
+            geometry::correct<ch::point, ch::polygon, ch::ring, ch::polygons>(
+                ch::polygons{ poly }, result, remove_spike_threshold
+                );
+
+            for (auto&& p : result) {
+                if (ch::is_degenerate_ring(p.outer())) {
+                    continue;
+                }
+                output.emplace_back(col, std::move(p));
+            }
+        }
+        output.shrink_to_fit();
+        return output;
+    }
+
 	template<typename T>
 	std::vector<std::tuple<T, ch::polygon>> simplify_colored_polygons(
 		std::span< std::tuple<T, ch::polygon>> blobs, double param) {
@@ -541,35 +570,23 @@ namespace {
 		auto polys = blobs |
 			rv::transform(second<T, ch::polygon>) |
 			r::to_vector;
-
 		
 		polys = simplify_polygons(polys, param);
+        std::vector<std::tuple<T, ch::polygon>> corrected_polys =
+            rv::zip(blobs | rv::transform(first<T, ch::polygon>), polys) |
+            rv::transform(
+                [](auto&& pair)->std::tuple<T, ch::polygon> {
+                    return { pair.first, pair.second };
+                }
+            ) | r::to_vector;
 
-		std::vector<std::tuple<T, ch::polygon>> output;
-		output.reserve(polys.size() + 100);
+        auto old_n = 0;
+        while (old_n == corrected_polys.size()) {
+            old_n = corrected_polys.size();
+            corrected_polys = correct_polygons(corrected_polys);
+        }
 
-		for (auto&& [col, poly] : rv::zip(blobs | rv::transform(first<T, ch::polygon>), polys)) {
-			if (is_degenerate_ring(poly.outer())) {
-				continue;
-			}
-
-			if (boost::geometry::is_valid(poly)) {
-				output.emplace_back(col, std::move(poly));
-			}
-
-            // fix self-intersections, spikes, etc.
-			double remove_spike_threshold = 1E-7;
-			ch::polygons result;
-			geometry::correct<ch::point, ch::polygon, ch::ring, ch::polygons>(
-				ch::polygons{ poly }, result, remove_spike_threshold
-			);
-
-			for (auto&& p : result) {
-				output.emplace_back(col, std::move(p));
-			}
-		}
-        output.shrink_to_fit();
-		return output;
+		return corrected_polys;
 	}
 
 	struct color_hasher {

@@ -575,7 +575,14 @@ ch::point ch::normalize(const ch::point& pt) {
     return pt / euclidean_distance({ 0,0 }, pt);
 }
 
+bool ch::is_degenerate_ring(const ch::ring& r) {
+    return r.size() <= 2;
+}
+
 ch::point ch::representative_point(const ch::polygon& poly) {
+    if (ch::is_degenerate_ring(poly.outer())) {
+        return poly.outer().front();
+    }
     auto triangles = triangulate(poly);
     if (!triangles.empty()) {
         auto iter = r::max_element(
@@ -609,7 +616,8 @@ ch::point ch::representative_point(const ch::polygon& poly) {
             return pt_2;
         }
     }
-    throw std::runtime_error("representative point failed");
+    return poly.outer().front();
+    //throw std::runtime_error("representative point failed");
 }
 
 double ch::triangle::area() const {

@@ -172,6 +172,7 @@ namespace ch {
     point unit_vector(float theta);
     point normalize(const point& pt);
     point representative_point(const polygon& poly);
+    bool is_degenerate_ring(const ch::ring& r);
 
     struct triangle {
         ch::point a;
