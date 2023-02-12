@@ -856,15 +856,21 @@ ch::ink_layers ch::split_into_layers_adaptive(
         rv::zip(brushes, layer_content) |
             rv::transform(
                 [](auto&& pair)->ink_layer {
-                    auto&& [brush, content] = pair;
-                    return { content };
+                    auto&& [br, content] = pair;
+                    for (auto& ili : content) {
+                        ili.brush = br;
+                    }
+                    return  content ;
                 }
             ) | r::to_vector
     };
 
     populate_parents(layer_item_to_components, layers);
 
-    return layers;
+    return {
+        layers.sz,
+        layers.content | rv::reverse | r::to_vector
+    };
 }
 
 std::vector<ch::gray_polygon> merge_gray_polygons(const std::vector<ch::gray_polygon>& polys) {
@@ -943,7 +949,15 @@ ch::ink_layer to_simple_ink_layer(const std::vector<ch::gray_polygon>& polys,
                 return { high, p };
             }
         ) | r::to_vector;
+    //auto sz_before = layer_polys.size();
     layer_polys = merge_gray_polygons(layer_polys);
+    /*
+    if (layer_polys.size() != sz_before) {
+        qDebug() << "sizes do not match";
+    } else {
+        qDebug() << "good";
+    }
+    */
     return ch::ink_layer{
         layer_polys |
             rv::transform(

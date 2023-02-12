@@ -134,6 +134,21 @@ namespace {
         ss << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(uc);
         return ss.str();
     }
+
+    std::vector<ch::color> some_colors = {
+        ch::rgb(255,0,0),
+        ch::rgb(255,97,3),
+        ch::rgb(255,255,0),
+        ch::rgb(0,255,0),
+        ch::rgb(0,0,255),
+        ch::rgb(138,43,226),
+        ch::rgb(255, 192, 203),
+        ch::rgb(255, 160, 122),
+        ch::rgb(255, 250, 205),
+        ch::rgb(152, 251, 152),
+        ch::rgb(173, 216, 230),
+        ch::rgb(230, 230, 250)
+    };
 }
 
 std::string ch::polygon_to_svg(const ch::polygon& poly, const std::string& color, double scale) {
@@ -574,6 +589,26 @@ cv::Mat ch::blank_monochrome_bitmap(int dim) {
     return  cv::Mat(dim, dim, CV_8U, 255);
 }
 
+double ch::measure_gray_level(cv::Mat swatch) {
+    double mean_val = cv::mean(swatch).val[0];
+    return (255.0 - mean_val) / 255.0;
+}
+
+/*
+void ch::debug_polygons_to_svg(const std::string& output_file, double scale, 
+        std::span<ch::polygon> polys) {
+    auto colors = some_colors | rv::cycle | rv::take(polys.size());
+    auto tups = rv::zip(colors, polys) |
+        rv::transform(
+            [](auto&& p)->std::tuple<ch::color, ch::polygon> {
+                auto [c, poly] = p;
+                return { c,poly, poly. };
+            }
+        ) | r::to_vector;
+    ch::polygons_to_svg<color>(output_file, tups, scale);
+}
+*/
+
 void ch::debug_polygons(const std::string& output_file, dimensions<int> sz,
 		std::span<std::tuple<uchar, ch::polygon>> cpolys) {
 
@@ -582,25 +617,11 @@ void ch::debug_polygons(const std::string& output_file, dimensions<int> sz,
 	auto [x1, y1, x2, y2] = ch::bounding_rectangle(polys);
 	int wd = sz.wd;
 	int hgt = sz.hgt;
-	std::vector<ch::color> colors = {
-		rgb(255,0,0),
-		rgb(255,97,3),
-		rgb(255,255,0),
-		rgb(0,255,0),
-		rgb(0,0,255),
-		rgb(138,43,226),
-		rgb(255, 192, 203),
-		rgb(255, 160, 122),
-		rgb(255, 250, 205),
-		rgb(152, 251, 152),
-		rgb(173, 216, 230),
-		rgb(230, 230, 250)
-	};
 
-	auto n = std::min(cpolys.size(), colors.size());
+	auto n = std::min(cpolys.size(), some_colors.size());
 	auto old_hgt = hgt;
 	hgt += 35 * (n+2);
-	auto colored_polys = rv::zip(colors, polys | rv::take(n)) | 
+	auto colored_polys = rv::zip(some_colors, polys | rv::take(n)) |
 		rv::transform(
 			[](const auto& p) {return std::tuple(p.first, p.second); }
 		) | r::to_vector;
@@ -613,7 +634,7 @@ void ch::debug_polygons(const std::string& output_file, dimensions<int> sz,
 			cv::Point(50, old_hgt + 35 * (i+1)), //top-left position
 			cv::FONT_HERSHEY_DUPLEX,
 			1.0,
-			colors[i], //font color
+            some_colors[i], //font color
 			2);
 	}
 

@@ -162,6 +162,10 @@ namespace {
                 current_brush = iter->second;
             } else {
                 auto bkgds = tbl.at(blob.parent_token());
+
+                //cv::imwrite("C:\\test\\aaa-bkgd.png", bkgds.front());
+                //qDebug() << "aaa-bkgd.png =>" << ch::measure_gray_level(bkgds.front());
+
                 current_brush = std::make_shared<ch::brush>(
                     blob.brush,
                     params.epsilon,
@@ -180,6 +184,9 @@ namespace {
             auto tok = blob.token();
             if (output_table.find(tok) == output_table.end()) {
                 output_table[tok] = current_brush->render_swatches(value, params.num_samples);
+
+                //cv::imwrite("C:\\test\\aaa-tblentry.png", output_table[tok].front());
+                //qDebug() << "aaa-tblentry.png =>" << ch::measure_gray_level(output_table[tok].front());
             }
             prog.tick();
         }

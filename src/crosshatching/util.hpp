@@ -49,6 +49,8 @@ namespace ch {
         detail::polygons_to_svg_aux(output_file, polys, scale);
     }
 
+   // void debug_polygons_to_svg(const std::string& output_file, double scale, std::span<polygon> polys);
+
     void debug_polygons(const std::string& output_file, dimensions<int> sz,
         std::span<std::tuple<uchar, polygon>> polys);
 
@@ -81,6 +83,7 @@ namespace ch {
     dimensions<int> mat_dimensions(cv::Mat mat);
     uchar color_to_monochrome(color col);
     cv::Mat blank_monochrome_bitmap(int sz);
+    double measure_gray_level(cv::Mat swatch);
 
     // vector fields, perlin noise, perlin flow, etc.
 

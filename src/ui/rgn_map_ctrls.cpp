@@ -5,6 +5,7 @@
 #include "../crosshatching/util.hpp"
 #include <numbers>
 #include <qdebug.h>
+#include <fstream>
 
 /*------------------------------------------------------------------------------------------------*/
 
@@ -458,6 +459,7 @@ void ui::rgn_map_ctrl::mouseMoveEvent(QMouseEvent* event) {
     if (left_mouse_btn_down && selecting_ && curr_loc_) {
         auto poly_indices = polys_at_point( *curr_loc_ );
         if (! poly_indices.empty()) {
+            auto debug_layer_item = layer_->at(poly_indices.front());
             bool removing_from_selection = mods & Qt::AltModifier;
             bool adding_to_selection = (!removing_from_selection) && (mods & Qt::ShiftModifier);
 
@@ -567,7 +569,44 @@ void ui::rgn_map_panel::repopulate_ctrls() {
 
 }
 
+void layer_debug(const std::string& output_file, ch::ink_layer& layer, double scale) {
+
+    auto [x1, y1, wd, hgt] = ch::bounding_rectangle(
+        layer |
+        rv::transform([](const auto& ili) {return ili.poly; }) |
+        r::to_vector
+    );
+
+    std::ofstream outfile(output_file);
+    outfile << ch::svg_header(static_cast<int>(scale * wd), static_cast<int>(scale * hgt));
+    for (const auto& ili : layer) {
+        outfile << ch::polygon_to_svg(ili.poly, ch::to_svg_color(get_nth_color(ili.id)), scale) << std::endl;
+    }
+    for (const auto& ili : layer) {
+        ch::point pt = ch::representative_point(ch::scale(ili.poly, scale));
+        auto x = pt.x;
+        auto y = pt.y;
+        std::string text = std::to_string(ili.id);
+        outfile << "<text x=\"" << x << "\" y=\"" << y << "\" text-anchor=\"middle\">" << text << "</text>"
+            << std::endl;
+    }
+    outfile << "</svg>" << std::endl;
+    outfile.close();
+}
+
+void debug(ch::ink_layers& ink_layers) {
+    if (ink_layers.content.size() != 2) {
+        return;
+    }
+    auto& layers = ink_layers.content;
+    for (int i = 0; i < layers.size(); ++i) {
+        std::string fname = "C:\\test\\aaaa-debug-lay-" + std::to_string(i) + ".svg";
+        layer_debug(fname, layers[i], 20.0);
+    }
+}
+
 void ui::rgn_map_panel::set_layers(double scale, ch::ink_layers* ink_layers) {
+    //debug(*ink_layers);
     auto def_brushes = get_brush_defaults();
     int old_num_layers = stack_->count();
     if (old_num_layers > 0) {
@@ -665,8 +704,6 @@ void ui::rgn_map_panel::handle_selection_change_brush() {
     auto brush_name = brush_to_name_[selected_brush->get()];
     brush_lbl_->setText(("brush: " + brush_name).c_str());
 }
-
-
 
 void ui::rgn_map_panel::handle_selection_change_flow() {
     std::optional<float> selected_flow = {};

@@ -40,17 +40,12 @@ namespace {
         );
     }
 
-    double measure_gray_level(cv::Mat swatch, cv::Mat bkgd) {
-        double mean_val = cv::mean(swatch).val[0];
-        return (255.0 - mean_val) / 255.0;
-    }
-
     double sample(ch::dimensions<float> sz, ch::brush_expr_ptr expr, 
             double t, int n, const std::vector<cv::Mat>& bkgds) {
 
         auto compute_gray_level = [sz](ch::brush_expr_ptr expr, double t, cv::Mat bkgd) -> double {
             auto swatch = render_brush_expr_to_mat(expr, bkgd, t);
-            return measure_gray_level(swatch, bkgd);
+            return ch::measure_gray_level(swatch);
         };
 
         std::vector<std::future<double>> samples = rv::iota(0, n) |
