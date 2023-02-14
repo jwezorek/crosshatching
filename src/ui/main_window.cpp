@@ -753,7 +753,7 @@ ui::brush_panel::brush_panel(layer_panel& layers) :
                             (quote
                                 (brush 
                                     (horz_strokes
-                                        (norm_rnd (lerp 0 800) (lerp 50 100))
+                                        (norm_rnd (lerp 100 1600) (lerp 10 100))
                                         (norm_rnd (lerp 200 0) (lerp 20 0.05))
                                         (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
                                     )
@@ -775,7 +775,7 @@ ui::brush_panel::brush_panel(layer_panel& layers) :
             R"(
                 (brush
                     (horz_strokes
-                        (norm_rnd (lerp 0 800) (lerp 50 100))
+                        (norm_rnd (lerp 100 1600) (lerp 10 100))
                         (norm_rnd (lerp 200 0) (lerp 20 0.05))
                         (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
                     )
@@ -784,9 +784,26 @@ ui::brush_panel::brush_panel(layer_panel& layers) :
                 )
             )"
         )
-        );
+    );
+    auto brush3 = std::get<ch::brush_expr_ptr>(
+        ch::parse(
+            R"(
+                (brush
+                    (rot 90)
+                    (horz_strokes
+                        (norm_rnd (lerp 100 1600) (lerp 10 100))
+                        (norm_rnd (lerp 200 0) (lerp 20 0.05))
+                        (norm_rnd (lerp 7 0.5) (lerp 0.5 0.05))
+                    )
+                    (dis (ramp 0.2 0 1))
+                    (jiggle (norm_rnd 0 0.5))
+                )
+            )"
+        )
+    );
     insert_toplevel_item(tree(), "main", brush1);
     insert_toplevel_item(tree(), "horz", brush2);
+    insert_toplevel_item(tree(), "vert", brush3);
     insert_toplevel_item(tree(), "solid", nullptr);
     sync_layer_panel();
 }
