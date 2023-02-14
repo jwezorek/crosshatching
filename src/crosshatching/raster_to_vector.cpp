@@ -4,7 +4,7 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <range/v3/all.hpp>
-
+#include <qdebug.h>
 #include "correct.hpp"
 
 namespace r = ranges;
@@ -490,6 +490,48 @@ namespace {
 		return is_degenerate_ring(std::get<1>(tup).outer());
 	}
 
+    bool has_zero_length_edge(const ch::ring& r) {
+        for (auto e : ch::all_edges(r)) {
+            if (e[0] == e[1]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool has_zero_length_edge(const ch::polygon& poly) {
+        if (has_zero_length_edge(poly.outer())) {
+            return true;
+        }
+        for (const auto& hole : poly.inners()) {
+            if (has_zero_length_edge(hole)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    ch::ring remove_zero_length_edges(const ch::ring& r) {
+        ch::ring output;
+        for (auto e : ch::all_edges(r)) {
+            if (e[0] != e[1]) {
+                output.push_back(e[0]);
+            }
+        }
+        return output;
+    }
+
+    ch::polygon remove_zero_length_edges(const ch::polygon& poly) {
+        auto outer = remove_zero_length_edges(poly.outer());
+        auto inners = poly.inners() |
+            rv::transform(
+                [](const auto& hole)->ch::ring {
+                    return remove_zero_length_edges(hole);
+                }
+        ) | r::to_vector;
+        return ch::make_polygon(outer, inners);
+    }
+
 	ch::polygon simplify_polygon(const ch::polygon& poly, const ch::point_set& crit_pts,
 			ch::path_table& paths, double param) {
 		return ch::make_polygon(
@@ -541,6 +583,7 @@ namespace {
 
             if (boost::geometry::is_valid(poly)) {
                 output.emplace_back(col, std::move(poly));
+                continue;
             }
 
             // fix self-intersections, spikes, etc.
@@ -548,16 +591,21 @@ namespace {
             ch::polygons result;
             geometry::correct<ch::point, ch::polygon, ch::ring, ch::polygons>(
                 ch::polygons{ poly }, result, remove_spike_threshold
-                );
+            );
 
             for (auto&& p : result) {
                 if (ch::is_degenerate_ring(p.outer())) {
                     continue;
                 }
-                output.emplace_back(col, std::move(p));
+                if (has_zero_length_edge(p)) {
+                    output.emplace_back(col, remove_zero_length_edges(p));
+                } else {
+                    output.emplace_back(col, std::move(p));
+                }
             }
         }
         output.shrink_to_fit();
+
         return output;
     }
 
@@ -580,11 +628,8 @@ namespace {
                 }
             ) | r::to_vector;
 
-        auto old_n = 0;
-        while (old_n == corrected_polys.size()) {
-            old_n = corrected_polys.size();
-            corrected_polys = correct_polygons(corrected_polys);
-        }
+
+        corrected_polys = correct_polygons(corrected_polys);
 
 		return corrected_polys;
 	}
