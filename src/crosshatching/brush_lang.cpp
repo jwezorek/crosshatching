@@ -1104,11 +1104,6 @@ void ch::brush_expr::replace_child(const brush_expr_ptr& old_child, const brush_
     *iter = new_child;
 }
 
-size_t ch::brush_expr::id() const {
-    static auto hasher = std::hash<std::string>();
-    return hasher( ch::pretty_print(*this));
-}
-
 std::variant<ch::brush_expr_ptr, std::runtime_error> ch::parse(const std::string& input) {
     static peg::parser parser;
     if (!parser) {

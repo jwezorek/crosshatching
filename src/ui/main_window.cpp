@@ -801,9 +801,9 @@ ui::brush_panel::brush_panel(layer_panel& layers) :
             )"
         )
     );
-    insert_toplevel_item(tree(), "main", brush1);
-    insert_toplevel_item(tree(), "horz", brush2);
-    insert_toplevel_item(tree(), "vert", brush3);
+    insert_toplevel_item(tree(), "interlocking-diagonal", brush1);
+    insert_toplevel_item(tree(), "horizontal", brush2);
+    insert_toplevel_item(tree(), "vertical", brush3);
     insert_toplevel_item(tree(), "solid", nullptr);
     sync_layer_panel();
 }

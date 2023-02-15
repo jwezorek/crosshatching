@@ -734,7 +734,7 @@ ch::brush_token ch::ink_layer_item::token() const {
     ili_ptr = this;
     while (ili_ptr) {
         if (ili_ptr->brush) {
-            boost::hash_combine(tok, ili_ptr->brush->id());
+            boost::hash_combine(tok, ili_ptr->brush.get());
         } else {
             boost::hash_combine(tok, 0xffff);
         }
@@ -754,7 +754,7 @@ ch::brush_token ch::ink_layer_item::parent_token() const {
 
 ch::brush_token ch::ink_layer_item::brush_token() const {
     ch::brush_token seed = parent_token();
-    ch::brush_token br_tok = (brush) ? brush->id() : 0xffff;
+    ch::brush_token br_tok = (brush) ? reinterpret_cast<ch::brush_token>(brush.get()) : 0xffff;
     boost::hash_combine(seed, br_tok);
     return seed;
 }
