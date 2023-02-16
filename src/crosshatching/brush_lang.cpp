@@ -1123,8 +1123,9 @@ std::variant<ch::brush_expr_ptr, std::runtime_error> ch::parse(const std::string
     return expr;
 }
 
-ch::drawing_comps_ptr ch::brush_expr_to_strokes(const brush_expr_ptr& expr, const polygon& poly, double t) {
-    brush_context ctxt(poly, t);
+ch::drawing_comps_ptr ch::brush_expr_to_strokes(const brush_expr_ptr& expr, const brush_context& br_ctxt) {
+    //brush_context ctxt(poly, t);
+    auto ctxt = br_ctxt;
     return std::get<ch::drawing_comps_ptr>(expr->eval(ctxt));
 }
 

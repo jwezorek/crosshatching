@@ -30,7 +30,8 @@ namespace {
 
     ch::drawing_comps_ptr stroke_rectangle(ch::brush_expr_ptr expr, const ch::dimensions<int>& sz, double t) {
         auto rect = make_rectangle(sz);
-        return ch::brush_expr_to_strokes(expr, rect, t);
+        ch::brush_context ctxt(rect, t);
+        return ch::brush_expr_to_strokes(expr, ctxt);
     }
 
     cv::Mat render_brush_expr_to_mat(ch::brush_expr_ptr brush_expr, cv::Mat mat, double t) {
@@ -182,7 +183,9 @@ ch::drawing_comps_ptr ch::brush::draw_strokes(const polygon& poly, double gray_l
     auto centroid = mean_point(poly.outer());
     auto canonicalized = ch::transform(poly, ch::translation_matrix(-centroid));
 
-    auto strokes = brush_expr_to_strokes(brush_expr_, canonicalized, param);
+    //TODO: add flow
+    brush_context ctxt(canonicalized, param);
+    auto strokes = brush_expr_to_strokes(brush_expr_, ctxt);
     if (clip_to_poly) {
         strokes = clip_strokes(canonicalized, strokes);
     }
