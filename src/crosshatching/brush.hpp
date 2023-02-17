@@ -46,12 +46,11 @@ namespace ch {
         void build_n(int n);
         double gray_value_to_param(double gray_val);
         bkgd_swatches render_swatches(double gray_level, int n);
-        drawing_comps_ptr draw_strokes(const polygon& poly, double gray_level, bool clip_to_poly = true);
+        drawing_comps_ptr draw_strokes(const brush_context& ctxt, bool clip_to_poly = true);
         double min_gray_level() const;
         double max_gray_level() const;
         int num_samples() const;
         int swatch_dim() const;
-        bool is_solid_brush() const;
     };
 
 

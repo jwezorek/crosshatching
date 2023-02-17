@@ -231,9 +231,12 @@ namespace {
         );
     }
 
-    constexpr auto k_brush_param_var = "<<t>>";
-    constexpr auto k_rotation_var = "<<rotation>>";
-    constexpr auto k_pen_thickness_var = "<<pen_thickness>>";
+    constexpr auto k_brush_param_var = "t";
+    constexpr auto k_rotation_var = "rotation";
+    constexpr auto k_pen_thickness_var = "pen_thickness";
+    constexpr auto k_value = "value";
+    constexpr auto k_flow = "flow";
+
 
     template<typename T>
     T variable_value(const ch::variables_map& vars, const std::string& key, T default_val) {
@@ -261,7 +264,8 @@ namespace {
         multiply,
         divide,
         rotate,
-        pen
+        pen,
+        solid
     };
 
     std::string op_to_string(operation sym);
@@ -749,6 +753,27 @@ namespace {
         }
     };
 
+    class solid_expr : public op_expr<operation::solid> {
+    public:
+        ch::brush_expr_value eval(ch::brush_context& ctxt) {
+            auto arg = children_.front()->eval(ctxt);
+            double gray = 0.0;
+            if (std::holds_alternative<double>(arg)) {
+                gray = std::get<double>(arg);
+            } else if (std::holds_alternative<ch::random_func>(arg)) {
+                throw std::runtime_error("TODO");
+            } else {
+                throw std::runtime_error("invalid argument to solid expression");
+            }
+            return ch::single_stroke_group(
+                ch::shaded_polygon{
+                    ctxt.poly,
+                    gray
+                }
+            );
+        }
+    };
+
     using expr_creation_fn = std::function<ch::brush_expr_ptr(std::span<const ch::brush_expr_ptr>)>;
     struct op_info {
         operation op;
@@ -782,6 +807,7 @@ namespace {
         {operation::divide,       "/",            make_op_create_fn<divide_expr>()},
         {operation::pen,          "pen",          make_op_create_fn<pen_expr>()},
         {operation::rotate,       "rot",          make_op_create_fn<rotate_expr>()},
+        {operation::solid,        "solid",        make_op_create_fn<solid_expr>()},
     };
 
     operation string_to_op(const std::string& str) {
@@ -1075,9 +1101,11 @@ namespace {
     }
 }
 
-ch::brush_context::brush_context(const ch::polygon& p, double param) :
+ch::brush_context::brush_context(const ch::polygon& p, double param, double value, double flow) :
         poly(p) {
     variables[k_brush_param_var] = param;
+    variables[k_value] = value;
+    variables[k_flow] = flow;
 }
 
 ch::brush_context ch::brush_context::clone() const {

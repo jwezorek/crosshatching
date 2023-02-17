@@ -33,8 +33,13 @@ namespace ch {
         variables_map variables;
         drawing_comps_ptr strokes;
 
-        brush_context(const polygon& poly, double param);
+        brush_context(const polygon& poly, double param, double value = 0.5, double flow = 0.0);
         brush_context clone() const;
+        
+        template<typename T>
+        T get(const std::string& var) const {
+            return std::get<T>(variables.at(var));
+        }
     };
 
     class brush_expr {

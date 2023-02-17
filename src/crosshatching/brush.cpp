@@ -30,7 +30,7 @@ namespace {
 
     ch::drawing_comps_ptr stroke_rectangle(ch::brush_expr_ptr expr, const ch::dimensions<int>& sz, double t) {
         auto rect = make_rectangle(sz);
-        ch::brush_context ctxt(rect, t);
+        ch::brush_context ctxt(rect, t, t);
         return ch::brush_expr_to_strokes(expr, ctxt);
     }
 
@@ -71,9 +71,6 @@ namespace {
 }
 
 bool ch::brush::is_uinitiailized() const {
-    if (is_solid_brush()) {
-        return false;
-    }
     return gray_to_param_.empty();
 }
 
@@ -138,9 +135,6 @@ ch::brush::brush(ch::brush_expr_ptr expr, double epsilon, int num_samples,
 }
 
 void ch::brush::build_n(int n) {
-    if (is_solid_brush()) {
-        return;
-    }
     if (!is_uinitiailized()) {
         throw std::runtime_error("brush is already built");
     }
@@ -158,34 +152,30 @@ double ch::brush::gray_value_to_param(double gray_val) {
     return build_to_gray_level(gray_val);
 }
 
-ch::drawing_comps_ptr ch::brush::draw_strokes(const polygon& poly, double gray_level, bool clip_to_poly) {
+ch::drawing_comps_ptr ch::brush::draw_strokes(const ch::brush_context& ctxt, bool clip_to_poly) {
     
     if (is_uinitiailized()) {
         throw std::runtime_error("brush is not built");
     }
 
-    if (is_solid_brush()) {
-        return single_stroke_group(
-            shaded_polygon(
-                poly,
-                gray_level
-            )
-        );
+    const auto& poly = ctxt.poly; 
+    auto gray_level = ctxt.get<double>("value");
+    if (gray_level < min_gray_level()) {
+        auto new_ctxt = ctxt;
+        new_ctxt.variables["value"] = min_gray_level();
+        return draw_strokes(new_ctxt, clip_to_poly);
+    } else if (gray_level > max_gray_level()) {
+        auto new_ctxt = ctxt;
+        new_ctxt.variables["value"] = max_gray_level();
+        return draw_strokes(new_ctxt, clip_to_poly);
     }
     
-    if (gray_level < min_gray_level()) {
-        return draw_strokes(poly, min_gray_level(), clip_to_poly);
-    } else if (gray_level > max_gray_level()) {
-        return draw_strokes(poly, max_gray_level(), clip_to_poly);
-    }
-
     auto param = build_to_gray_level(gray_level);
     auto centroid = mean_point(poly.outer());
     auto canonicalized = ch::transform(poly, ch::translation_matrix(-centroid));
-
-    //TODO: add flow
-    brush_context ctxt(canonicalized, param);
-    auto strokes = brush_expr_to_strokes(brush_expr_, ctxt);
+    
+    ch::brush_context stroke_ctxt( canonicalized, param, gray_level, ctxt.get<double>("flow") );
+    auto strokes = brush_expr_to_strokes(brush_expr_, stroke_ctxt);
     if (clip_to_poly) {
         strokes = clip_strokes(canonicalized, strokes);
     }
@@ -203,7 +193,8 @@ ch::bkgd_swatches ch::brush::render_swatches(double gray_value, int n) {
         rv::transform(
             [&](int i)->cv::Mat {
                 auto bkgd = bkgds.at(i);
-                auto swatch = draw_strokes(make_rectangle(swatch_sz_), gray_value, false);
+                brush_context ctxt(make_rectangle(swatch_sz_), 0.0, gray_value);
+                auto swatch = draw_strokes(ctxt, false);
                 return strokes_to_mat(swatch, bkgd);
             }
         ) |
@@ -232,6 +223,3 @@ int ch::brush::swatch_dim() const {
     return static_cast<int>(swatch_sz_.wd);
 }
 
-bool ch::brush::is_solid_brush() const {
-    return brush_expr_ == nullptr;
-}

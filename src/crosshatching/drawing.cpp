@@ -178,7 +178,8 @@ namespace {
             }
 
             auto value = static_cast<double>(blob.value) / 255.0;
-            auto strokes = current_brush->draw_strokes(blob.poly, value);
+            ch::brush_context ctxt(blob.poly, 0.0, value, blob.flow_dir);
+            auto strokes = current_brush->draw_strokes(ctxt);
             std::copy(strokes->begin(), strokes->end(), std::back_inserter(output));
 
             auto tok = blob.token();

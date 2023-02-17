@@ -744,7 +744,7 @@ ui::brush_panel::brush_panel(layer_panel& layers) :
 		layer_panel_(layers) {
 	connect(tree(), &QTreeWidget::itemDoubleClicked, this, &brush_panel::handle_double_click);
 
-    auto brush1 = std::get<ch::brush_expr_ptr>(
+    auto interlocking_diagonal = std::get<ch::brush_expr_ptr>(
         ch::parse(
             R"(
                     ( 
@@ -770,7 +770,7 @@ ui::brush_panel::brush_panel(layer_panel& layers) :
             )"
         )
     );
-    auto brush2 = std::get<ch::brush_expr_ptr>(
+    auto horz = std::get<ch::brush_expr_ptr>(
         ch::parse(
             R"(
                 (brush
@@ -785,7 +785,7 @@ ui::brush_panel::brush_panel(layer_panel& layers) :
             )"
         )
     );
-    auto brush3 = std::get<ch::brush_expr_ptr>(
+    auto vert = std::get<ch::brush_expr_ptr>(
         ch::parse(
             R"(
                 (brush
@@ -801,10 +801,13 @@ ui::brush_panel::brush_panel(layer_panel& layers) :
             )"
         )
     );
-    insert_toplevel_item(tree(), "interlocking-diagonal", brush1);
-    insert_toplevel_item(tree(), "horizontal", brush2);
-    insert_toplevel_item(tree(), "vertical", brush3);
-    insert_toplevel_item(tree(), "solid", nullptr);
+    auto solid = std::get<ch::brush_expr_ptr>(ch::parse("(solid value)"));
+        
+    insert_toplevel_item(tree(), "interlocking-diagonal", interlocking_diagonal);
+    insert_toplevel_item(tree(), "horizontal", horz);
+    insert_toplevel_item(tree(), "vertical", vert);
+    insert_toplevel_item(tree(), "solid", solid);
+
     sync_layer_panel();
 }
 
