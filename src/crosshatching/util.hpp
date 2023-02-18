@@ -116,6 +116,7 @@ namespace ch {
     std::string to_string(double val, int precision);
     std::string to_string(const point& pt);
     double degrees_to_radians(double degrees);
+    double radians_to_degrees(double radians);
     double ramp(double t, double k, bool right, bool up);
     float bilinear_interpolation(float q11, float q12, float q21, float q22,
         float x1, float x2, float y1, float y2,

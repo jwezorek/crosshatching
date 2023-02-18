@@ -401,6 +401,10 @@ double ch::degrees_to_radians(double degrees)
 	return (std::numbers::pi * degrees) / 180.0;
 }
 
+double ch::radians_to_degrees(double radians) {
+    return (180.0 * radians) / std::numbers::pi;
+}
+
 void ch::label_map_to_visualization_img(cv::Mat img, const std::string& output_file) {
 	auto uniform_rnd_int = [](int low, int high)->uint8_t {
 			std::uniform_int_distribution<> ud(low, high);

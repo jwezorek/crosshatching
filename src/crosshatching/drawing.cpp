@@ -130,6 +130,10 @@ namespace {
         return tbl;
     }
 
+    double ui_angle_to_drawing_angle(double ui_angle) {
+        return -ch::radians_to_degrees(ui_angle);
+    }
+
     std::tuple<std::vector<ch::drawing_component>, swatch_table> draw_ink_layer(
             const ch::ink_layer& layer, swatch_table& tbl,
             const ch::parameters& params, progress& prog) {
@@ -178,7 +182,7 @@ namespace {
             }
 
             auto value = static_cast<double>(blob.value) / 255.0;
-            ch::brush_context ctxt(blob.poly, 0.0, value, blob.flow_dir);
+            ch::brush_context ctxt(blob.poly, 0.0, value, ui_angle_to_drawing_angle(blob.flow_dir));
             auto strokes = current_brush->draw_strokes(ctxt);
             std::copy(strokes->begin(), strokes->end(), std::back_inserter(output));
 
