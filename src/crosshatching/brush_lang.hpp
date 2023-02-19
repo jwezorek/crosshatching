@@ -42,6 +42,12 @@ namespace ch {
         }
     };
 
+    constexpr auto k_brush_param_var = "t";
+    constexpr auto k_rotation_var = "rotation";
+    constexpr auto k_pen_thickness_var = "pen_thickness";
+    constexpr auto k_value_var = "value";
+    constexpr auto k_flow_var = "flow";
+
     class brush_expr {
     public:
         brush_expr() {}

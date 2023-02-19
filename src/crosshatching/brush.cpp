@@ -159,14 +159,14 @@ ch::drawing_comps_ptr ch::brush::draw_strokes(const ch::brush_context& ctxt, boo
     }
 
     const auto& poly = ctxt.poly; 
-    auto gray_level = ctxt.get<double>("value");
+    auto gray_level = ctxt.get<double>(k_value_var);
     if (gray_level < min_gray_level()) {
         auto new_ctxt = ctxt;
-        new_ctxt.variables["value"] = min_gray_level();
+        new_ctxt.variables[k_value_var] = min_gray_level();
         return draw_strokes(new_ctxt, clip_to_poly);
     } else if (gray_level > max_gray_level()) {
         auto new_ctxt = ctxt;
-        new_ctxt.variables["value"] = max_gray_level();
+        new_ctxt.variables[k_value_var] = max_gray_level();
         return draw_strokes(new_ctxt, clip_to_poly);
     }
     
@@ -174,7 +174,7 @@ ch::drawing_comps_ptr ch::brush::draw_strokes(const ch::brush_context& ctxt, boo
     auto centroid = mean_point(poly.outer());
     auto canonicalized = ch::transform(poly, ch::translation_matrix(-centroid));
     
-    ch::brush_context stroke_ctxt( canonicalized, param, gray_level, ctxt.get<double>("flow") );
+    ch::brush_context stroke_ctxt( canonicalized, param, gray_level, ctxt.get<double>(k_flow_var) );
     auto strokes = brush_expr_to_strokes(brush_expr_, stroke_ctxt);
     if (clip_to_poly) {
         strokes = clip_strokes(canonicalized, strokes);

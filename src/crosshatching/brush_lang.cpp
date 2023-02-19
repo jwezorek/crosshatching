@@ -45,7 +45,7 @@ namespace {
             return { bottom(), top() };
         }
 
-        std::optional<std::tuple<double, double>> slice(double y) {
+        std::optional<std::tuple<double, double>> slice(double y) const {
             if (y < bottom() || y > top()) {
                 return {};
             }
@@ -58,7 +58,7 @@ namespace {
         std::vector<ch::point> left_side_;
         std::vector<ch::point> right_side_;
 
-        ch::line_segment intersecting_line_segment(const std::vector<ch::point>& side, double y) {
+        ch::line_segment intersecting_line_segment(const std::vector<ch::point>& side, double y) const {
             auto iter = std::lower_bound(side.begin(), side.end(), y,
                 [](const ch::point& lhs, double rhs) {
                     return lhs.y < rhs;
@@ -100,8 +100,7 @@ namespace {
 
     auto running_sum(uint32_t seed, const ch::random_func& gen_fn,
         double init_sum, uint32_t initial_counter) {
-        return
-            rv::concat(
+        return rv::concat(
                 rv::single(0),
                 rv::iota(initial_counter) |
                 rv::transform(
@@ -109,13 +108,12 @@ namespace {
                         return  gen_fn(ch::cbrng_state(seed, counter));
                     }
                 )
-            ) |
-            rv::partial_sum() |
-                        rv::transform(
-                            [init_sum](double sum) {
-                                return sum + init_sum;
-                            }
-                    );
+            ) | rv::partial_sum() |
+                rv::transform(
+                    [init_sum](double sum) {
+                        return sum + init_sum;
+                    }
+            );
     }
 
     struct run_and_space {
@@ -138,32 +136,29 @@ namespace {
                         x1
                     };
                 }
-            ) |
-            rv::partial_sum(
+            ) | rv::partial_sum(
                 [](run_and_space a, run_and_space b)->run_and_space {
                     return { b.run, b.space, a.x + a.run + a.space };
                 }
-            ) |
-                    rv::transform(
-                        [y](run_and_space rs) {
-                            auto x1 = rs.x;
-                            auto x2 = rs.x + rs.run - 1;
-                            return rv::concat(
-                                rv::single(ch::point(x1, y)),
-                                rv::single(ch::point(x2, y))
-                            );
-                        }
-                    ) |
-                    rv::take_while(
-                        [x2](auto line_segment) {
-                            return line_segment[1].x < x2;
-                        }
-                        );
+            ) | rv::transform(
+                [y](run_and_space rs) {
+                    auto x1 = rs.x;
+                    auto x2 = rs.x + rs.run - 1;
+                    return rv::concat(
+                        rv::single(ch::point(x1, y)),
+                        rv::single(ch::point(x2, y))
+                    );
+                }
+            ) | rv::take_while(
+                [x2](auto line_segment) {
+                    return line_segment[1].x < x2;
+                }
+            );
     }
 
     template<typename R>
     auto horz_strokes_from_y_positions(uint32_t seed, R row_y_positions,
-        std::shared_ptr<horz_hull_slicer> slicer, ch::random_func run_length,
+        const horz_hull_slicer& slicer, ch::random_func run_length,
         ch::random_func space_length) {
         return row_y_positions | // given a view of y-positions
             rv::enumerate | // tag each with an integer index
@@ -174,7 +169,7 @@ namespace {
                 [slicer, run_length, space_length, seed](std::tuple<size_t, double> pair) ->
                 std::optional<std::tuple<int, double, double, double>> {
                     auto [key, y] = pair;
-                    auto slice = slicer->slice(y);
+                    auto slice = slicer.slice(y);
                     if (!slice) {
                         return {};
                     } else {
@@ -189,15 +184,15 @@ namespace {
                     return !maybe_row.has_value();
                 }
             ) |
-                    rv::transform(
-                        // generate a range view of horizontal crosshatching in the slice
-                        [seed, run_length, space_length](auto maybe_row) {
+            rv::transform(
+                // generate a range view of horizontal crosshatching in the slice
+                [seed, run_length, space_length](auto maybe_row) {
 
-                            auto [key, x1, x2, y] = *maybe_row;
-                            return row_of_strokes(x1, x2, y, seed, key, run_length, space_length);
-                        }
-                    ) |
-                    rv::join; // flatten all the row views above into one view.
+                    auto [key, x1, x2, y] = *maybe_row;
+                    return row_of_strokes(x1, x2, y, seed, key, run_length, space_length);
+                }
+            ) |
+            rv::join; // flatten all the row views above into one view.
     }
 
     auto linear_strokes(double rotation, const std::vector<ch::point>& region,
@@ -211,14 +206,14 @@ namespace {
                 [rot_matrix](auto pt) {return ch::transform(pt, rot_matrix); }
             ) |
             r::to_vector;
-        auto slicer = std::make_shared<horz_hull_slicer>(hull);
-        auto [bottom, top] = slicer->vertical_extent();
+        auto slicer = horz_hull_slicer(hull);
+        auto [bottom, top] = slicer.vertical_extent();
         bottom -= vert_space(ch::cbrng_state(seed, 0));
         top += vert_space(ch::cbrng_state(seed, 1));
         auto rows = running_sum(seed, vert_space, bottom, 2) |
             rv::take_while([top](double y) {return y < top; });
-
         auto inverse_rot_matrix = ch::rotation_matrix(-rotation);
+
         return horz_strokes_from_y_positions(seed, rows, slicer, run_length, space_length) |
             rv::transform(
                 [inverse_rot_matrix](auto stroke) {
@@ -230,13 +225,6 @@ namespace {
                 }
         );
     }
-
-    constexpr auto k_brush_param_var = "t";
-    constexpr auto k_rotation_var = "rotation";
-    constexpr auto k_pen_thickness_var = "pen_thickness";
-    constexpr auto k_value = "value";
-    constexpr auto k_flow = "flow";
-
 
     template<typename T>
     T variable_value(const ch::variables_map& vars, const std::string& key, T default_val) {
@@ -328,7 +316,7 @@ namespace {
             }
 
             void operator()(double value) {
-                ctxt_.variables[k_brush_param_var] = value;
+                ctxt_.variables[ch::k_brush_param_var] = value;
             }
 
             void operator()(ch::drawing_comps_ptr strokes) {
@@ -446,7 +434,7 @@ namespace {
                 return ch::ramp(t, k, right != 0.0, up != 0.0);
             }
             auto [k, right, up] = evaluate_to_tuple<double, double, double>(ctxt, children_);
-            auto t = variable_value(ctxt.variables, k_brush_param_var, 0.0);
+            auto t = variable_value(ctxt.variables, ch::k_brush_param_var, 0.0);
             return ch::ramp(t, k, right != 0.0, up != 0.0);
         }
 
@@ -479,7 +467,7 @@ namespace {
             auto [from, to] = evaluate_to_tuple<double, double>(
                 ctxt, children_, "lerp"
                 );
-            auto t = variable_value(ctxt.variables, k_brush_param_var, 0.0);
+            auto t = variable_value(ctxt.variables, ch::k_brush_param_var, 0.0);
             return std::lerp(from, to, t);
         }
 
@@ -492,8 +480,8 @@ namespace {
                 evaluate_to_tuple<ch::random_func, ch::random_func, ch::random_func>(
                     ctxt, children_, "strokes"
                     );
-            auto pen_thickness = variable_value(ctxt.variables, k_pen_thickness_var, 1.0);
-            auto rotation = variable_value(ctxt.variables, k_rotation_var, 0.0);
+            auto pen_thickness = variable_value(ctxt.variables, ch::k_pen_thickness_var, 1.0);
+            auto rotation = variable_value(ctxt.variables, ch::k_rotation_var, 0.0);
             return ch::single_stroke_group(
                 ch::stroke_group{
                     linear_strokes(
@@ -573,7 +561,7 @@ namespace {
             }
 
             random_points_generator rnd(ch::random_seed(), ctxt.poly);
-            auto pen_thickness = variable_value(ctxt.variables, k_pen_thickness_var, 1.0);
+            auto pen_thickness = variable_value(ctxt.variables, ch::k_pen_thickness_var, 1.0);
 
             return ch::single_stroke_group(
                 ch::stippling_group{
@@ -740,7 +728,7 @@ namespace {
     class rotate_expr : public op_expr<operation::rotate> {
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
-            ctxt.variables[k_rotation_var] = children_[0]->eval(ctxt);
+            ctxt.variables[ch::k_rotation_var] = children_[0]->eval(ctxt);
             return {};
         }
     };
@@ -748,7 +736,7 @@ namespace {
     class pen_expr : public op_expr<operation::pen> {
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
-            ctxt.variables[k_pen_thickness_var] = children_[0]->eval(ctxt);
+            ctxt.variables[ch::k_pen_thickness_var] = children_[0]->eval(ctxt);
             return {};
         }
     };
@@ -1104,8 +1092,8 @@ namespace {
 ch::brush_context::brush_context(const ch::polygon& p, double param, double value, double flow) :
         poly(p) {
     variables[k_brush_param_var] = param;
-    variables[k_value] = value;
-    variables[k_flow] = flow;
+    variables[k_value_var] = value;
+    variables[k_flow_var] = flow;
 }
 
 ch::brush_context ch::brush_context::clone() const {
