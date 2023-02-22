@@ -18,6 +18,7 @@
 /*------------------------------------------------------------------------------------------------*/
 
 namespace ui {
+    namespace js = nlohmann;
 
     struct view_state {
         double scale;
@@ -44,6 +45,8 @@ namespace ui {
 		void set_brush_names(const std::vector<std::string>& brush_names);
         std::vector<std::tuple<std::string, double>> layers() const;
         bool has_content() const;
+        js::json to_json() const;
+        void from_json(const js::json& json);
 
     signals:
         void layers_changed();
@@ -72,6 +75,9 @@ namespace ui {
 		std::vector<std::string> brush_names() const;
         std::vector<ch::brush_expr_ptr> brushes() const;
         std::unordered_map<std::string, ch::brush_expr_ptr> brush_dictionary() const;
+        js::json to_json() const;
+        void from_json(const js::json& json);
+        void sync_layer_panel();
 
 	private:
 
@@ -92,7 +98,6 @@ namespace ui {
         static void insert_toplevel_item(QTreeWidget* tree, const std::string& name, ch::brush_expr_ptr expr);
         void add_brush_node();
         void delete_brush_node();
-        void sync_layer_panel();
         void handle_double_click(QTreeWidgetItem* item, int column);
 	};
 

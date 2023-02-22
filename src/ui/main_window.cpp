@@ -191,15 +191,31 @@ std::string ui::main_window::state_to_json() const {
             rv::transform([](auto ptr) {return ptr->to_json(); })) {
         pipeline_settings.push_back(js_obj);
     }
-    return pipeline_settings.dump();
+
+    json brushes = crosshatching_.brushes_->to_json();
+    json layers = crosshatching_.layers_panel_->to_json();
+
+    json ch_state = {
+        {"pipeline" , pipeline_settings},
+        {"brushes" , brushes},
+        {"layers", layers}
+    };
+
+    return ch_state.dump();
 }
 
 void  ui::main_window::json_to_state(const std::string& str) {
-    json pipeline_settings = json::parse(str);
+    json ch_state = json::parse(str);
+
+    const auto& pipeline_json = ch_state["pipeline"];
     for (auto item : img_proc_ctrls_.pipeline) {
-        item->from_json(pipeline_settings[item->index()]);
+        item->from_json(pipeline_json[item->index()]);
         emit item->changed(item->index());
     }
+
+    crosshatching_.layers_panel_->from_json(ch_state["layers"]);
+    crosshatching_.brushes_->from_json( ch_state["brushes"] );
+
 }
 
 void ui::main_window::save_project(const std::string& fname) const {
@@ -834,6 +850,27 @@ void ui::layer_panel::sync_layers_to_ui() {
 	}
 }
 
+json ui::layer_panel::to_json() const {
+    json js_ary = json::array();
+    for (const auto& [val, brush_name] : layers_) {
+        json pair = json::array();
+        pair.push_back(val);
+        pair.push_back(brush_name);
+        js_ary.push_back(pair);
+    }
+    return js_ary;
+}
+
+void ui::layer_panel::from_json(const json& json) {
+    layers_.clear();
+    for (const auto& pair : json) {
+        auto thresh = pair[0].get<double>();
+        auto brush_name = pair[1].get<std::string>();
+        layers_[thresh] = brush_name;
+        sync_layers_to_ui();
+    }
+}
+
 /*------------------------------------------------------------------------------------------*/
 
 ui::brush_panel::brush_panel(layer_panel& layers) :
@@ -939,6 +976,28 @@ std::unordered_map<std::string, ch::brush_expr_ptr> ui::brush_panel::brush_dicti
 	return dictionary;
 }
 
+json ui::brush_panel::to_json() const {
+    auto brushes = brush_dictionary();
+    json brushes_json = json::array();
+    for (const auto& [name, expr] : brushes) {
+        json pair = json::array();
+        pair.push_back(name);
+        pair.push_back(ch::pretty_print(*expr));
+        brushes_json.push_back(pair);
+    }
+    return brushes_json;
+}
+
+void ui::brush_panel::from_json(const js::json& json) {
+    tree()->clear();
+    for (const auto& pair : json) {
+        auto brush_name = pair[0].get<std::string>();
+        auto brush_expr = std::get<ch::brush_expr_ptr>(ch::parse(pair[1].get<std::string>()));
+        insert_toplevel_item(tree(), brush_name, brush_expr);
+    }
+    sync_layer_panel();
+}
+
 ui::brush_panel::brush_item::brush_item(const std::string& name, ch::brush_expr_ptr expr) :
 	QTreeWidgetItem(static_cast<QTreeWidget*>(nullptr), QStringList(QString(name.c_str()))),
 	brush_expression(expr), 
@@ -991,6 +1050,7 @@ void ui::brush_panel::delete_brush_node() {
 		if (!item->parent()) {
 			tree()->removeItemWidget(item, 0);
 			delete item;
+            sync_layer_panel();
 		}
 	}
 }
@@ -1009,8 +1069,10 @@ QTreeWidgetItem* toplevel_parent(QTreeWidgetItem* twi) {
 void ui::brush_panel::handle_double_click(QTreeWidgetItem* item, int column) {
 	brush_item* bi = static_cast<brush_item*>(item);
 	if (bi->is_toplevel) {
-        auto result = brush_dialog::edit_brush(bi->text(0).toStdString(),
-            ch::pretty_print(*bi->brush_expression));
+        auto result = brush_dialog::edit_brush(
+            bi->text(0).toStdString(),
+            ch::pretty_print(*bi->brush_expression)
+        );
 		if (result) {
 			auto [new_name, expr] = result.value();
 			tree()->removeItemWidget(item, 0);
