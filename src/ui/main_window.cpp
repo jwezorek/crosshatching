@@ -6,6 +6,7 @@
 #include "../crosshatching/util.hpp"
 #include "../crosshatching/ink_layers.hpp"
 #include "../crosshatching/brush_lang.hpp"
+#include "../crosshatching/json.hpp"
 #include <QtWidgets>
 #include <QSlider>
 #include <opencv2/core.hpp>
@@ -28,12 +29,33 @@
 namespace r = ranges;
 namespace rv = ranges::views;
 namespace fs = std::filesystem;
+using json = nlohmann::json;
 
 namespace {
 
 	constexpr auto k_view_menu_index = 1;
 	constexpr auto k_controls_width = 400;
 	constexpr auto k_swatch_scale = 4.0;
+
+    template<typename T>
+    concept byte_collection = requires(const T & t) {
+        std::same_as<decltype(t.size()), typename T::size_type>;
+        std::same_as<decltype(t.data()), const unsigned char*>;
+    };
+
+    void write_data(std::ofstream& ofs, const byte_collection auto& bytes) {
+        auto sz = bytes.size();
+        ofs.write(reinterpret_cast<const char*>(&sz), sizeof(sz));
+        ofs.write(reinterpret_cast<const char*>(bytes.data()), sz);
+    }
+
+    template<byte_collection collection>
+    void read_data(std::ifstream& ifs, collection& bytes) {
+        typename collection::size_type sz;
+        ifs.read(reinterpret_cast<char*>(&sz), sizeof(sz));
+        bytes.resize(sz);
+        ifs.read(reinterpret_cast<char*>(bytes.data()), sz);
+    }
 
 	QMenu* create_view_menu(ui::main_window* parent) {
 		auto tr = [parent](const char* str) {return parent->tr(str); };
@@ -71,13 +93,24 @@ namespace {
 		auto tr = [parent](const char* str) {return parent->tr(str); };
 		QMenu* file_menu = new QMenu(tr("&File"));
 
-		QAction* action_open = new QAction(tr("&Open ..."), parent);
+		QAction* action_open = new QAction(tr("&Open image ..."), parent);
 		parent->connect(action_open, &QAction::triggered, parent, &ui::main_window::open);
 		file_menu->addAction(action_open);
 
 		QAction* action_save = new QAction(tr("Save processed image ..."), parent);
 		parent->connect(action_save, &QAction::triggered, parent, &ui::main_window::save_processed_image);
 		file_menu->addAction(action_save);
+        file_menu->addSeparator();
+
+        QAction* action_open_ch = new QAction(tr("Open project ..."), parent);
+        parent->connect(action_open_ch, &QAction::triggered, parent, &ui::main_window::open_ch_file);
+        file_menu->addAction(action_open_ch);
+
+        QAction* action_save_ch = new QAction(tr("Save project ..."), parent);
+        parent->connect(action_save_ch, &QAction::triggered, parent, &ui::main_window::save_ch_file);
+        file_menu->addAction(action_save_ch);
+
+        file_menu->addSeparator();
 
 		QAction* action_debug = new QAction(tr("Debug"), parent);
 		parent->connect(action_debug, &QAction::triggered, parent, &ui::main_window::debug);
@@ -150,6 +183,54 @@ void ui::main_window::tab_changed(int index) {
 
 const ui::brush_panel& ui::main_window::brush_panel() const {
     return *crosshatching_.brushes_;
+}
+
+std::string ui::main_window::state_to_json() const {
+    json pipeline_settings = json::array();
+    for (auto js_obj : img_proc_ctrls_.pipeline | 
+            rv::transform([](auto ptr) {return ptr->to_json(); })) {
+        pipeline_settings.push_back(js_obj);
+    }
+    return pipeline_settings.dump();
+}
+
+void  ui::main_window::json_to_state(const std::string& str) {
+    json pipeline_settings = json::parse(str);
+    for (auto item : img_proc_ctrls_.pipeline) {
+        item->from_json(pipeline_settings[item->index()]);
+        emit item->changed(item->index());
+    }
+}
+
+void ui::main_window::save_project(const std::string& fname) const {
+    std::vector<uchar> src_img_as_png;
+    cv::imencode(".png", img_proc_ctrls_.src, src_img_as_png);
+    auto json_str = state_to_json();
+
+    std::ofstream ofs(fname, std::ios::out | std::ios::binary);
+    write_data(ofs, img_proc_ctrls_.src_filename);
+    write_data(ofs, src_img_as_png);
+    write_data(ofs, json_str);
+    ofs.close();
+}
+
+void ui::main_window::open_project(const std::string& fname) {
+    std::ifstream ifs(fname, std::ios::in | std::ios::binary);
+    std::vector<uchar> src_img_as_png;
+    std::string src_fname;
+    std::string json;
+
+    read_data(ifs, src_fname);
+    read_data(ifs, src_img_as_png);
+    read_data(ifs, json);
+
+    img_proc_ctrls_.src = cv::imdecode(src_img_as_png, cv::IMREAD_COLOR);
+    int n = img_proc_ctrls_.src.channels();
+    display(img_proc_ctrls_.src);
+    change_source_image(img_proc_ctrls_.src);
+    img_proc_ctrls_.src_filename = src_fname;
+
+    json_to_state(json);
 }
 
 void ui::main_window::open()
@@ -253,7 +334,28 @@ void ui::main_window::generate() {
 }
 
 void ui::main_window::save_processed_image() {
-	
+	//TODO
+}
+
+void ui::main_window::open_ch_file() {
+    auto documentsPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    auto ch_filename = QFileDialog::getOpenFileName(this,
+        tr("Open crosshatching project"), documentsPath, tr("Crosshatching projects Files (*.chp)"));
+    auto str = ch_filename.toStdString();
+    if (!str.empty()) {
+        open_project(str);
+    }
+}
+
+void ui::main_window::save_ch_file() {
+    auto documentsPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    QString filename = QFileDialog::getSaveFileName(
+        this, tr("Save File"), documentsPath, tr("Crosshatching projects Files (*.chp)")
+    );
+    if (!filename.isNull()) {
+        save_project(filename.toStdString());
+    }
+
 }
 
 void ui::main_window::edit_settings() {
@@ -414,10 +516,6 @@ ui::pipeline_output ui::main_window::input_to_nth_stage(int index) const {
 	}
 
 	return input;
-}
-
-cv::Mat ui::main_window::segmentation() const {
-	return static_cast<ui::mean_shift_segmentation*>(img_proc_ctrls_.pipeline.back())->labels();
 }
 
 ch::crosshatching_job ui::main_window::drawing_job() const {

@@ -2,6 +2,8 @@
 #include "../crosshatching/util.hpp"
 #include "../crosshatching/raster_to_vector.hpp"
 
+using json = nlohmann::json;
+
 /*------------------------------------------------------------------------------------------------------*/
 
 ui::image_processing_pipeline_item::image_processing_pipeline_item(QString title, int index) :
@@ -40,6 +42,14 @@ ui::pipeline_output ui::image_processing_pipeline_item::process_image(pipeline_o
 
 bool ui::image_processing_pipeline_item::is_on() const {
 	return false;
+}
+
+json ui::image_processing_pipeline_item::to_json() const {
+    return {};
+}
+
+void ui::image_processing_pipeline_item::from_json(const json& js) {
+    
 }
 
 /*------------------------------------------------------------------------------------------------------*/
@@ -153,6 +163,23 @@ bool ui::scale_and_contrast::is_on() const {
         black != 1.0f;
 }
 
+json ui::scale_and_contrast::to_json() const {
+    return json{
+        {"scale", scale_slider_->value()},
+        {"contrast", contrast_slider_->value()},
+        {"threshold", thresh_slider_->value()},
+        {"bw_upper", black_white_cutoff_->GetUpperValue()},
+        {"bw_lower", black_white_cutoff_->GetLowerValue()},
+    };
+}
+
+void ui::scale_and_contrast::from_json(const json& js) {
+    scale_slider_->set(js["scale"].get<double>());
+    contrast_slider_->set(js["contrast"].get<double>());
+    thresh_slider_->set(js["threshold"].get<double>());
+    black_white_cutoff_->SetUpperValue(js["bw_upper"].get<double>());
+    black_white_cutoff_->SetLowerValue(js["bw_lower"].get<double>());
+}
 
 
 /*------------------------------------------------------------------------------------------------------*/
@@ -167,37 +194,55 @@ void ui::edge_preserving_filter::populate() {
     h_layout->addWidget(sigma_s_ = new float_value_slider("sigma S", 0, 200, 60));
     h_layout->addWidget(sigma_r_ = new float_value_slider("sigma R", 0, 1.0, 0.4));
     v_layout->addLayout(h_layout);
-    v_layout->addWidget(flag_ = new QComboBox());
+    v_layout->addWidget(filter_type_ = new QComboBox());
 
-    flag_->addItem("Off");
-    flag_->addItem("Recursive Filtering");
-    flag_->addItem("Normalized Convolution Filtering");
+    filter_type_->addItem("Off");
+    filter_type_->addItem("Recursive Filtering");
+    filter_type_->addItem("Normalized Convolution Filtering");
 
     content_area_->setLayout(v_layout);
 
     connect(sigma_s_, &float_value_slider::slider_released, [this]() { changed(this->index()); });
     connect(sigma_r_, &float_value_slider::slider_released, [this]() { changed(this->index()); });
-    connect(flag_, &QComboBox::currentIndexChanged, [this]() { changed(this->index()); });
+    connect(filter_type_, &QComboBox::currentIndexChanged, [this]() { changed(this->index()); });
 }
 
 void ui::edge_preserving_filter::initialize() {
     sigma_s_->set(60);
     sigma_r_->set(0.4);
-    flag_->setCurrentIndex(0);
+    filter_type_->setCurrentIndex(0);
 }
 
 ui::pipeline_output ui::edge_preserving_filter::process_image(pipeline_output inp) {
     auto input = std::get<cv::Mat>(inp);
     return output_ = ch::edge_preserving_smoothing(
         input,
-        flag_->currentIndex(),
+        filter_type_->currentIndex(),
         sigma_s_->value(),
         sigma_r_->value()
     );
 }
 
 bool ui::edge_preserving_filter::is_on() const {
-    return flag_->currentIndex() > 0;
+    return filter_type_->currentIndex() > 0;
+}
+
+json ui::edge_preserving_filter::to_json() const {
+    return json{
+        {"sigma_s", sigma_s_->value()},
+        {"sigma_r", sigma_r_->value()},
+        {"filter_type", filter_type_->currentIndex()}
+    };
+}
+
+void ui::edge_preserving_filter::from_json(const json& js) {
+    filter_type_->disconnect();
+
+    sigma_s_->set(js["sigma_s"].get<double>());
+    sigma_r_->set(js["sigma_r"].get<double>());
+    filter_type_->setCurrentIndex(js["filter_type"].get<int>());
+
+    connect(filter_type_, &QComboBox::currentIndexChanged, [this]() { changed(this->index()); });
 }
 
 /*------------------------------------------------------------------------------------------------------*/
@@ -321,6 +366,22 @@ bool ui::shock_filter::is_on() const {
 	return iter_slider_->value() > 0;
 }
 
+json ui::shock_filter::to_json() const {
+    return json{
+       {"sigma", sigma_slider_->value()},
+       {"str_sigma", str_sigma_slider_->value()},
+       {"blend", blend_slider_->value()},
+       {"iters", iter_slider_->value()}
+    };
+}
+
+void ui::shock_filter::from_json(const json& js) {
+    sigma_slider_->set(js["sigma"].get<int>());
+    str_sigma_slider_->set(js["str_sigma"].get<int>());
+    blend_slider_->set(js["blend"].get<double>());
+    iter_slider_->set(js["iters"].get<int>());
+}
+
 /*------------------------------------------------------------------------------------------------------*/
 
 ui::mean_shift_segmentation::mean_shift_segmentation() :
@@ -348,7 +409,8 @@ void ui::mean_shift_segmentation::initialize() {
 
 ui::pipeline_output ui::mean_shift_segmentation::process_image(pipeline_output inp) {
 	auto input = std::get<cv::Mat>(inp);
-	std::tie(output_, label_image_) = ch::meanshift_segmentation(
+    cv::Mat label_image;
+	std::tie(output_, label_image) = ch::meanshift_segmentation(
 		input,
 		sigmaS_slider_->value(),
 		sigmaR_slider_->value(),
@@ -357,12 +419,22 @@ ui::pipeline_output ui::mean_shift_segmentation::process_image(pipeline_output i
 	return output_;
 }
 
-cv::Mat ui::mean_shift_segmentation::labels() const {
-	return label_image_;
-}
-
 bool ui::mean_shift_segmentation::is_on() const {
 	return sigmaS_slider_->value() != 0 && sigmaR_slider_->value() != 0.0;
+}
+
+json ui::mean_shift_segmentation::to_json() const {
+    return {
+        { "sigma_s", sigmaS_slider_->value() },
+        { "sigma_r", sigmaR_slider_->value()},
+        { "min_size", min_size_slider_->value()},
+    };
+}
+
+void ui::mean_shift_segmentation::from_json(const json& js) {
+    sigmaS_slider_->set(js["sigma_s"].get<int>());
+    sigmaR_slider_->set(js["sigma_r"].get<double>());
+    min_size_slider_->set(js["min_size"].get<int>());
 }
 
 /*------------------------------------------------------------------------------------------------------*/
@@ -403,4 +475,12 @@ ui::pipeline_output ui::raster_to_vector::process_image(pipeline_output inp) {
 
 bool ui::raster_to_vector::is_on() const {
 	return param_slider_->value() > 0.0;
+}
+
+json ui::raster_to_vector::to_json() const {
+    return json{ {"param", param_slider_->value()} };
+}
+
+void ui::raster_to_vector::from_json(const json& js) {
+    param_slider_->set(js["param"].get<double>());
 }

@@ -13,6 +13,8 @@
 #include <opencv2/core.hpp>
 #include <tuple>
 
+
+
 /*------------------------------------------------------------------------------------------------*/
 
 namespace ui {
@@ -129,6 +131,8 @@ namespace ui {
 
         void open();
         void save_processed_image();
+        void open_ch_file();
+        void save_ch_file();
         void generate();
         void test();
         void redo_test_swatch();
@@ -158,7 +162,6 @@ namespace ui {
         void display(pipeline_output work_in_prog = {});
         void handle_pipeline_change(int index);
         pipeline_output input_to_nth_stage(int index) const;
-        cv::Mat segmentation() const;
         ch::crosshatching_job drawing_job() const;
         std::tuple<std::vector<ch::brush_expr_ptr>, std::vector<double>> 
             brush_per_intervals() const;
@@ -174,6 +177,10 @@ namespace ui {
         ui::view_state view_state() const;
         void tab_changed(int index);
         const brush_panel& brush_panel() const;
+        void save_project(const std::string& fname) const;
+        void open_project(const std::string& fname);
+        std::string state_to_json() const;
+        void json_to_state(const std::string& str);
 
         image_processing_tools img_proc_ctrls_;
         drawing_tools crosshatching_;
