@@ -241,22 +241,16 @@ ui::rgn_map_ctrl::rgn_map_ctrl(const std::vector<ch::brush_expr_ptr>* brushes) :
     }
 }
 
-void ui::rgn_map_ctrl::set(ch::brush_expr_ptr default_brush, double scale, 
-        const ch::dimensions<int>& sz, ch::ink_layer* layer) {
-    def_brush_ = default_brush;
+void ui::rgn_map_ctrl::set_scale(double scale) {
     scale_ = scale;
-    layer_ = layer;
-    auto n = layer->size();
+    auto n = layer_->size();
     scaled_regions_.clear();
-    colors_.clear();
     scaled_regions_.reserve(n);
-    colors_.reserve(n);
 
-    for ( auto& ili : *layer ) {
+    for (auto& ili : *layer_) {
         scaled_regions_.push_back(
             (scale_ != 1.0) ? ch::scale(ili.poly, scale_) : ili.poly
         );
-        colors_.push_back(ch::ink_shade_to_color(ili.value));
     }
 
     tree_ = {};
@@ -264,10 +258,24 @@ void ui::rgn_map_ctrl::set(ch::brush_expr_ptr default_brush, double scale,
         int index = static_cast<int>(i);
         tree_.insert({ index, &poly });
     }
-    base_sz_ = sz;
     auto scaled_sz = scale_ * base_sz_;
     setFixedSize({ scaled_sz.wd, scaled_sz.hgt });
     update();
+}
+
+void ui::rgn_map_ctrl::set(ch::brush_expr_ptr default_brush, double sc, 
+        const ch::dimensions<int>& sz, ch::ink_layer* layer) {
+    def_brush_ = default_brush;
+    layer_ = layer;
+    auto n = layer->size();
+    colors_.clear();
+    colors_.reserve(n);
+
+    for ( auto& ili : *layer ) {
+        colors_.push_back(ch::ink_shade_to_color(ili.value));
+    }
+    base_sz_ = sz;
+    set_scale(sc);
 }
 
 std::vector<int> ui::rgn_map_ctrl::polys_at_point(const ch::point& pt) const {
@@ -649,6 +657,13 @@ void ui::rgn_map_panel::set_layers(double scale, ch::ink_layers* ink_layers) {
     stack_->setVisible(true);
 }
 
+void  ui::rgn_map_panel::set_scale(double scale) {
+    auto rgn_maps = stack_->findChildren<rgn_map_ctrl*>();
+    for (auto rm : rgn_maps) {
+        rm->set_scale(scale);
+    }
+}
+
 /*------------------------------------------------------------------------------------------------*/
 
 ui::rgn_map_ctrl* ui::rgn_map_panel::current_rgn_map() const {
@@ -735,4 +750,17 @@ void ui::rgn_map_panel::handle_selection_change_flow() {
 void ui::rgn_map_panel::handle_selection_change() {
     handle_selection_change_brush();
     handle_selection_change_flow();
+}
+
+ui::rgn_map_tools::rgn_map_tools() : rgn_map_stack(nullptr), rgn_props(nullptr) {
+
+}
+
+bool ui::rgn_map_tools::has_rgn_maps() const
+{
+    if (!rgn_map_stack) {
+        return false;
+    }
+    auto children = rgn_map_stack->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly);
+    return !children.empty();
 }

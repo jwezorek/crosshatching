@@ -1,15 +1,19 @@
 #pragma once
 
 #include "geometry.hpp"
+#include "util.hpp"
 #include "raster_to_vector.hpp"
 #include "brush.hpp"
+#include "json.hpp"
 #include <vector>
 #include <span>
+#include <unordered_map>
 
 /*------------------------------------------------------------------------------------------------*/
 
 namespace ch {
 
+    using json = nlohmann::json;
     using brush_token = uint64_t;
 
     struct ink_layer_item {
@@ -31,6 +35,11 @@ namespace ch {
         // hashable id of this item's full chain of parent tokens and 
         // brush but not its value;
         brush_token brush_token() const;
+
+        json to_json(const std::unordered_map<brush_expr*, std::string>& brush_name_tbl) const;
+        void from_json(const json& js, 
+            const std::unordered_map<std::string, brush_expr_ptr>& brush_name_tbl,
+            const std::unordered_map<int, ink_layer_item*>& parent_tbl);
     };
 
     using ink_layer = std::vector<ink_layer_item>;
@@ -45,6 +54,10 @@ namespace ch {
         bool empty() const;
         int count() const;
         void clear();
+
+        json to_json(const std::unordered_map<brush_expr*, std::string>& brush_name_tbl) const;
+        void from_json(const json& js,
+            const std::unordered_map<std::string, brush_expr_ptr>& brush_name_tbl);
     };
 
     ink_layers scale(const ink_layers& il, double scale_factor);

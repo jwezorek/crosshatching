@@ -759,6 +759,32 @@ ch::brush_token ch::ink_layer_item::brush_token() const {
     return seed;
 }
 
+ch::json ch::ink_layer_item::to_json(
+        const std::unordered_map<brush_expr*, std::string>& brush_name_tbl) const {
+    return {
+        {"id", id},
+        {"layer_id", layer_id},
+        {"value", value},
+        {"poly", polygon_to_json(poly)},
+        {"brush", brush_name_tbl.at(brush.get())},
+        {"parent", (parent) ? parent->id : -1},
+        {"flow_dir", flow_dir}
+    };
+}
+
+void ch::ink_layer_item::from_json(const json& js,
+        const std::unordered_map<std::string, brush_expr_ptr>& brush_name_tbl,
+        const std::unordered_map<int, ink_layer_item*>& parent_tbl) {
+    id = js["id"].get<int>();
+    layer_id = js["layer_id"].get<int>();
+    value = js["value"].get<uint8_t>();
+    poly = json_to_polygon(js["poly"]);
+    brush = brush_name_tbl.at(js["brush"].get<std::string>());
+    auto parent_id = js["parent"].get<int>();
+    parent = (parent_id >= 0) ? parent_tbl.at(parent_id) : nullptr;
+    flow_dir = js["flow_dir"].get<double>();
+}
+
 /*------------------------------------------------------------------------------------------------*/
 
 int ch::ink_layer_index(const ink_layer& il) {
@@ -794,6 +820,45 @@ bool ch::ink_layers::empty() const {
 
 void ch::ink_layers::clear() {
     return content.clear();
+}
+
+ch::json ch::ink_layers::to_json(
+        const std::unordered_map<brush_expr*, std::string>& brush_name_tbl) const {
+
+    json sz_json(2, {});
+    sz_json[0] = sz.wd;
+    sz_json[1] = sz.hgt;
+
+    json ctnt_json(content.size(), {});
+    for (const auto& [i, layer] : rv::enumerate(content)) {
+        json layer_json(layer.size(), {});
+        for (const auto& [j, item] : rv::enumerate(layer)) {
+            layer_json[j] = item.to_json(brush_name_tbl);
+        }
+        ctnt_json[i] = std::move(layer_json);
+    }
+
+    return {
+        {"sz" , sz_json},
+        {"content", ctnt_json}
+    };
+}
+
+void ch::ink_layers::from_json(const json& js,
+        const std::unordered_map<std::string, brush_expr_ptr>& brush_name_tbl) {
+    std::unordered_map<int, ink_layer_item*> id_to_item;
+    sz = { js["sz"].at(0).get<double>(), js["sz"].at(1).get<double>() };
+    const auto& ink_layers_json = js["content"];
+    content.clear();
+    content.resize(ink_layers_json.size());
+    for (const auto& [i, layer_json] : rv::enumerate(ink_layers_json)) {
+        content[i].resize(layer_json.size());
+        for (const auto& [j, item_json] : rv::enumerate(layer_json)) {
+            auto& ink_layer_item = content[i][j];
+            ink_layer_item.from_json(item_json, brush_name_tbl, id_to_item);
+            id_to_item[ink_layer_item.id] = &ink_layer_item;
+        }
+    }
 }
 
 /*------------------------------------------------------------------------------------------------*/

@@ -6,7 +6,6 @@
 #include "../crosshatching/geometry.hpp"
 #include "../crosshatching/raster_to_vector.hpp"
 #include "../crosshatching/util.hpp"
-#include "../crosshatching/json.hpp"
 #include <variant>
 #include <memory>
 #include <opencv2/core.hpp>
@@ -14,8 +13,6 @@
 #include <functional>
 
 namespace ui {
-
-    namespace js = nlohmann;
 
     struct vector_graphics {
         std::vector<ch::colored_polygon> polygons;
@@ -40,8 +37,8 @@ namespace ui {
         virtual void initialize();
         virtual pipeline_output process_image(pipeline_output input);
         virtual bool is_on() const;
-        virtual js::json to_json() const;
-        virtual void from_json(const js::json& json);
+        virtual ch::json to_json() const;
+        virtual void from_json(const ch::json& json);
     signals:
         void changed(int index);
     };
@@ -63,8 +60,8 @@ namespace ui {
         pipeline_output process_image(pipeline_output input) override;
         bool is_on() const override;
         std::tuple<float, float> bw_cutoff() const;
-        js::json to_json() const override;
-        void from_json(const js::json& json) override;
+        ch::json to_json() const override;
+        void from_json(const ch::json& json) override;
     };
 
     class anisotropic_diffusion_filter : public image_processing_pipeline_item {
@@ -94,8 +91,8 @@ namespace ui {
         void initialize() override;
         pipeline_output process_image(pipeline_output input) override;
         bool is_on() const override;
-        js::json to_json() const override;
-        void from_json(const js::json& json) override;
+        ch::json to_json() const override;
+        void from_json(const ch::json& json) override;
     };
 
     class stylization_filter : public image_processing_pipeline_item {
@@ -125,8 +122,8 @@ namespace ui {
         void initialize() override;
         pipeline_output process_image(pipeline_output input) override;
         bool is_on() const override;
-        js::json to_json() const override;
-        void from_json(const js::json& json) override;
+        ch::json to_json() const override;
+        void from_json(const ch::json& json) override;
     };
 
     class mean_shift_segmentation : public image_processing_pipeline_item {
@@ -143,8 +140,8 @@ namespace ui {
         pipeline_output process_image(pipeline_output input) override;
         cv::Mat labels() const;
         bool is_on() const override;
-        js::json to_json() const override;
-        void from_json(const js::json& json) override;
+        ch::json to_json() const override;
+        void from_json(const ch::json& json) override;
     };
 
     class raster_to_vector : public image_processing_pipeline_item {
@@ -157,7 +154,7 @@ namespace ui {
         void initialize() override;
         pipeline_output process_image(pipeline_output input) override;
         bool is_on() const override;
-        js::json to_json() const override;
-        void from_json(const js::json& json) override;
+        ch::json to_json() const override;
+        void from_json(const ch::json& json) override;
     };
 }

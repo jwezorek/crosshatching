@@ -645,6 +645,59 @@ void ch::debug_polygons(const std::string& output_file, dimensions<int> sz,
 	cv::imwrite(output_file, img);
 }
 
+ch::json ch::point_to_json(const point& pt) {
+    json ary(2, {});
+    ary[0] = pt.x;
+    ary[1] = pt.y;
+    return ary;
+}
+
+ch::json ch::ring_to_json(const ring& r) {
+    json ary(r.size(), {});
+    for (const auto& [index, pt] : rv::enumerate(r)) {
+        ary[index] = point_to_json(pt);
+    }
+    return ary;
+}
+
+ch::json ch::polygon_to_json(const polygon& poly) {
+    json holes(poly.inners().size(), {});
+    for (const auto& [index, hole] : rv::enumerate(poly.inners())) {
+        holes[index] = ring_to_json(hole);
+    }
+    return {
+        {"outer" , ring_to_json(poly.outer())},
+        {"inners" , holes }
+    };
+}
+
+ch::point ch::json_to_point(const json& js) {
+    return {
+        js[0].get<float>(),
+        js[1].get<float>()
+    };
+}
+
+ch::ring ch::json_to_ring(const json& js) {
+    ch::ring r;
+    r.resize(js.size());
+    for (const auto& [i, json] : rv::enumerate(js)) {
+        r[i] = json_to_point(json);
+    }
+    return r;
+}
+
+ch::polygon ch::json_to_polygon(const json& js) {
+    std::vector<ring> holes(js["inners"].size());
+    for (const auto& [i, json] : rv::enumerate(js["inners"])) {
+        holes[i] = json_to_ring(json);
+    }
+    return make_polygon(
+        json_to_ring(js["outer"]),
+        holes
+    );
+}
+
 ch::color ch::ink_shade_to_color(double ink_shade) {
     ink_shade = (1.0 - ink_shade) * 255.0;
     uchar ch = static_cast<uchar>(std::round(ink_shade));

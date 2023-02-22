@@ -3,6 +3,7 @@
 #include "../crosshatching/drawing.hpp"
 #include "../crosshatching/brush_lang.hpp"
 #include "../crosshatching/ink_layers.hpp"
+#include "../crosshatching/util.hpp"
 #include "rgn_map_ctrls.hpp"
 #include "settingctrls.hpp"
 #include "treepanel.h"
@@ -18,7 +19,6 @@
 /*------------------------------------------------------------------------------------------------*/
 
 namespace ui {
-    namespace js = nlohmann;
 
     struct view_state {
         double scale;
@@ -45,8 +45,8 @@ namespace ui {
 		void set_brush_names(const std::vector<std::string>& brush_names);
         std::vector<std::tuple<std::string, double>> layers() const;
         bool has_content() const;
-        js::json to_json() const;
-        void from_json(const js::json& json);
+        ch::json to_json() const;
+        void from_json(const ch::json& json);
 
     signals:
         void layers_changed();
@@ -75,8 +75,9 @@ namespace ui {
 		std::vector<std::string> brush_names() const;
         std::vector<ch::brush_expr_ptr> brushes() const;
         std::unordered_map<std::string, ch::brush_expr_ptr> brush_dictionary() const;
-        js::json to_json() const;
-        void from_json(const js::json& json);
+        std::unordered_map<ch::brush_expr*, std::string> brush_name_dictionary() const;
+        ch::json to_json() const;
+        void from_json(const ch::json& json);
         void sync_layer_panel();
 
 	private:
@@ -145,7 +146,9 @@ namespace ui {
         void debug();
 
         void set_swatch_view(cv::Mat swatch, bool left);
-        void handle_layers_change();
+
+        void sync_layers_to_ui();
+        void rebuild_layers();
         void set_drawing_view(cv::Mat drawing);
         std::vector<std::string> brush_names() const;
         QStackedWidget* regions_stack() const;

@@ -192,13 +192,17 @@ std::string ui::main_window::state_to_json() const {
         pipeline_settings.push_back(js_obj);
     }
 
-    json brushes = crosshatching_.brushes_->to_json();
-    json layers = crosshatching_.layers_panel_->to_json();
+    auto brushes = crosshatching_.brushes_->to_json();
+    auto layers = crosshatching_.layers_panel_->to_json();
+
+    auto brush_dict = crosshatching_.brushes_->brush_name_dictionary();
+    auto content = crosshatching_.layers_.to_json(brush_dict);
 
     json ch_state = {
         {"pipeline" , pipeline_settings},
         {"brushes" , brushes},
-        {"layers", layers}
+        {"layers", layers},
+        {"content", std::move(content)}
     };
 
     return ch_state.dump();
@@ -216,6 +220,10 @@ void  ui::main_window::json_to_state(const std::string& str) {
     crosshatching_.layers_panel_->from_json(ch_state["layers"]);
     crosshatching_.brushes_->from_json( ch_state["brushes"] );
 
+    auto brush_dict = crosshatching_.brushes_->brush_dictionary();
+    crosshatching_.layers_.from_json(ch_state["content"], brush_dict);
+
+    sync_layers_to_ui();
 }
 
 void ui::main_window::save_project(const std::string& fname) const {
@@ -305,30 +313,38 @@ void ui::main_window::set_swatch_view(cv::Mat swatch, bool left) {
 	crosshatching_.set_view(drawing_tools::view::swatch);
 }
 
-void ui::main_window::handle_layers_change() { 
-    crosshatching_.layers_.clear();
-	auto layers = layer_images();
-	int n = static_cast<int>(layers.size());
-	auto names = rv::concat(
-			rv::iota(0, n) |
-			rv::transform(
-				[](int i)->std::string {
-					return "layer " + std::to_string(i + 1);
-				}
-			), 
-			rv::single(std::string("image"))
-		);
-	auto images = layers; // rv::concat(layers, rv::single(processed_image()));
-	auto tab_content = rv::zip(names, images) |
-		r::to<std::vector<std::tuple<std::string, cv::Mat>>>();
-	crosshatching_.layer_viewer_->set_content(tab_content);
-	crosshatching_.set_view(drawing_tools::view::layers);
+void ui::main_window::sync_layers_to_ui() {
+    auto layers = layer_images();
+    int n = static_cast<int>(layers.size());
+    auto names = rv::concat(
+        rv::iota(0, n) |
+        rv::transform(
+            [](int i)->std::string {
+                return "layer " + std::to_string(i + 1);
+            }
+        ),
+        rv::single(std::string("image"))
+                );
+    auto images = layers; // rv::concat(layers, rv::single(processed_image()));
+    auto tab_content = rv::zip(names, images) |
+        r::to<std::vector<std::tuple<std::string, cv::Mat>>>();
+    crosshatching_.layer_viewer_->set_content(tab_content);
+    crosshatching_.set_view(drawing_tools::view::layers);
 
-    auto ink_layers = this->layers();
-    rgn_map_.rgn_props->set_layers(
-        img_proc_ctrls_.view_state.scale,
-        ink_layers
-    );
+    if (!rgn_map_.has_rgn_maps()) {
+        auto ink_layers = this->layers();
+        rgn_map_.rgn_props->set_layers(
+            img_proc_ctrls_.view_state.scale,
+            ink_layers
+        );
+    } else {
+        rgn_map_.rgn_props->set_scale(img_proc_ctrls_.view_state.scale);
+    }
+}
+
+void ui::main_window::rebuild_layers() {
+    crosshatching_.layers_.clear();
+    sync_layers_to_ui();
 }
 
 void ui::main_window::set_drawing_view(cv::Mat drawing) {
@@ -452,7 +468,7 @@ QWidget* ui::main_window::create_drawing_tools() {
 	splitter->setSizes(QList<int>({ 180,500 }));
 
 	connect(crosshatching_.layers_panel_, &layer_panel::layers_changed,
-		this, &main_window::handle_layers_change);
+		this, &main_window::rebuild_layers);
 
 	return splitter;
 }
@@ -641,9 +657,7 @@ std::vector<cv::Mat> ui::main_window::layer_images() const {
 						}
 					);
 			}
-		) |
-		rv::join |
-		r::to_vector;
+		) | rv::join | r::to_vector;
 	auto composite = ch::paint_polygons(all_polygons, sz, true );
 
 	return rv::concat(
@@ -724,7 +738,7 @@ void ui::main_window::handle_view_scale_change(double scale) {
 	img_proc_ctrls_.view_state.scale = scale;
 	display();
 	if (crosshatching_.layer_viewer_->has_images()) {
-		handle_layers_change();
+        sync_layers_to_ui();
 	}
 }
 
@@ -976,6 +990,17 @@ std::unordered_map<std::string, ch::brush_expr_ptr> ui::brush_panel::brush_dicti
 	return dictionary;
 }
 
+std::unordered_map<ch::brush_expr*, std::string> ui::brush_panel::brush_name_dictionary() const {
+    std::unordered_map<ch::brush_expr*, std::string> dict;
+    for (int i = 0; i < tree()->topLevelItemCount(); ++i) {
+        QTreeWidgetItem* item = tree()->topLevelItem(i);
+        std::string name = item->text(0).toStdString();
+        brush_item* bi = static_cast<brush_item*>(item);
+        dict[bi->brush_expression.get()] = name;
+    }
+    return dict;
+}
+
 json ui::brush_panel::to_json() const {
     auto brushes = brush_dictionary();
     json brushes_json = json::array();
@@ -988,7 +1013,7 @@ json ui::brush_panel::to_json() const {
     return brushes_json;
 }
 
-void ui::brush_panel::from_json(const js::json& json) {
+void ui::brush_panel::from_json(const ch::json& json) {
     tree()->clear();
     for (const auto& pair : json) {
         auto brush_name = pair[0].get<std::string>();

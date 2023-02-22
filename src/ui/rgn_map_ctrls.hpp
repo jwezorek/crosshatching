@@ -111,6 +111,7 @@ namespace ui {
     public:
         rgn_map_ctrl(const std::vector<ch::brush_expr_ptr>* brushes);
         void set(ch::brush_expr_ptr default_brush, double scale, const ch::dimensions<int>& sz, ch::ink_layer* layer);
+        void set_scale(double scale);
         const std::unordered_set<int>& selected() const;
         bool has_selection() const;
         void set_brush_of_selection(ch::brush_expr_ptr br);
@@ -172,10 +173,14 @@ namespace ui {
         rgn_map_panel(main_window* parent, QStackedWidget* stack);
         void repopulate_ctrls();
         void set_layers(double scale, ch::ink_layers* layers);
+        void set_scale(double scale);
     };
 
     struct rgn_map_tools {
         QStackedWidget* rgn_map_stack;
         rgn_map_panel* rgn_props;
+
+        bool has_rgn_maps() const;
+        rgn_map_tools();
     };
 }

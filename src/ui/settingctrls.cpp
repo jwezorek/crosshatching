@@ -2,8 +2,6 @@
 #include "../crosshatching/util.hpp"
 #include "../crosshatching/raster_to_vector.hpp"
 
-using json = nlohmann::json;
-
 /*------------------------------------------------------------------------------------------------------*/
 
 ui::image_processing_pipeline_item::image_processing_pipeline_item(QString title, int index) :
@@ -44,11 +42,11 @@ bool ui::image_processing_pipeline_item::is_on() const {
 	return false;
 }
 
-json ui::image_processing_pipeline_item::to_json() const {
+ch::json ui::image_processing_pipeline_item::to_json() const {
     return {};
 }
 
-void ui::image_processing_pipeline_item::from_json(const json& js) {
+void ui::image_processing_pipeline_item::from_json(const ch::json& js) {
     
 }
 
@@ -163,8 +161,8 @@ bool ui::scale_and_contrast::is_on() const {
         black != 1.0f;
 }
 
-json ui::scale_and_contrast::to_json() const {
-    return json{
+ch::json ui::scale_and_contrast::to_json() const {
+    return ch::json{
         {"scale", scale_slider_->value()},
         {"contrast", contrast_slider_->value()},
         {"threshold", thresh_slider_->value()},
@@ -173,7 +171,7 @@ json ui::scale_and_contrast::to_json() const {
     };
 }
 
-void ui::scale_and_contrast::from_json(const json& js) {
+void ui::scale_and_contrast::from_json(const ch::json& js) {
     scale_slider_->set(js["scale"].get<double>());
     contrast_slider_->set(js["contrast"].get<double>());
     thresh_slider_->set(js["threshold"].get<double>());
@@ -227,15 +225,15 @@ bool ui::edge_preserving_filter::is_on() const {
     return filter_type_->currentIndex() > 0;
 }
 
-json ui::edge_preserving_filter::to_json() const {
-    return json{
+ch::json ui::edge_preserving_filter::to_json() const {
+    return ch::json{
         {"sigma_s", sigma_s_->value()},
         {"sigma_r", sigma_r_->value()},
         {"filter_type", filter_type_->currentIndex()}
     };
 }
 
-void ui::edge_preserving_filter::from_json(const json& js) {
+void ui::edge_preserving_filter::from_json(const ch::json& js) {
     filter_type_->disconnect();
 
     sigma_s_->set(js["sigma_s"].get<double>());
@@ -366,8 +364,8 @@ bool ui::shock_filter::is_on() const {
 	return iter_slider_->value() > 0;
 }
 
-json ui::shock_filter::to_json() const {
-    return json{
+ch::json ui::shock_filter::to_json() const {
+    return ch::json{
        {"sigma", sigma_slider_->value()},
        {"str_sigma", str_sigma_slider_->value()},
        {"blend", blend_slider_->value()},
@@ -375,7 +373,7 @@ json ui::shock_filter::to_json() const {
     };
 }
 
-void ui::shock_filter::from_json(const json& js) {
+void ui::shock_filter::from_json(const ch::json& js) {
     sigma_slider_->set(js["sigma"].get<int>());
     str_sigma_slider_->set(js["str_sigma"].get<int>());
     blend_slider_->set(js["blend"].get<double>());
@@ -423,7 +421,7 @@ bool ui::mean_shift_segmentation::is_on() const {
 	return sigmaS_slider_->value() != 0 && sigmaR_slider_->value() != 0.0;
 }
 
-json ui::mean_shift_segmentation::to_json() const {
+ch::json ui::mean_shift_segmentation::to_json() const {
     return {
         { "sigma_s", sigmaS_slider_->value() },
         { "sigma_r", sigmaR_slider_->value()},
@@ -431,7 +429,7 @@ json ui::mean_shift_segmentation::to_json() const {
     };
 }
 
-void ui::mean_shift_segmentation::from_json(const json& js) {
+void ui::mean_shift_segmentation::from_json(const ch::json& js) {
     sigmaS_slider_->set(js["sigma_s"].get<int>());
     sigmaR_slider_->set(js["sigma_r"].get<double>());
     min_size_slider_->set(js["min_size"].get<int>());
@@ -477,10 +475,10 @@ bool ui::raster_to_vector::is_on() const {
 	return param_slider_->value() > 0.0;
 }
 
-json ui::raster_to_vector::to_json() const {
-    return json{ {"param", param_slider_->value()} };
+ch::json ui::raster_to_vector::to_json() const {
+    return ch::json{ {"param", param_slider_->value()} };
 }
 
-void ui::raster_to_vector::from_json(const json& js) {
+void ui::raster_to_vector::from_json(const ch::json& js) {
     param_slider_->set(js["param"].get<double>());
 }

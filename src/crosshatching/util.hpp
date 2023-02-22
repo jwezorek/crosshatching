@@ -11,6 +11,7 @@
 #include <range/v3/all.hpp>
 #include <opencv2/core.hpp>
 #include "geometry.hpp"
+#include "json.hpp"
 
 template<typename ... Ts>
 struct overload : Ts ... {
@@ -21,6 +22,8 @@ template<class... Ts> overload(Ts...)->overload<Ts...>;
 /*------------------------------------------------------------------------------------------------*/
 
 namespace ch {
+
+    using json = nlohmann::json;
 
     using color = cv::Vec3b;
 
@@ -49,10 +52,16 @@ namespace ch {
         detail::polygons_to_svg_aux(output_file, polys, scale);
     }
 
-   // void debug_polygons_to_svg(const std::string& output_file, double scale, std::span<polygon> polys);
-
     void debug_polygons(const std::string& output_file, dimensions<int> sz,
         std::span<std::tuple<uchar, polygon>> polys);
+
+    // json
+    json point_to_json(const point& pt);
+    json ring_to_json(const ring& r);
+    json polygon_to_json(const polygon& poly);
+    point json_to_point(const json& js);
+    ring json_to_ring(const json& js);
+    polygon json_to_polygon(const json& js);
 
     // counter-based RNG...
     struct cbrng_state {
