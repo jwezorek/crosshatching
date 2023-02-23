@@ -108,6 +108,38 @@ namespace {
     }
 }
 
+
+ui::rgn_selection::rgn_selection()
+{
+}
+
+const std::unordered_set<int>& ui::rgn_selection::selected_ids() const {
+    return selection_;
+}
+
+bool ui::rgn_selection::has_selection() const {
+    return !selection_.empty();
+}
+
+void ui::rgn_selection::clear() {
+    old_selection_ = std::move(selection_);
+    selection_.clear();
+}
+
+bool ui::rgn_selection::is_selected_id(int id) const {
+    return selection_.contains(id);
+}
+
+void ui::rgn_selection::insert(std::span<int> ids) {
+    selection_.insert(ids.begin(), ids.end());
+}
+
+void ui::rgn_selection::remove(std::span<int> ids) {
+    for (auto id : ids) {
+        selection_.erase(id);
+    }
+}
+
 ui::rgn_map_ctrl::rgn_map_ctrl(const std::vector<ch::brush_expr_ptr>* brushes) :
     base_sz_(-1),
     scale_(1.0),
@@ -134,7 +166,7 @@ ui::rgn_map_ctrl::rgn_map_ctrl(const std::vector<ch::brush_expr_ptr>* brushes) :
     }
 }
 
-            const ui::rgn_map_ctrl::selection& ui::rgn_map_ctrl::current_selection() const {
+            const ui::rgn_selection& ui::rgn_map_ctrl::current_selection() const {
                 return selection_;
             }
 
@@ -175,36 +207,6 @@ ui::rgn_map_ctrl::rgn_map_ctrl(const std::vector<ch::brush_expr_ptr>* brushes) :
                 set_scale(sc);
             }
 
-            ui::rgn_map_ctrl::selection::selection()
-            {
-            }
-
-            const std::unordered_set<int>& ui::rgn_map_ctrl::selection::selected_ids() const {
-                return selection_;
-            }
-
-            bool ui::rgn_map_ctrl::selection::has_selection() const {
-                return !selection_.empty();
-            }
-
-            void ui::rgn_map_ctrl::selection::clear() {
-                old_selection_ = std::move(selection_);
-                selection_.clear();
-            }
-
-            bool ui::rgn_map_ctrl::selection::is_selected_id(int id) const {
-                return selection_.contains(id);
-            }
-
-            void ui::rgn_map_ctrl::selection::insert(std::span<int> ids) {
-                selection_.insert(ids.begin(), ids.end());
-            }
-
-            void ui::rgn_map_ctrl::selection::remove(std::span<int> ids) {
-                for (auto id : ids) {
-                    selection_.erase(id);
-                }
-            }
 
             std::vector<int> ui::rgn_map_ctrl::polys_at_point(const ch::point& pt) const {
                 return (cursor_radius_ == 1) ?
