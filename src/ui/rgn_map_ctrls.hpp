@@ -182,5 +182,6 @@ namespace ui {
 
         bool has_rgn_maps() const;
         rgn_map_tools();
+        void clear();
     };
 }

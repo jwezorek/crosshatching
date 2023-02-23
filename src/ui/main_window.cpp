@@ -222,6 +222,7 @@ void  ui::main_window::json_to_state(const std::string& str) {
 
     auto brush_dict = crosshatching_.brushes_->brush_dictionary();
     crosshatching_.layers_.from_json(ch_state["content"], brush_dict);
+    rgn_map_.clear();
 
     sync_layers_to_ui();
 }
@@ -344,6 +345,7 @@ void ui::main_window::sync_layers_to_ui() {
 
 void ui::main_window::rebuild_layers() {
     crosshatching_.layers_.clear();
+    rgn_map_.clear();
     sync_layers_to_ui();
 }
 

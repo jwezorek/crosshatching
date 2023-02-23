@@ -764,3 +764,14 @@ bool ui::rgn_map_tools::has_rgn_maps() const
     auto children = rgn_map_stack->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly);
     return !children.empty();
 }
+
+void ui::rgn_map_tools::clear() {
+    if (!rgn_map_stack) {
+        return;
+    }
+    auto children = rgn_map_stack->findChildren<QWidget*>("",Qt::FindDirectChildrenOnly);
+    for (auto child : children) {
+        rgn_map_stack->removeWidget(child);
+        delete child;
+    }
+}
