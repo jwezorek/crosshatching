@@ -20,6 +20,7 @@ namespace ui {
         const std::unordered_set<int>& selected_ids() const;
         bool has_selection() const;
         void clear();
+        void reselect();
         bool is_selected_id(int id) const;
         void insert(std::span<int> ids);
         void remove(std::span<int> ids);

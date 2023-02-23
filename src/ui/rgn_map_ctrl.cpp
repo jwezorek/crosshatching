@@ -126,6 +126,11 @@ void ui::rgn_selection::clear() {
     selection_.clear();
 }
 
+void ui::rgn_selection::reselect() {
+    selection_ = std::move(old_selection_);
+    old_selection_.clear();
+}
+
 bool ui::rgn_selection::is_selected_id(int id) const {
     return selection_.contains(id);
 }
@@ -341,6 +346,11 @@ ui::rgn_map_ctrl::rgn_map_ctrl(const std::vector<ch::brush_expr_ptr>* brushes) :
                 auto key = event->key();
                 if (key >= Qt::Key_0 && key <= Qt::Key_9) {
                     cursor_radius_ = (key != Qt::Key_0) ? static_cast<int>(key - Qt::Key_0) : 10;
+                    update();
+                }
+                if ((key == Qt::Key_R) && (event->modifiers() & Qt::ControlModifier)) {
+                    selection_.reselect();
+                    emit selection_changed();
                     update();
                 }
             }
