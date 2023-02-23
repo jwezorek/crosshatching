@@ -484,7 +484,7 @@ QWidget* ui::main_window::create_region_map_tools() {
     //scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
     rgn_map_.rgn_map_stack = new QStackedWidget();
-    rgn_map_.rgn_props = new rgn_map_panel(this, rgn_map_.rgn_map_stack);
+    rgn_map_.rgn_props = new rgn_tool_panel(this, rgn_map_.rgn_map_stack);
     vert_splitter->addWidget(rgn_map_.rgn_props);
     vert_splitter->addWidget(rgn_map_.rgn_map_stack);
     vert_splitter->setSizes({100, 800});

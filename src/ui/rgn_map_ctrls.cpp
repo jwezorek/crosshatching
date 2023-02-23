@@ -241,6 +241,10 @@ ui::rgn_map_ctrl::rgn_map_ctrl(const std::vector<ch::brush_expr_ptr>* brushes) :
     }
 }
 
+const ui::rgn_map_ctrl::selection& ui::rgn_map_ctrl::current_selection() const {
+    return selection_;
+}
+
 void ui::rgn_map_ctrl::set_scale(double scale) {
     scale_ = scale;
     auto n = layer_->size();
@@ -276,6 +280,37 @@ void ui::rgn_map_ctrl::set(ch::brush_expr_ptr default_brush, double sc,
     }
     base_sz_ = sz;
     set_scale(sc);
+}
+
+ui::rgn_map_ctrl::selection::selection()
+{
+}
+
+const std::unordered_set<int>& ui::rgn_map_ctrl::selection::selected_ids() const {
+    return selection_;
+}
+
+bool ui::rgn_map_ctrl::selection::has_selection() const {
+    return !selection_.empty();
+}
+
+void ui::rgn_map_ctrl::selection::clear() {
+    old_selection_ = std::move(selection_);
+    selection_.clear();
+}
+
+bool ui::rgn_map_ctrl::selection::is_selected_id(int id) const {
+    return selection_.contains(id);
+}
+
+void ui::rgn_map_ctrl::selection::insert(std::span<int> ids) {
+    selection_.insert(ids.begin(), ids.end());
+}
+
+void ui::rgn_map_ctrl::selection::remove(std::span<int> ids) {
+    for (auto id : ids) {
+        selection_.erase(id);
+    }
 }
 
 std::vector<int> ui::rgn_map_ctrl::polys_at_point(const ch::point& pt) const {
@@ -321,37 +356,33 @@ bool ui::rgn_map_ctrl::is_showing_flow() const {
     return is_showing_flow_;
 }
 
-const std::unordered_set<int>& ui::rgn_map_ctrl::selected() const {
-    return selected_;
-}
-
-bool ui::rgn_map_ctrl::has_selection() const {
-    return !selected_.empty();
+ch::ink_layer* ui::rgn_map_ctrl::layer() const {
+    return layer_;
 }
 
 void ui::rgn_map_ctrl::set_brush_of_selection(ch::brush_expr_ptr br) {
-    if (selected_.empty()) {
+    if (! selection_.has_selection()) {
         return;
     }
-    for (auto [index, ili] : rv::enumerate(selected_layer_items())) {
+    for (auto [index, ili] : rv::enumerate(selection_.selected_layer_items(layer_))) {
         brush_info_[ili->brush.get()].items.erase(index);
         ili->brush = br;
         brush_info_[br.get()].items.insert(index);
     }
-    selected_.clear();
+    selection_.clear();
     emit selection_changed();
     update();
 }
 
 
 void ui::rgn_map_ctrl::set_flow_of_selection(double flow) {
-    if (selected_.empty()) {
+    if (! selection_.has_selection()) {
         return;
     }
-    for (auto [index, ili] : rv::enumerate(selected_layer_items())) {
+    for (auto [index, ili] : rv::enumerate(selection_.selected_layer_items(layer_))) {
         ili->flow_dir = flow;
     }
-    selected_.clear();
+    selection_.clear();
     emit selection_changed();
     update();
 }
@@ -370,7 +401,7 @@ void ui::rgn_map_ctrl::paintEvent(QPaintEvent* event) {
     for (auto poly_index : visible_polys) {
         const auto& poly = scaled_regions_[poly_index];
         ch::paint_polygon(painter, poly, colors_[poly_index]);
-        if (selected_.contains(poly_index)) {
+        if (selection_.is_selected_id(poly_index)) {
             painter.setOpacity(0.5);
             ch::paint_polygon(painter, poly, ch::color(255, 0, 0));
             painter.setOpacity(1.0);
@@ -472,14 +503,12 @@ void ui::rgn_map_ctrl::mouseMoveEvent(QMouseEvent* event) {
             bool adding_to_selection = (!removing_from_selection) && (mods & Qt::ShiftModifier);
 
             if (!adding_to_selection && !removing_from_selection) {
-                selected_.clear();
-                selected_.insert(poly_indices.begin(), poly_indices.end());
+                selection_.clear();
+                selection_.insert(poly_indices);
             } else if (adding_to_selection) {
-                selected_.insert(poly_indices.begin(), poly_indices.end());
+                selection_.insert(poly_indices);
             } else if (removing_from_selection){
-                for (auto removee : poly_indices) {
-                    selected_.erase(removee);
-                }
+                selection_.remove(poly_indices);
             }
 
             selection_state_changed = true;
@@ -504,11 +533,11 @@ void ui::rgn_map_ctrl::mouseReleaseEvent(QMouseEvent* event) {
 
 /*------------------------------------------------------------------------------------------------*/
 
-std::vector<ch::brush_expr_ptr> ui::rgn_map_panel::get_brush_defaults() const {
+std::vector<ch::brush_expr_ptr> ui::rgn_tool_panel::get_brush_defaults() const {
     return std::get<0>(parent_->brush_per_intervals());
 }
 
-ui::rgn_map_panel::rgn_map_panel(main_window* parent, QStackedWidget* stack) :
+ui::rgn_tool_panel::rgn_tool_panel(main_window* parent, QStackedWidget* stack) :
     parent_(parent) {
 
     auto layout = new QVBoxLayout(this);
@@ -534,7 +563,7 @@ ui::rgn_map_panel::rgn_map_panel(main_window* parent, QStackedWidget* stack) :
     connect(layer_cbo_, &QComboBox::currentIndexChanged,
         stack_, &QStackedWidget::setCurrentIndex);
     connect(select_brush_btn_, &select_button::item_clicked,
-        this, &rgn_map_panel::handle_brush_change);
+        this, &rgn_tool_panel::handle_brush_change);
     connect(brush_cbx_, &QCheckBox::stateChanged,
         [this](bool checked) {
             auto rm = this->current_rgn_map();
@@ -551,7 +580,7 @@ ui::rgn_map_panel::rgn_map_panel(main_window* parent, QStackedWidget* stack) :
     );
 }
 
-void ui::rgn_map_panel::repopulate_ctrls() {
+void ui::rgn_tool_panel::repopulate_ctrls() {
     if (!parent_->has_layers()) {
         return;
     }
@@ -613,7 +642,7 @@ void debug(ch::ink_layers& ink_layers) {
     }
 }
 
-void ui::rgn_map_panel::set_layers(double scale, ch::ink_layers* ink_layers) {
+void ui::rgn_tool_panel::set_layers(double scale, ch::ink_layers* ink_layers) {
     //debug(*ink_layers);
     auto def_brushes = get_brush_defaults();
     int old_num_layers = stack_->count();
@@ -644,11 +673,11 @@ void ui::rgn_map_panel::set_layers(double scale, ch::ink_layers* ink_layers) {
         stack_->addWidget(scroller);
         connect(
             rgn_map, &rgn_map_ctrl::selection_changed,
-            this, &rgn_map_panel::handle_selection_change
+            this, &rgn_tool_panel::handle_selection_change
         );
         connect(
             rgn_map, &rgn_map_ctrl::flow_assigned,
-            this, &rgn_map_panel::handle_flow_assigned
+            this, &rgn_tool_panel::handle_flow_assigned
         );
         rgn_map->setVisible(true);
     }
@@ -657,7 +686,7 @@ void ui::rgn_map_panel::set_layers(double scale, ch::ink_layers* ink_layers) {
     stack_->setVisible(true);
 }
 
-void  ui::rgn_map_panel::set_scale(double scale) {
+void  ui::rgn_tool_panel::set_scale(double scale) {
     auto rgn_maps = stack_->findChildren<rgn_map_ctrl*>();
     for (auto rm : rgn_maps) {
         rm->set_scale(scale);
@@ -666,13 +695,13 @@ void  ui::rgn_map_panel::set_scale(double scale) {
 
 /*------------------------------------------------------------------------------------------------*/
 
-ui::rgn_map_ctrl* ui::rgn_map_panel::current_rgn_map() const {
+ui::rgn_map_ctrl* ui::rgn_tool_panel::current_rgn_map() const {
     return static_cast<rgn_map_ctrl*>(
         static_cast<QScrollArea*>(stack_->currentWidget())->widget()
-        );
+    );
 }
 
-void ui::rgn_map_panel::handle_brush_change(QString qbrush_name) {
+void ui::rgn_tool_panel::handle_brush_change(QString qbrush_name) {
     if (name_to_brush_.empty()) {
         return;
     }
@@ -687,20 +716,22 @@ void ui::rgn_map_panel::handle_brush_change(QString qbrush_name) {
 }
 
 
-void ui::rgn_map_panel::handle_flow_assigned(double theta) {
+void ui::rgn_tool_panel::handle_flow_assigned(double theta) {
     current_rgn_map()->set_flow_of_selection(theta);
     //flow_ctrl_->set_direction(theta);
 }
 
-void ui::rgn_map_panel::handle_selection_change_brush() {
+void ui::rgn_tool_panel::handle_selection_change_brush() {
     std::optional<ch::brush_expr_ptr> selected_brush = {};
 
     auto rgn_map = current_rgn_map();
-    if (!rgn_map->has_selection()) {
+    const auto& sel = rgn_map->current_selection();
+
+    if (!sel.has_selection()) {
         brush_lbl_->setText(k_no_selection);
         return;
     }
-    auto selected = rgn_map->selected_layer_items() | r::to_vector;
+    auto selected = sel.selected_layer_items(rgn_map->layer()) | r::to_vector;
     for (auto sel : selected) {
         if (!selected_brush) {
             selected_brush = sel->brush;
@@ -720,15 +751,17 @@ void ui::rgn_map_panel::handle_selection_change_brush() {
     brush_lbl_->setText(("brush: " + brush_name).c_str());
 }
 
-void ui::rgn_map_panel::handle_selection_change_flow() {
+void ui::rgn_tool_panel::handle_selection_change_flow() {
     std::optional<float> selected_flow = {};
 
     auto rgn_map = current_rgn_map();
-    if (!rgn_map->has_selection()) {
+    const auto& sel = rgn_map->current_selection();
+
+    if (! sel.has_selection()) {
         flow_ctrl_->clear();
         return;
     }
-    auto selected = rgn_map->selected_layer_items() | r::to_vector;
+    auto selected = sel.selected_layer_items(rgn_map->layer()) | r::to_vector;
     for (auto sel : selected) {
         if (!selected_flow) {
             selected_flow = sel->flow_dir;
@@ -747,7 +780,7 @@ void ui::rgn_map_panel::handle_selection_change_flow() {
     flow_ctrl_->set_direction(*selected_flow);
 }
 
-void ui::rgn_map_panel::handle_selection_change() {
+void ui::rgn_tool_panel::handle_selection_change() {
     handle_selection_change_brush();
     handle_selection_change_flow();
 }

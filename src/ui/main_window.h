@@ -128,7 +128,7 @@ namespace ui {
 
     class main_window : public QMainWindow
     {
-        friend class rgn_map_panel;
+        friend class rgn_tool_panel;
 
         Q_OBJECT
 

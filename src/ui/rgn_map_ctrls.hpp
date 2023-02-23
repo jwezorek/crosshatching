@@ -8,6 +8,7 @@
 #include <QWidget>
 #include <unordered_set>
 #include <unordered_map>
+#include <memory>
 
 namespace ui {
 
@@ -52,6 +53,31 @@ namespace ui {
 
     private:
 
+        class selection {
+            std::unordered_set<int> old_selection_;
+            std::unordered_set<int> selection_;
+        public:
+            selection();
+
+            const std::unordered_set<int>& selected_ids() const;
+            bool has_selection() const;
+            void clear();
+            bool is_selected_id(int id) const;
+            void insert(std::span<int> ids);
+            void remove(std::span<int> ids);
+
+            auto selected_layer_items(ch::ink_layer* layer) const {
+                namespace r = ranges;
+                namespace rv = ranges::views;
+                return selection_ |
+                    rv::transform(
+                        [layer](auto index)->ch::ink_layer_item* {
+                            return &(layer->at(index));
+                        }
+                );
+            }
+        };
+
         using poly_tree_val = std::pair<int, const ch::polygon*>;
         struct poly_getter {
             const ch::polygon& operator()(const poly_tree_val& v) const {
@@ -66,7 +92,7 @@ namespace ui {
         ch::dimensions<int> base_sz_;
         double scale_;
         ch::brush_expr_ptr def_brush_;
-        std::unordered_set<int> selected_;
+        selection selection_;
         std::vector<std::unordered_set<int>> set_brushes_;
         std::vector<ch::color> colors_;
         std::vector<ch::polygon> scaled_regions_;
@@ -112,26 +138,14 @@ namespace ui {
         rgn_map_ctrl(const std::vector<ch::brush_expr_ptr>* brushes);
         void set(ch::brush_expr_ptr default_brush, double scale, const ch::dimensions<int>& sz, ch::ink_layer* layer);
         void set_scale(double scale);
-        const std::unordered_set<int>& selected() const;
-        bool has_selection() const;
+        const selection& current_selection() const;
         void set_brush_of_selection(ch::brush_expr_ptr br);
         void set_flow_of_selection(double flow);
-
-        auto selected_layer_items() const {
-            namespace r = ranges;
-            namespace rv = ranges::views;
-            return selected_ |
-                rv::transform(
-                    [this](auto index)->ch::ink_layer_item* {
-                        return &(layer_->at(index));
-                    }
-                );
-        }
-
         void show_brushes(bool v);
         void show_flow(bool v);
         bool is_showing_brushes() const;
         bool is_showing_flow() const;
+        ch::ink_layer* layer() const;
 
         void handle_flow_drag(bool dragging, const ch::point& pt);
 
@@ -142,7 +156,7 @@ namespace ui {
 
     class main_window;
 
-    class rgn_map_panel : public QWidget {
+    class rgn_tool_panel : public QWidget {
 
         Q_OBJECT
 
@@ -170,7 +184,7 @@ namespace ui {
         void handle_selection_change_flow();
 
     public:
-        rgn_map_panel(main_window* parent, QStackedWidget* stack);
+        rgn_tool_panel(main_window* parent, QStackedWidget* stack);
         void repopulate_ctrls();
         void set_layers(double scale, ch::ink_layers* layers);
         void set_scale(double scale);
@@ -178,7 +192,7 @@ namespace ui {
 
     struct rgn_map_tools {
         QStackedWidget* rgn_map_stack;
-        rgn_map_panel* rgn_props;
+        rgn_tool_panel* rgn_props;
 
         bool has_rgn_maps() const;
         rgn_map_tools();
