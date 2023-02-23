@@ -85,7 +85,7 @@
     <ClCompile Include="src\ui\RangeSlider.cpp">
       <Filter>Source Files\ui</Filter>
     </ClCompile>
-    <ClCompile Include="src\ui\rgn_map_ctrls.cpp">
+    <ClCompile Include="src\ui\rgn_tool_panel.cpp">
       <Filter>Source Files\ui</Filter>
     </ClCompile>
   </ItemGroup>
@@ -125,7 +125,7 @@
     <QtMoc Include="src\ui\RangeSlider.h">
       <Filter>Source Files\ui</Filter>
     </QtMoc>
-    <QtMoc Include="src\ui\rgn_map_ctrls.hpp">
+    <QtMoc Include="src\ui\rgn_tool_panel.hpp">
       <Filter>Source Files\ui</Filter>
     </QtMoc>
   </ItemGroup>

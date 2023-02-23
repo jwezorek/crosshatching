@@ -4,7 +4,7 @@
 #include "../crosshatching/brush_lang.hpp"
 #include "../crosshatching/ink_layers.hpp"
 #include "../crosshatching/util.hpp"
-#include "rgn_map_ctrls.hpp"
+#include "rgn_tool_panel.hpp"
 #include "settingctrls.hpp"
 #include "treepanel.h"
 #include "image_box.h"

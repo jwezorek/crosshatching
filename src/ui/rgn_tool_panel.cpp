@@ -1,4 +1,4 @@
-#include "rgn_map_ctrls.hpp"
+#include "rgn_tool_panel.hpp"
 #include "main_window.h"
 #include <QtWidgets>
 #include <range/v3/all.hpp>
