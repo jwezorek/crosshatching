@@ -167,6 +167,7 @@
     <ClCompile Include="src\ui\float_value_slider.cpp" />
     <ClCompile Include="src\ui\image_tab_ctrl.cpp" />
     <ClCompile Include="src\ui\RangeSlider.cpp" />
+    <ClCompile Include="src\ui\rgn_map_ctrl.cpp" />
     <ClCompile Include="src\ui\rgn_tool_panel.cpp" />
     <ClCompile Include="src\ui\settingctrls.cpp" />
     <ClCompile Include="src\ui\treepanel.cpp" />
@@ -192,6 +193,7 @@
     <ClInclude Include="src\crosshatching\raster_to_vector.hpp" />
     <ClInclude Include="src\crosshatching\strokes.hpp" />
     <ClInclude Include="src\crosshatching\util.hpp" />
+    <QtMoc Include="src\ui\rgn_map_ctrl.h" />
     <QtMoc Include="src\ui\rgn_tool_panel.hpp" />
     <QtMoc Include="src\ui\RangeSlider.h" />
     <QtMoc Include="src\ui\image_tab_ctrl.h" />
