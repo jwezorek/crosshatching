@@ -159,6 +159,7 @@
     <ClCompile Include="src\crosshatching\strokes.cpp" />
     <ClCompile Include="src\crosshatching\util.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\ui\brush_panel.cpp" />
     <ClCompile Include="src\ui\brush_viewer.cpp" />
     <ClCompile Include="src\ui\layer_panel.cpp" />
     <ClCompile Include="src\ui\main_window.cpp" />
@@ -194,6 +195,7 @@
     <ClInclude Include="src\crosshatching\raster_to_vector.hpp" />
     <ClInclude Include="src\crosshatching\strokes.hpp" />
     <ClInclude Include="src\crosshatching\util.hpp" />
+    <QtMoc Include="src\ui\brush_panel.hpp" />
     <QtMoc Include="src\ui\layer_panel.hpp" />
     <QtMoc Include="src\ui\rgn_map_ctrl.h" />
     <QtMoc Include="src\ui\rgn_tool_panel.hpp" />

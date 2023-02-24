@@ -94,6 +94,9 @@
     <ClCompile Include="src\ui\layer_panel.cpp">
       <Filter>Source Files\ui</Filter>
     </ClCompile>
+    <ClCompile Include="src\ui\brush_panel.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="src\ui\crosshatching.qrc">
@@ -138,6 +141,9 @@
       <Filter>Source Files\ui</Filter>
     </QtMoc>
     <QtMoc Include="src\ui\layer_panel.hpp">
+      <Filter>Source Files\ui</Filter>
+    </QtMoc>
+    <QtMoc Include="src\ui\brush_panel.hpp">
       <Filter>Source Files\ui</Filter>
     </QtMoc>
   </ItemGroup>
