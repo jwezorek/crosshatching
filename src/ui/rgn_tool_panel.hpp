@@ -67,14 +67,13 @@ namespace ui {
 
     public:
         rgn_tool_panel();
-        void set(int num_layers, const std::vector<std::string>& brushes);
+        void set_brush_names( const std::vector<std::string>& brushes);
         void set_layers(int n);
 
         void set_brush_name(const std::string& brush_name = {});
         void set_hetero_brush();
         void set_flow(std::optional<float> flow);
         void connect_to_tools(rgn_map_tools* tools);
-        void handle_brush_name_change(std::string old_name, std::string new_name);
     };
 
     class rgn_map_tools {
@@ -89,7 +88,7 @@ namespace ui {
         rgn_map_tools(main_window* parent);
         bool has_rgn_maps() const;
         void clear();
-        void populate(main_window* parent);
+        void populate();
         void set_layers(double scale, ch::ink_layers* layers);
         QStackedWidget* rgn_map_stack() const;
         rgn_tool_panel* rgn_props() const;
@@ -100,5 +99,6 @@ namespace ui {
         void handle_selection_change_flow();
         void handle_selection_change_brush(); 
         void handle_selection_change();
+        void handle_brush_name_change();
     };
 }

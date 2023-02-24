@@ -471,12 +471,9 @@ QWidget* ui::main_window::create_drawing_tools() {
 QWidget* ui::main_window::create_region_map_tools() {
     QSplitter* vert_splitter = new QSplitter();
     vert_splitter->setOrientation(Qt::Orientation::Horizontal);
-  
-    //QScrollArea* scroller = new QScrollArea();
-    //scroller->setWidget(rgn_map_.rgn_map_stack = new QStackedWidget());
-    //scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
-    rgn_map_.populate(this);
-    
+
+    rgn_map_.populate();
+   
     vert_splitter->addWidget(rgn_map_.rgn_props());
     vert_splitter->addWidget(rgn_map_.rgn_map_stack());
     vert_splitter->setSizes({100, 800});

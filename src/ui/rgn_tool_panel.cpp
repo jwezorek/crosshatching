@@ -138,8 +138,7 @@ ui::rgn_tool_panel::rgn_tool_panel() {
     
 }
 
-void ui::rgn_tool_panel::set(int num_layers, const std::vector<std::string>& brushes) {
-    set_layers(num_layers);
+void ui::rgn_tool_panel::set_brush_names(const std::vector<std::string>& brushes) {
     brush_lbl_->setText(k_no_selection);
     select_brush_btn_->set_items(brushes);
 }
@@ -200,10 +199,6 @@ void ui::rgn_tool_panel::connect_to_tools(rgn_map_tools* tools) {
 
 /*------------------------------------------------------------------------------------------------*/
 
-void ui::rgn_tool_panel::handle_brush_name_change(std::string old_name, std::string new_name) {
-    qDebug() << "brush name change";
-}
-
 ui::rgn_map_tools::rgn_map_tools(main_window* parent) : 
     parent_(parent),
     rgn_map_stack_(nullptr), 
@@ -231,13 +226,20 @@ void ui::rgn_map_tools::clear() {
     }
 }
 
-void ui::rgn_map_tools::populate(ui::main_window* parent) {
+void ui::rgn_map_tools::populate() {
     rgn_map_stack_ = new QStackedWidget();
     rgn_props_ = new rgn_tool_panel();
     rgn_props_->connect_to_tools(this);
-    parent->connect(&(parent->brush_panel()), &brush_panel::brush_name_changed,
-        rgn_props_, &rgn_tool_panel::handle_brush_name_change);
-    rgn_props_->set(0, parent->brush_names());
+    parent_->connect(&(parent_->brush_panel()), &brush_panel::brush_name_changed,
+        [this](std::string old_name, std::string new_name) {
+            handle_brush_name_change();
+        }
+    );
+    rgn_props_->set_brush_names(parent_->brush_names());
+}
+
+void ui::rgn_map_tools::handle_brush_name_change() {
+    rgn_props_->set_brush_names(parent_->brush_names());
 }
 
 void ui::rgn_map_tools::set_layers(double scale, ch::ink_layers* layers) {
