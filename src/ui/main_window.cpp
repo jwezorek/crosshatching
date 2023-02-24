@@ -177,7 +177,7 @@ ui::main_window::main_window(QWidget *parent)
 
 void ui::main_window::tab_changed(int index) {
     if (index == 2) {
-        rgn_map_.rgn_props->repopulate_ctrls();
+        rgn_map_.repopulate_ctrls();
     }
 }
 
@@ -334,12 +334,12 @@ void ui::main_window::sync_layers_to_ui() {
 
     if (!rgn_map_.has_rgn_maps()) {
         auto ink_layers = this->layers();
-        rgn_map_.rgn_props->set_layers(
+        rgn_map_.set_layers(
             img_proc_ctrls_.view_state.scale,
             ink_layers
         );
     } else {
-        rgn_map_.rgn_props->set_scale(img_proc_ctrls_.view_state.scale);
+        rgn_map_.set_scale(img_proc_ctrls_.view_state.scale);
     }
 }
 
@@ -483,11 +483,10 @@ QWidget* ui::main_window::create_region_map_tools() {
     //QScrollArea* scroller = new QScrollArea();
     //scroller->setWidget(rgn_map_.rgn_map_stack = new QStackedWidget());
     //scroller->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
-
-    rgn_map_.rgn_map_stack = new QStackedWidget();
-    rgn_map_.rgn_props = new rgn_tool_panel(this, rgn_map_.rgn_map_stack);
-    vert_splitter->addWidget(rgn_map_.rgn_props);
-    vert_splitter->addWidget(rgn_map_.rgn_map_stack);
+    rgn_map_.populate(this);
+    
+    vert_splitter->addWidget(rgn_map_.rgn_props());
+    vert_splitter->addWidget(rgn_map_.rgn_map_stack());
     vert_splitter->setSizes({100, 800});
 
     return vert_splitter;
@@ -622,7 +621,7 @@ std::vector<std::string> ui::main_window::brush_names() const {
 }
 
 QStackedWidget* ui::main_window::regions_stack() const {
-    return rgn_map_.rgn_map_stack;
+    return rgn_map_.rgn_map_stack();
 }
 
 const ch::ink_layers* ui::main_window::layers() const {

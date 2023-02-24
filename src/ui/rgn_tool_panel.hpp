@@ -86,12 +86,18 @@ namespace ui {
         void set_scale(double scale);
     };
 
-    struct rgn_map_tools {
-        QStackedWidget* rgn_map_stack;
-        rgn_tool_panel* rgn_props;
-
+    class rgn_map_tools {
+        QStackedWidget* rgn_map_stack_;
+        rgn_tool_panel* rgn_props_;
+    public:
         bool has_rgn_maps() const;
         rgn_map_tools();
         void clear();
+        void populate(main_window* parent);
+        void repopulate_ctrls();
+        void set_layers(double scale, ch::ink_layers* layers);
+        void set_scale(double scale);
+        QStackedWidget* rgn_map_stack() const;
+        rgn_tool_panel* rgn_props() const;
     };
 }

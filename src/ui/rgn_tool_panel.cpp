@@ -379,26 +379,51 @@ void ui::rgn_tool_panel::handle_selection_change() {
     handle_selection_change_flow();
 }
 
-ui::rgn_map_tools::rgn_map_tools() : rgn_map_stack(nullptr), rgn_props(nullptr) {
+ui::rgn_map_tools::rgn_map_tools() : rgn_map_stack_(nullptr), rgn_props_(nullptr) {
 
 }
 
 bool ui::rgn_map_tools::has_rgn_maps() const
 {
-    if (!rgn_map_stack) {
+    if (!rgn_map_stack_) {
         return false;
     }
-    auto children = rgn_map_stack->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly);
+    auto children = rgn_map_stack_->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly);
     return !children.empty();
 }
 
 void ui::rgn_map_tools::clear() {
-    if (!rgn_map_stack) {
+    if (!rgn_map_stack_) {
         return;
     }
-    auto children = rgn_map_stack->findChildren<QWidget*>("",Qt::FindDirectChildrenOnly);
+    auto children = rgn_map_stack_->findChildren<QWidget*>("",Qt::FindDirectChildrenOnly);
     for (auto child : children) {
-        rgn_map_stack->removeWidget(child);
+        rgn_map_stack_->removeWidget(child);
         delete child;
     }
+}
+
+void ui::rgn_map_tools::populate(ui::main_window* parent) {
+    rgn_map_stack_ = new QStackedWidget();
+    rgn_props_ = new rgn_tool_panel(parent, rgn_map_stack_);
+}
+
+void ui::rgn_map_tools::repopulate_ctrls() {
+    rgn_props_->repopulate_ctrls();
+}
+
+void ui::rgn_map_tools::set_layers(double scale, ch::ink_layers* layers) {
+    rgn_props_->set_layers(scale, layers);
+}
+
+void ui::rgn_map_tools::set_scale(double scale) {
+    rgn_props_->set_scale(scale);
+}
+
+QStackedWidget* ui::rgn_map_tools::rgn_map_stack() const {
+    return rgn_map_stack_;
+}
+
+ui::rgn_tool_panel* ui::rgn_map_tools::rgn_props() const {
+    return rgn_props_;
 }
