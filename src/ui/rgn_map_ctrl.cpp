@@ -379,6 +379,15 @@ void ui::rgn_map_ctrl::handle_flow_drag(bool is_flow_dragging, const ch::point& 
     update();
 }
 
+void ui::rgn_map_ctrl::handle_brush_change(ch::brush_expr_ptr old_brush,
+        ch::brush_expr_ptr new_brush) {
+    for (auto& ili : *layer_) {
+        if (ili.brush == old_brush) {
+            ili.brush = new_brush;
+        }
+    }
+}
+
 void ui::rgn_map_ctrl::mouseMoveEvent(QMouseEvent* event) {
     setFocus();
     bool selection_state_changed = false;

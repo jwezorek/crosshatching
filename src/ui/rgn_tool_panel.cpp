@@ -211,8 +211,8 @@ bool ui::rgn_map_tools::has_rgn_maps() const
     if (!rgn_map_stack_) {
         return false;
     }
-    auto children = rgn_map_stack_->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly);
-    return !children.empty();
+    auto rgn_maps = rgn_map_stack_->findChildren<rgn_map_ctrl*>();
+    return !rgn_maps.empty();
 }
 
 void ui::rgn_map_tools::clear() {
@@ -235,11 +235,26 @@ void ui::rgn_map_tools::populate() {
             handle_brush_name_change();
         }
     );
+
+    parent_->connect(&(parent_->brush_panel()), &brush_panel::brush_changed,
+        [this](ch::brush_expr_ptr old_brush, ch::brush_expr_ptr new_brush) {
+            handle_brush_change(old_brush, new_brush);
+        }
+    );
+
     rgn_props_->set_brush_names(parent_->brush_names());
 }
 
 void ui::rgn_map_tools::handle_brush_name_change() {
     rgn_props_->set_brush_names(parent_->brush_names());
+}
+
+void ui::rgn_map_tools::handle_brush_change(ch::brush_expr_ptr old_brush,
+        ch::brush_expr_ptr new_brush) {
+    auto rgn_maps = rgn_map_stack_->findChildren<rgn_map_ctrl*>();
+    for (auto rm : rgn_maps) {
+        rm->handle_brush_change(old_brush, new_brush);
+    }
 }
 
 void ui::rgn_map_tools::set_layers(double scale, ch::ink_layers* layers) {

@@ -100,5 +100,6 @@ namespace ui {
         void handle_selection_change_brush(); 
         void handle_selection_change();
         void handle_brush_name_change();
+        void handle_brush_change(ch::brush_expr_ptr old_brush, ch::brush_expr_ptr new_brush);
     };
 }

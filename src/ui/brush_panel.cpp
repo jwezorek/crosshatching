@@ -202,7 +202,10 @@ QTreeWidgetItem* toplevel_parent(QTreeWidgetItem* twi) {
 
 void ui::brush_panel::handle_double_click(QTreeWidgetItem* item, int column) {
     brush_item* bi = static_cast<brush_item*>(item);
+    ch::brush_expr_ptr old_brush;
+    ch::brush_expr_ptr new_brush;
     if (bi->is_toplevel) {
+        old_brush = bi->brush_expression;
         auto old_name = bi->text(0).toStdString();
         auto result = brush_dialog::edit_brush(
             bi->text(0).toStdString(),
@@ -216,15 +219,14 @@ void ui::brush_panel::handle_double_click(QTreeWidgetItem* item, int column) {
             if (old_name != new_name) {
                 emit brush_name_changed(old_name, new_name);
             }
+            new_brush = expr;
         }
     } else {
-        if (bi->is_leaf()) {
-            return; //TODO
-        }
         auto result = brush_dialog::edit_brush_expr(ch::pretty_print(*bi->brush_expression));
         if (result) {
             auto toplevel_item = toplevel_parent(item);
             auto toplevel_brush_item = static_cast<brush_item*>(toplevel_item);
+            old_brush = toplevel_brush_item->brush_expression;
             auto parent = static_cast<brush_item*>(item->parent());
             parent->brush_expression->replace_child(bi->brush_expression, result);
 
@@ -233,6 +235,10 @@ void ui::brush_panel::handle_double_click(QTreeWidgetItem* item, int column) {
             tree()->removeItemWidget(toplevel_item, 0);
             delete toplevel_item;
             insert_toplevel_item(tree(), toplevel_parent_name, toplevel_parent_body);
+            new_brush = toplevel_parent_body;
         }
+    }
+    if (old_brush && (new_brush != old_brush)) {
+        emit brush_changed(old_brush, new_brush);
     }
 }

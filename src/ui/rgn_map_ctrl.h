@@ -110,6 +110,7 @@ namespace ui {
         ch::ink_layer* layer() const;
 
         void handle_flow_drag(bool dragging, const ch::point& pt);
+        void handle_brush_change(ch::brush_expr_ptr old_brush, ch::brush_expr_ptr new_brush);
 
     signals:
         void selection_changed();
