@@ -62,7 +62,6 @@ namespace ui {
 
     class main_window : public QMainWindow
     {
-        friend class rgn_tool_panel;
 
         Q_OBJECT
 
@@ -86,6 +85,11 @@ namespace ui {
         void set_drawing_view(cv::Mat drawing);
         std::vector<std::string> brush_names() const;
         QStackedWidget* regions_stack() const;
+        const brush_panel& brush_panel() const;
+        std::tuple<std::vector<ch::brush_expr_ptr>, std::vector<double>>
+            brush_per_intervals() const;
+        bool has_layers() const;
+        ch::ink_layers* layers();
 
     signals:
         void change_source_image(cv::Mat& img);
@@ -105,11 +109,7 @@ namespace ui {
         void handle_pipeline_change(int index);
         pipeline_output input_to_nth_stage(int index) const;
         ch::crosshatching_job drawing_job() const;
-        std::tuple<std::vector<ch::brush_expr_ptr>, std::vector<double>> 
-            brush_per_intervals() const;
         const ch::ink_layers* layers() const;
-        ch::ink_layers* layers();
-        bool has_layers() const;
         std::vector<cv::Mat> layer_images() const;
         ch::parameters drawing_params() const;
         std::string image_src_filename() const;
@@ -118,7 +118,6 @@ namespace ui {
         std::tuple<int, int> source_image_sz() const;
         ui::view_state view_state() const;
         void tab_changed(int index);
-        const brush_panel& brush_panel() const;
         void save_project(const std::string& fname) const;
         void open_project(const std::string& fname);
         std::string state_to_json() const;

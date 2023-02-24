@@ -11,6 +11,8 @@
 #include <unordered_map>
 #include <memory>
 
+/*------------------------------------------------------------------------------------------------*/
+
 namespace ui {
 
     class select_button : public QPushButton
@@ -62,41 +64,47 @@ namespace ui {
         QLabel* brush_lbl_;
         select_button* select_brush_btn_;
         flow_direction_panel* flow_ctrl_;
-        QStackedWidget* stack_;
-
-        std::unordered_map<std::string, ch::brush_expr_ptr> name_to_brush_;
-        std::unordered_map<ch::brush_expr*, std::string> brush_to_name_;
-        std::vector<ch::brush_expr_ptr> default_brushes_;
-
-        std::vector<ch::brush_expr_ptr> get_brush_defaults() const;
-        void handle_selection_change();
-        rgn_map_ctrl* current_rgn_map() const;
-        void handle_brush_change(QString str);
-        void handle_flow_assigned(double theta);
-        void handle_selection_change_brush();
+        
         void handle_selection_change_flow();
         void handle_brush_name_change(std::string old_name, std::string new_name);
-        void repopulate_brush_tables();
 
     public:
-        rgn_tool_panel(main_window* parent, QStackedWidget* stack);
+        rgn_tool_panel(main_window* parent);
         void repopulate_ctrls();
-        void set_layers(double scale, ch::ink_layers* layers);
-        void set_scale(double scale);
+        void set_layers(int n);
+        QComboBox* layer_cbo() const;
+        QCheckBox* brush_cbx() const;
+        QCheckBox* flow_cbx() const;
+        select_button* select_brush_btn() const;
+
+        void set_brush_name(const std::string& brush_name = {});
+        void set_hetero_brush();
+        void set_flow(std::optional<float> flow);
     };
 
     class rgn_map_tools {
+        main_window* parent_;
         QStackedWidget* rgn_map_stack_;
         rgn_tool_panel* rgn_props_;
+
+        std::vector<ch::brush_expr_ptr> get_brush_defaults() const;
+        std::unordered_map<ch::brush_expr*, std::string> brush_to_name_dict() const;
+
     public:
+        rgn_map_tools(main_window* parent);
         bool has_rgn_maps() const;
-        rgn_map_tools();
         void clear();
         void populate(main_window* parent);
         void repopulate_ctrls();
         void set_layers(double scale, ch::ink_layers* layers);
-        void set_scale(double scale);
         QStackedWidget* rgn_map_stack() const;
         rgn_tool_panel* rgn_props() const;
+        void set_scale(double scale);
+        ui::rgn_map_ctrl* current_rgn_map() const;
+        void handle_brush_assigned(QString str);
+        void handle_flow_assigned(double theta);
+        void handle_selection_change_flow();
+        void handle_selection_change_brush(); 
+        void handle_selection_change();
     };
 }

@@ -158,7 +158,7 @@ namespace {
 }
 
 ui::main_window::main_window(QWidget *parent)
-    : QMainWindow(parent)
+    : QMainWindow(parent), rgn_map_(this)
 {
 	resize(QGuiApplication::primaryScreen()->availableGeometry().size() * 0.7);
 	create_main_menu();
