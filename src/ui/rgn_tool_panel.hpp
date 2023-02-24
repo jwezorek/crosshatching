@@ -67,7 +67,6 @@ namespace ui {
         std::unordered_map<std::string, ch::brush_expr_ptr> name_to_brush_;
         std::unordered_map<ch::brush_expr*, std::string> brush_to_name_;
         std::vector<ch::brush_expr_ptr> default_brushes_;
-        std::vector<ch::brush_expr_ptr> brushes_;
 
         std::vector<ch::brush_expr_ptr> get_brush_defaults() const;
         void handle_selection_change();

@@ -63,7 +63,6 @@ namespace ui {
         std::vector<ch::polygon> scaled_regions_;
         bool selecting_;
         int cursor_radius_;
-        const std::vector<ch::brush_expr_ptr>* brushes_;
         struct brush_info {
             ch::color color;
             std::unordered_set<int> items;
@@ -98,7 +97,7 @@ namespace ui {
         void mouseReleaseEvent(QMouseEvent* event) override;
 
     public:
-        rgn_map_ctrl(const std::vector<ch::brush_expr_ptr>* brushes);
+        rgn_map_ctrl(std::span<ch::brush_expr_ptr> brushes);
         void set(ch::brush_expr_ptr default_brush, double scale, const ch::dimensions<int>& sz, ch::ink_layer* layer);
         void set_scale(double scale);
         const rgn_selection& current_selection() const;

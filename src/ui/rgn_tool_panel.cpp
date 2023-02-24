@@ -254,9 +254,10 @@ void ui::rgn_tool_panel::set_layers(double scale, ch::ink_layers* ink_layers) {
         std::string lbl = "layer " + std::to_string(i);
         layer_cbo_->insertItem(i, lbl.c_str());
     }
-    brushes_ = parent_->brush_panel().brushes();
+
+    auto brushes = parent_->brush_panel().brushes();
     for (int i = 0; i < n; ++i) {
-        auto rgn_map = new rgn_map_ctrl(&brushes_);
+        auto rgn_map = new rgn_map_ctrl(brushes);
         rgn_map->set(def_brushes[i], scale, ink_layers->sz, &(ink_layers->content[i]));
         auto scroller = new QScrollArea();
         scroller->setWidget(rgn_map);
