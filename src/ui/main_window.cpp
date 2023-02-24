@@ -169,16 +169,8 @@ ui::main_window::main_window(QWidget *parent)
 	tab_ctrl->addTab( create_drawing_tools(), "crosshatch");
     tab_ctrl->addTab( create_region_map_tools(), "region map");
 
-    connect(tab_ctrl, &QTabWidget::currentChanged, this, &main_window::tab_changed);
-
     setCentralWidget(tab_ctrl);
 	handle_source_image_change( img_proc_ctrls_.src );
-}
-
-void ui::main_window::tab_changed(int index) {
-    if (index == 2) {
-        rgn_map_.repopulate_ctrls();
-    }
 }
 
 const ui::brush_panel& ui::main_window::brush_panel() const {

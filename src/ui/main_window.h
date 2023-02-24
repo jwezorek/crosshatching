@@ -117,7 +117,6 @@ namespace ui {
         ch::dimensions<int> dimensions() const;
         std::tuple<int, int> source_image_sz() const;
         ui::view_state view_state() const;
-        void tab_changed(int index);
         void save_project(const std::string& fname) const;
         void open_project(const std::string& fname);
         std::string state_to_json() const;

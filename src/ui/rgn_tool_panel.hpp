@@ -51,35 +51,30 @@ namespace ui {
     };
 
     class main_window;
+    class rgn_map_tools;
 
     class rgn_tool_panel : public QWidget {
 
         Q_OBJECT
 
     private:
-        main_window* parent_;
         QComboBox* layer_cbo_;
         QCheckBox* brush_cbx_;
         QCheckBox* flow_cbx_;
         QLabel* brush_lbl_;
         select_button* select_brush_btn_;
         flow_direction_panel* flow_ctrl_;
-        
-        void handle_selection_change_flow();
-        void handle_brush_name_change(std::string old_name, std::string new_name);
 
     public:
-        rgn_tool_panel(main_window* parent);
-        void repopulate_ctrls();
+        rgn_tool_panel();
+        void set(int num_layers, const std::vector<std::string>& brushes);
         void set_layers(int n);
-        QComboBox* layer_cbo() const;
-        QCheckBox* brush_cbx() const;
-        QCheckBox* flow_cbx() const;
-        select_button* select_brush_btn() const;
 
         void set_brush_name(const std::string& brush_name = {});
         void set_hetero_brush();
         void set_flow(std::optional<float> flow);
+        void connect_to_tools(rgn_map_tools* tools);
+        void handle_brush_name_change(std::string old_name, std::string new_name);
     };
 
     class rgn_map_tools {
@@ -95,7 +90,6 @@ namespace ui {
         bool has_rgn_maps() const;
         void clear();
         void populate(main_window* parent);
-        void repopulate_ctrls();
         void set_layers(double scale, ch::ink_layers* layers);
         QStackedWidget* rgn_map_stack() const;
         rgn_tool_panel* rgn_props() const;

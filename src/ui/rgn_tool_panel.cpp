@@ -116,8 +116,7 @@ void ui::select_button::item_selected(QListWidgetItem* item) {
 
 /*------------------------------------------------------------------------------------------------*/
 
-ui::rgn_tool_panel::rgn_tool_panel(main_window* parent) :
-    parent_(parent) {
+ui::rgn_tool_panel::rgn_tool_panel() {
 
     auto layout = new QVBoxLayout(this);
     layout->addWidget(new QLabel("layer"));
@@ -137,64 +136,13 @@ ui::rgn_tool_panel::rgn_tool_panel(main_window* parent) :
     layout->addWidget(box);
     layout->addStretch();
     
-    connect(&(parent->brush_panel()), &brush_panel::brush_name_changed,
-        this, &rgn_tool_panel::handle_brush_name_change);
 }
 
-
-
-void ui::rgn_tool_panel::repopulate_ctrls() {
-    if (!parent_->has_layers()) {
-        return;
-    }
-    int num_layers = static_cast<int>(parent_->layers()->count());
-    layer_cbo_->clear();
-    for (int i = 0; i < num_layers; ++i) {
-        std::string lbl = "layer " + std::to_string(i);
-        layer_cbo_->insertItem(i, lbl.c_str());
-    }
-
+void ui::rgn_tool_panel::set(int num_layers, const std::vector<std::string>& brushes) {
+    set_layers(num_layers);
     brush_lbl_->setText(k_no_selection);
-    select_brush_btn_->set_items(parent_->brush_names());
-
+    select_brush_btn_->set_items(brushes);
 }
-/*
-void layer_debug(const std::string& output_file, ch::ink_layer& layer, double scale) {
-
-    auto [x1, y1, wd, hgt] = ch::bounding_rectangle(
-        layer |
-        rv::transform([](const auto& ili) {return ili.poly; }) |
-        r::to_vector
-    );
-
-    std::ofstream outfile(output_file);
-    outfile << ch::svg_header(static_cast<int>(scale * wd), static_cast<int>(scale * hgt));
-    for (const auto& ili : layer) {
-        outfile << ch::polygon_to_svg(ili.poly, ch::to_svg_color(get_nth_color(ili.id)), scale) << std::endl;
-    }
-    for (const auto& ili : layer) {
-        ch::point pt = ch::representative_point(ch::scale(ili.poly, scale));
-        auto x = pt.x;
-        auto y = pt.y;
-        std::string text = std::to_string(ili.id);
-        outfile << "<text x=\"" << x << "\" y=\"" << y << "\" text-anchor=\"middle\">" << text << "</text>"
-            << std::endl;
-    }
-    outfile << "</svg>" << std::endl;
-    outfile.close();
-}
-
-void debug(ch::ink_layers& ink_layers) {
-    if (ink_layers.content.size() != 2) {
-        return;
-    }
-    auto& layers = ink_layers.content;
-    for (int i = 0; i < layers.size(); ++i) {
-        std::string fname = "C:\\test\\aaaa-debug-lay-" + std::to_string(i) + ".svg";
-        layer_debug(fname, layers[i], 20.0);
-    }
-}
-*/
 
 void ui::rgn_tool_panel::set_layers(int n) {
     layer_cbo_->clear();
@@ -205,22 +153,6 @@ void ui::rgn_tool_panel::set_layers(int n) {
         std::string lbl = "layer " + std::to_string(i);
         layer_cbo_->insertItem(i, lbl.c_str());
     }
-}
-
-QComboBox* ui::rgn_tool_panel::layer_cbo() const {
-    return layer_cbo_;
-}
-
-QCheckBox* ui::rgn_tool_panel::brush_cbx() const {
-    return brush_cbx_;
-}
-
-QCheckBox* ui::rgn_tool_panel::flow_cbx() const {
-    return flow_cbx_;
-}
-
-ui::select_button* ui::rgn_tool_panel::select_brush_btn() const {
-    return select_brush_btn_;
 }
 
 void ui::rgn_tool_panel::set_brush_name(const std::string& brush_name) {
@@ -241,6 +173,29 @@ void ui::rgn_tool_panel::set_flow(std::optional<float> flow) {
     } else {
         flow_ctrl_->clear();
     }
+}
+
+void ui::rgn_tool_panel::connect_to_tools(rgn_map_tools* tools) {
+
+    connect(layer_cbo_, &QComboBox::currentIndexChanged,
+        tools->rgn_map_stack(), &QStackedWidget::setCurrentIndex);
+
+    connect(brush_cbx_, &QCheckBox::stateChanged,
+        [tools](bool checked) {
+            auto rm = tools->current_rgn_map();
+            rm->show_brushes(checked);
+            rm->update();
+        }
+    );
+    connect(flow_cbx_, &QCheckBox::stateChanged,
+        [tools](bool checked) {
+            auto rm = tools->current_rgn_map();
+            rm->show_flow(checked);
+            rm->update();
+        }
+    );
+    connect(select_brush_btn_, &select_button::item_clicked,
+        [tools](QString str) {tools->handle_brush_assigned(str); });
 }
 
 /*------------------------------------------------------------------------------------------------*/
@@ -278,31 +233,11 @@ void ui::rgn_map_tools::clear() {
 
 void ui::rgn_map_tools::populate(ui::main_window* parent) {
     rgn_map_stack_ = new QStackedWidget();
-    rgn_props_ = new rgn_tool_panel(parent);
-
-    rgn_props_->connect(rgn_props_->layer_cbo(), &QComboBox::currentIndexChanged,
-        rgn_map_stack_, &QStackedWidget::setCurrentIndex);
-
-    rgn_props_->connect(rgn_props_->brush_cbx(), &QCheckBox::stateChanged,
-        [this](bool checked) {
-            auto rm = this->current_rgn_map();
-            rm->show_brushes(checked);
-            rm->update();
-        }
-    );
-    rgn_props_->connect(rgn_props_->flow_cbx(), &QCheckBox::stateChanged,
-        [this](bool checked) {
-            auto rm = this->current_rgn_map();
-            rm->show_flow(checked);
-            rm->update();
-        }
-    );
-    rgn_props_->connect(rgn_props_->select_brush_btn(), &select_button::item_clicked,
-        [this](QString str) {handle_brush_assigned(str); });
-}
-
-void ui::rgn_map_tools::repopulate_ctrls() {
-    rgn_props_->repopulate_ctrls();
+    rgn_props_ = new rgn_tool_panel();
+    rgn_props_->connect_to_tools(this);
+    parent->connect(&(parent->brush_panel()), &brush_panel::brush_name_changed,
+        rgn_props_, &rgn_tool_panel::handle_brush_name_change);
+    rgn_props_->set(0, parent->brush_names());
 }
 
 void ui::rgn_map_tools::set_layers(double scale, ch::ink_layers* layers) {
