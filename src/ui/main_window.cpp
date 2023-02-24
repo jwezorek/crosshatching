@@ -435,6 +435,7 @@ QWidget* ui::main_window::create_drawing_tools() {
 			*static_cast<layer_panel*>( crosshatching_.layers_panel_)
 		)
 	);
+    crosshatching_.layers_panel_->set_brush_panel(crosshatching_.brushes_);
 	vert_splitter->addWidget(crosshatching_.layers_panel_);
 
 	vert_splitter->setMaximumWidth(100);

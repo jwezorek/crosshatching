@@ -76,6 +76,8 @@ namespace ui {
         void handle_flow_assigned(double theta);
         void handle_selection_change_brush();
         void handle_selection_change_flow();
+        void handle_brush_name_change(std::string old_name, std::string new_name);
+        void repopulate_brush_tables();
 
     public:
         rgn_tool_panel(main_window* parent, QStackedWidget* stack);

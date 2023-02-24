@@ -161,6 +161,19 @@ ui::rgn_tool_panel::rgn_tool_panel(main_window* parent, QStackedWidget* stack) :
             rm->update();
         }
     );
+    connect(&(parent->brush_panel()), &brush_panel::brush_name_changed,
+        this, &rgn_tool_panel::handle_brush_name_change);
+}
+
+void ui::rgn_tool_panel::repopulate_brush_tables() {
+    name_to_brush_ = parent_->brush_panel().brush_dictionary();
+    brush_to_name_ = name_to_brush_ |
+        rv::transform(
+            [](auto&& v)->std::unordered_map<ch::brush_expr*, std::string>::value_type {
+                auto [name, br] = v;
+                return { br.get(), name };
+            }
+    ) | r::to<std::unordered_map<ch::brush_expr*, std::string>>();
 }
 
 void ui::rgn_tool_panel::repopulate_ctrls() {
@@ -175,14 +188,7 @@ void ui::rgn_tool_panel::repopulate_ctrls() {
     }
 
     default_brushes_ = get_brush_defaults();
-    name_to_brush_ = parent_->brush_panel().brush_dictionary();
-    brush_to_name_ = name_to_brush_ |
-        rv::transform(
-            [](auto&& v)->std::unordered_map<ch::brush_expr*, std::string>::value_type {
-                auto [name, br] = v;
-                return { br.get(), name };
-            }
-    ) | r::to<std::unordered_map<ch::brush_expr*, std::string>>();
+    repopulate_brush_tables();
 
     brush_lbl_->setText(k_no_selection);
     select_brush_btn_->set_items(parent_->brush_names());
@@ -362,6 +368,10 @@ void ui::rgn_tool_panel::handle_selection_change_flow() {
         return;
     }
     flow_ctrl_->set_direction(*selected_flow);
+}
+
+void ui::rgn_tool_panel::handle_brush_name_change(std::string old_name, std::string new_name) {
+    qDebug() << "brush name change";
 }
 
 void ui::rgn_tool_panel::handle_selection_change() {

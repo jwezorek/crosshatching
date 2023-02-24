@@ -74,8 +74,6 @@ ui::brush_panel::brush_panel(layer_panel& layers) :
     insert_toplevel_item(tree(), "horizontal", horz);
     insert_toplevel_item(tree(), "vertical", vert);
     insert_toplevel_item(tree(), "solid", solid);
-
-    sync_layer_panel();
 }
 
 std::vector<std::string> ui::brush_panel::brush_names() const {
@@ -138,7 +136,6 @@ void ui::brush_panel::from_json(const ch::json& json) {
         auto brush_expr = std::get<ch::brush_expr_ptr>(ch::parse(pair[1].get<std::string>()));
         insert_toplevel_item(tree(), brush_name, brush_expr);
     }
-    sync_layer_panel();
 }
 
 ui::brush_panel::brush_item::brush_item(const std::string& name, ch::brush_expr_ptr expr) :
@@ -183,7 +180,6 @@ void ui::brush_panel::add_brush_node() {
     if (result) {
         const auto& [name, brush] = *result;
         insert_toplevel_item(tree(), name, brush);
-        sync_layer_panel();
     }
 }
 
@@ -193,13 +189,8 @@ void ui::brush_panel::delete_brush_node() {
         if (!item->parent()) {
             tree()->removeItemWidget(item, 0);
             delete item;
-            sync_layer_panel();
         }
     }
-}
-
-void ui::brush_panel::sync_layer_panel() {
-    layer_panel_.set_brush_names(brush_names());
 }
 
 QTreeWidgetItem* toplevel_parent(QTreeWidgetItem* twi) {
@@ -212,6 +203,7 @@ QTreeWidgetItem* toplevel_parent(QTreeWidgetItem* twi) {
 void ui::brush_panel::handle_double_click(QTreeWidgetItem* item, int column) {
     brush_item* bi = static_cast<brush_item*>(item);
     if (bi->is_toplevel) {
+        auto old_name = bi->text(0).toStdString();
         auto result = brush_dialog::edit_brush(
             bi->text(0).toStdString(),
             ch::pretty_print(*bi->brush_expression)
@@ -221,6 +213,9 @@ void ui::brush_panel::handle_double_click(QTreeWidgetItem* item, int column) {
             tree()->removeItemWidget(item, 0);
             delete item;
             insert_toplevel_item(tree(), new_name, expr);
+            if (old_name != new_name) {
+                emit brush_name_changed(old_name, new_name);
+            }
         }
     } else {
         if (bi->is_leaf()) {

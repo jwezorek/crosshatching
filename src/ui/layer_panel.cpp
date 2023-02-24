@@ -24,9 +24,10 @@ ui::layer_panel::layer_panel() :
     setEnabled(false);
 }
 
-void ui::layer_panel::set_brush_names(const std::vector<std::string>& brush_names) {
-    brush_names_ = brush_names;
-    setEnabled(!brush_names_.empty());
+void ui::layer_panel::set_brush_panel(brush_panel* panel) {
+    brushes_ = panel;
+    connect(brushes_, &brush_panel::brush_name_changed, this, &layer_panel::handle_brush_name_change);
+    setEnabled(!brushes_->brush_names().empty());
 }
 
 std::vector<std::tuple<std::string, double>> ui::layer_panel::layers() const {
@@ -50,7 +51,10 @@ std::tuple<std::string, double> ui::layer_panel::row(int n) const {
 }
 
 void ui::layer_panel::add_layer() {
-    auto result = ui::layer_dialog::create_layer_item(brush_names_, list()->rowCount() == 0);
+    auto result = ui::layer_dialog::create_layer_item(
+        brushes_->brush_names(), 
+        list()->rowCount() == 0
+    );
     if (!result) {
         return;
     }
@@ -61,7 +65,7 @@ void ui::layer_panel::add_layer() {
 
 void ui::layer_panel::cell_double_clicked(int r, int col) {
     auto [brush, val] = row(r);
-    auto result = ui::layer_dialog::edit_layer_item(brush_names_, brush, val);
+    auto result = ui::layer_dialog::edit_layer_item(brushes_->brush_names(), brush, val);
     if (result) {
         layers_.erase(val);
         auto [brush, end_of_range] = *result;
@@ -130,4 +134,13 @@ void ui::layer_panel::from_json(const json& json) {
         layers_[thresh] = brush_name;
         sync_layers_to_ui();
     }
+}
+
+void ui::layer_panel::handle_brush_name_change(std::string old_name, std::string new_name) {
+    for (auto& [dummy, brush_name] : layers_) {
+        if (brush_name == old_name) {
+            brush_name = new_name;
+        }
+    }
+    sync_layers_to_ui();
 }

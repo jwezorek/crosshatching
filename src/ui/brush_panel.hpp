@@ -18,7 +18,11 @@ namespace ui {
         std::unordered_map<ch::brush_expr*, std::string> brush_name_dictionary() const;
         ch::json to_json() const;
         void from_json(const ch::json& json);
-        void sync_layer_panel();
+
+    signals:
+
+        void brush_name_changed(std::string old_name, std::string new_name);
+        void brush_changed(ch::brush_expr_ptr old_brush, ch::brush_expr_ptr new_brush);
 
     private:
 
