@@ -180,6 +180,7 @@ void ui::brush_panel::add_brush_node() {
     if (result) {
         const auto& [name, brush] = *result;
         insert_toplevel_item(tree(), name, brush);
+        emit brush_name_changed("", name);
     }
 }
 

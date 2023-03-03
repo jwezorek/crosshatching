@@ -216,7 +216,9 @@ void  ui::main_window::json_to_state(const std::string& str) {
     crosshatching_.layers_.from_json(ch_state["content"], brush_dict);
     rgn_map_.clear();
 
-    sync_layers_to_ui();
+    if (!crosshatching_.layers_.empty()) {
+        sync_layers_to_ui();
+    }
 }
 
 void ui::main_window::save_project(const std::string& fname) const {
@@ -308,6 +310,9 @@ void ui::main_window::set_swatch_view(cv::Mat swatch, bool left) {
 
 void ui::main_window::sync_layers_to_ui() {
     auto layers = layer_images();
+    if (layers.empty()) {
+        return;
+    }
     int n = static_cast<int>(layers.size());
     auto names = rv::concat(
         rv::iota(0, n) |
@@ -630,7 +635,7 @@ ch::dimensions<int> ui::main_window::dimensions() const {
 }
 
 std::vector<cv::Mat> ui::main_window::layer_images() const {
-	
+
 	double view_scale = img_proc_ctrls_.view_state.scale;
 	auto sz = view_scale * dimensions();
 	auto layers = this->layers()->content;
