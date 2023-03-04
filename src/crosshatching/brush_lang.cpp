@@ -64,7 +64,11 @@ namespace {
                     return lhs.y < rhs;
                 }
             );
-            return { *iter, *std::prev(iter) };
+            if (iter != side.begin()) {
+                return { *iter, *std::prev(iter) };
+            } else {
+                return { *std::next(iter),*iter };
+            }
         }
 
         void populate_left_and_right_sides(std::span<ch::point> hull) {
@@ -156,9 +160,32 @@ namespace {
             );
     }
 
-    template<typename R>
-    auto horz_strokes_from_y_positions(uint32_t seed, R row_y_positions,
-        const horz_hull_slicer& slicer, ch::random_func run_length,
+    ch::polylines horz_strokes_from_y_positions(auto row_y_positions, const horz_hull_slicer& slicer) {
+        return row_y_positions |
+            rv::transform(
+                [&slicer](double y)->ch::polyline {
+                    auto slice = slicer.slice(y);
+                    if (!slice) {
+                        return {};
+                    }
+                    auto poly = ch::make_polyline(2);
+                    auto [x1, x2] = *slice;
+                    assert(x1 < x2);
+                    auto slop = 0.2 * (x2 - x1);
+
+                    poly[0] = { static_cast<float>(x1-slop), static_cast<float>(y) };
+                    poly[1] = { static_cast<float>(x2+slop), static_cast<float>(y) };
+                    return poly;
+                }
+            ) | rv::remove_if(
+                [](auto&& polyline) {
+                    return polyline.empty();
+                }
+            ) | to_polylines;
+    }
+
+    ch::polylines horz_strokes_from_y_positions(uint32_t seed, auto row_y_positions,
+            const horz_hull_slicer& slicer, ch::random_func run_length,
         ch::random_func space_length) {
         return row_y_positions | // given a view of y-positions
             rv::enumerate | // tag each with an integer index
@@ -166,7 +193,7 @@ namespace {
                 // turn them into possibly empty horizontal slices of the convex polygon at 
                 // the given y and also pass along the integer index which will be used as a 
                 // key in a counter-based RNG.
-                [slicer, run_length, space_length, seed](std::tuple<size_t, double> pair) ->
+                [&slicer, run_length, space_length, seed](std::tuple<size_t, double> pair) ->
                 std::optional<std::tuple<int, double, double, double>> {
                     auto [key, y] = pair;
                     auto slice = slicer.slice(y);
@@ -192,12 +219,17 @@ namespace {
                     return row_of_strokes(x1, x2, y, seed, key, run_length, space_length);
                 }
             ) |
-            rv::join; // flatten all the row views above into one view.
+            rv::join | // flatten all the row views above into one view.
+            rv::transform(
+                [](auto rng_pair)->ch::polyline {
+                    return rng_pair | r::to<ch::polyline>();
+                }
+            ) | to_polylines;
     }
 
-    auto linear_strokes(double rotation, const std::vector<ch::point>& region,
-        ch::random_func run_length, ch::random_func space_length,
-        ch::random_func vert_space) {
+    ch::polylines linear_strokes(double rotation, const std::vector<ch::point>& region,
+            ch::random_func run_length, ch::random_func space_length,
+            ch::random_func vert_space) {
         auto seed = ch::random_seed();
         auto rot_matrix = ch::rotation_matrix(rotation);
         auto hull = ch::convex_hull(region);
@@ -214,16 +246,10 @@ namespace {
             rv::take_while([top](double y) {return y < top; });
         auto inverse_rot_matrix = ch::rotation_matrix(-rotation);
 
-        return horz_strokes_from_y_positions(seed, rows, slicer, run_length, space_length) |
-            rv::transform(
-                [inverse_rot_matrix](auto stroke) {
-                    return stroke | rv::transform(
-                        [inverse_rot_matrix](auto pt) {
-                            return ch::transform(pt, inverse_rot_matrix);
-                        }
-                    ) | r::to<ch::polyline>();
-                }
-        );
+        auto strokes = (run_length && space_length) ?
+            horz_strokes_from_y_positions(seed, rows, slicer, run_length, space_length) :
+            horz_strokes_from_y_positions(rows, slicer);
+        return ch::transform(strokes, inverse_rot_matrix);
     }
 
     template<typename T>
@@ -274,7 +300,7 @@ namespace {
 
     template<typename... Ts>
     std::tuple<Ts...> evaluate_to_tuple(ch::brush_context& ctxt,
-        const std::vector<ch::brush_expr_ptr>& exprs, const std::string& err_tag = "") {
+            std::span<ch::brush_expr_ptr> exprs, const std::string& err_tag = "") {
         if (sizeof...(Ts) != exprs.size()) {
             throw std::runtime_error(error_msg_from_tag("wrong number of args", err_tag));
         }
@@ -473,13 +499,37 @@ namespace {
 
     };
 
+    ch::random_func eval_to_fun(ch::brush_context& ctxt, ch::brush_expr_ptr expr) {
+        auto val = expr->eval(ctxt);
+        if (std::holds_alternative< ch::random_func>(val)) {
+            return std::get<ch::random_func>(val);
+        } else if (std::holds_alternative<double>(val)) {
+            return [num = std::get<double>(val)](const ch::cbrng_state&)->double {
+                return num;
+            };
+        }
+        throw std::runtime_error("bad strokes expr");
+    }
+
+    std::tuple<ch::random_func, ch::random_func, ch::random_func> eval_horz_stroke_args(
+            ch::brush_context& ctxt, std::span<ch::brush_expr_ptr> args) {
+
+        if (args.size() == 1) {
+            return { {}, {},  eval_to_fun(ctxt, args.front()) };
+        } else if (args.size() == 3) {
+            return {
+                eval_to_fun(ctxt, args[0]),
+                eval_to_fun(ctxt, args[1]),
+                eval_to_fun(ctxt, args[2])
+            };
+        }
+        throw std::runtime_error("strokes expr must 1 or 3 args");
+    }
+
     class horz_strokes_expr : public op_expr<operation::horz_strokes> {
     public:
         ch::brush_expr_value eval(ch::brush_context& ctxt) {
-            auto [run_length, space_length, vert_space] =
-                evaluate_to_tuple<ch::random_func, ch::random_func, ch::random_func>(
-                    ctxt, children_, "strokes"
-                    );
+            auto [run_length, space_length, vert_space] = eval_horz_stroke_args(ctxt, children_);
             auto pen_thickness = variable_value(ctxt.variables, ch::k_pen_thickness_var, 1.0);
             auto rotation = variable_value(ctxt.variables, ch::k_rotation_var, 0.0);
             return ch::single_stroke_group(

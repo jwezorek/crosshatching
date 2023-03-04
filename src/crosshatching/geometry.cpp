@@ -342,6 +342,15 @@ ch::polygon ch::transform(const ch::polygon& p, const ch::matrix& mat) {
 	);
 }
 
+ch::polylines ch::transform(const ch::polylines& pls, const ch::matrix& mat) {
+    return pls |
+        rv::transform(
+            [&mat](const ch::polyline& pl)->ch::polyline {
+                return transform(pl, mat);
+            }
+    ) | to_polylines;
+}
+
 void ch::paint_polyline(cv::Mat& mat, const polyline& poly, double thickness, int color, point offset)
 {
 	std::vector<cv::Point> int_pts(poly.size());

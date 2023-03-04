@@ -223,3 +223,9 @@ int ch::brush::swatch_dim() const {
     return static_cast<int>(swatch_sz_.wd);
 }
 
+cv::Mat ch::test_brush(brush_expr_ptr expr)
+{
+    auto mat = blank_monochrome_bitmap(512);
+    auto output = render_brush_expr_to_mat(expr, mat, 0.5);
+    return output;
+}

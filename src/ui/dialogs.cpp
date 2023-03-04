@@ -3,7 +3,7 @@
 #include "drawing_worker.h"
 #include <QtWidgets>
 #include <memory>
-
+#include <opencv2/highgui.hpp>
 /*------------------------------------------------------------------------------------------------------*/
 
 namespace {
@@ -153,6 +153,9 @@ void ui::brush_dialog::parse_brush_code() {
 void ui::brush_dialog::launch_brush_viewer() {
     auto viewer = new brush_viewer(name_box_->text().toStdString(), brush_, nullptr);
     viewer->exec();
+    //auto img = ch::test_brush(brush_); 
+    //cv::imshow("foo",img);
+    //cv::waitKey(0);
 }
 
 void ui::brush_dialog::clear_brush() {

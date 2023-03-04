@@ -53,7 +53,7 @@ namespace ch {
         int swatch_dim() const;
     };
 
-
+    cv::Mat test_brush(brush_expr_ptr expr);
 
     using brush_ptr = std::shared_ptr<brush>;
 }
